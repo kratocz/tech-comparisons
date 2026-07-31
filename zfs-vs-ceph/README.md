@@ -2,7 +2,7 @@
 
 - **Verdict:** ⭐ **ZFS on Proxmox VE** — valid for the context described below
 - **Facts verified:** July 2026 (dated snapshot; this document is not retro-updated)
-- **Language:** English (canonical) · [česky — original](README.cs.md)
+- **Language:** 🇬🇧 English (canonical) · 🇨🇿 [Čeština — original](README.cs.md)
 - **Author:** Petr Kratochvíl — [krato.cz](https://krato.cz)
 
 ## Context: the profile this decision was made for

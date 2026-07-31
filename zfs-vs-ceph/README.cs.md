@@ -2,7 +2,7 @@
 
 - **Verdikt:** ⭐ **ZFS na Proxmox VE** — platí pro kontext popsaný níže
 - **Fakta ověřena:** červenec 2026 (datovaný snapshot; dokument se zpětně neaktualizuje)
-- **Jazyk:** český originál · [English version](README.md)
+- **Jazyk:** 🇨🇿 čeština (originál) · 🇬🇧 [English version](README.md)
 - **Autor:** Petr Kratochvíl — [krato.cz](https://krato.cz)
 
 ## Kontext: pro jaký profil se rozhodovalo

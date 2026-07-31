@@ -15,7 +15,7 @@ Real decision analyses from real projects — not neutral feature matrices. Each
 
 | Topic | Verdict (for that context) | Facts verified | Read |
 |---|---|---|---|
-| **ZFS vs Ceph** — storage engine for a small (1–3 node) self-hosted cluster | ZFS on Proxmox VE | 2026-07 | [EN](zfs-vs-ceph/README.md) · [česky](zfs-vs-ceph/README.cs.md) |
+| **ZFS vs Ceph** — storage engine for a small (1–3 node) self-hosted cluster | ZFS on Proxmox VE | 2026-07 | 🇬🇧 [English](zfs-vs-ceph/README.md) · 🇨🇿 [Čeština](zfs-vs-ceph/README.cs.md) |
 
 ## Languages
 
