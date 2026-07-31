@@ -1,7 +1,7 @@
 # ZFS vs Ceph — volba storage enginu pro malý self-hosted cluster
 
 - **Verdikt:** ⭐ **ZFS na Proxmox VE** — platí pro kontext popsaný níže
-- **Fakta ověřena:** červenec 2026 (datovaný snapshot; dokument se zpětně neaktualizuje)
+- **Fakta ověřena:** červenec 2026 · doplněk 2026-08-01 (snapshot vrstva na Linuxu, §2.5–2.6)
 - **Jazyk:** 🇨🇿 čeština (originál) · 🇬🇧 [English version](README.md)
 - **Autor:** Petr Kratochvíl — [krato.cz](https://krato.cz)
 
@@ -19,7 +19,7 @@ Tohle není obecné srovnání „co je lepší". Je to reálná rozhodovací an
 ## Shrnutí (TL;DR)
 
 1. ⭐ **Doporučení: ZFS na Proxmox VE, ne Ceph** — pro profil „1–3 uzly, solo admin, cost-conscious, bulk + pár služeb, fázování" vyhrává ZFS téměř ve všem, co reálně pálí: **dává plnou hodnotu už od 1 uzlu** (Ceph je na 1 uzlu anti-pattern), **řádově méně RAM** (přímá úspora v DDR4 krizi), jednodušší provoz, čisté DR přes `send`/`recv`, lepší kapacitní efektivita na malé škále (RAIDZ2 75 % vs Ceph `size=3` 33 %).
-2. **Všechny čtyři moje původní výhrady ke ZFS se rozpustily** (§2): mixed-size (→ nový vdev), „pomalost" (→ SMR + plný pool, ne ZFS samo), shrink (→ platí jen pro **pool**, ne pro **ZVOL**), tichá korupce (→ ZFS to řeší nativně; stávající mdadm+Btrfs stack by to dohnal jen vrstvou `dm-integrity`).
+2. **Čtyři z mých šesti původních výhrad ke ZFS se rozpustily** (§2): mixed-size (→ nový vdev), „pomalost" (→ SMR + plný pool, ne ZFS samo), shrink (→ platí jen pro **pool**, ne pro **ZVOL**), tichá korupce (→ ZFS to řeší nativně; stávající mdadm+Btrfs stack by to dohnal jen vrstvou `dm-integrity`). **Dvě potvrzené trvají** (§2.5): procházení snapshotů = mount každého zvlášť (design nezměněn) a panic bug snapshot automountu — upstream fix až 12/2025 (PR #17943), v LTS řadě 2.3.x k 8/2026 chybí. Mitigace jsou jednoduché (`snapdir=hidden` je default, `zfs diff`/clone), ale je to nejslabší kus ZFS na Linuxu.
 3. **HA nezávisí na volbě engine, ale na počtu uzlů** (§4). Na 1 uzlu není HA s ničím (ani s Ceph). ZFS HA řeší **Proxmox ZFS replikace + HA manager + arbitr** (orchestrovaný failover, RPO ~1 min) — pro daný use-case dostatečné. Přes WAN neexistuje real-time HA s žádným enginem.
 4. **Ceph si drží reálnou výhodu jen ve třech věcech** (§7, §9): distribuované/shared storage (živá migrace VM, **K8s RWX PV**), nativní **S3/RGW** a automatický self-heal přes uzly. **Oba relevantní body prověřeny (§14) a ani jeden Ceph nevyžaduje** — monitoring HA (Zabbix/Grafana/Loki) se řeší app-level + RWO, Kopia zálohy S3 nepotřebují → **volba padla na ZFS**.
 5. **Migrační past ZFS→Ceph je reálná, ale volitelná** (§10): existuje jen tehdy, když je cílem Ceph. Zůstat u ZFS celou cestu (1 uzel → +2 uzly + replikace) past ruší — uzel 1 se nikdy nemaže.
@@ -55,7 +55,7 @@ Symboly: ✅ silná stránka · 🟡 jde s výhradou / kompromis · ❌ slabina 
 | Geo HA přes WAN | ❌ jen async DR | ❌ jen async DR (sync = showstopper) | ❌ |
 | **▸ Funkce / workloady** | | | |
 | Blokové zařízení pro VM | ✅ ZVOL (lokální) | ✅ RBD (distribuované) | ✅ LVM LV (lokální) |
-| POSIX (UTF-8 názvy, ACL, nanosec časy, xattr) | ✅ plný + NFSv4 ACL, volitelná UTF-8 normalizace | ✅ CephFS POSIX (drobné odchylky z distribuce) | ✅ plný nativní Linux |
+| POSIX (UTF-8 názvy, ACL, nanosec časy, xattr) | ✅ plný — POSIX ACL (NFSv4 ACL na Linuxu VFS nevynutí, §2.6), volitelná UTF-8 normalizace | ✅ CephFS POSIX (drobné odchylky z distribuce) | ✅ plný nativní Linux |
 | K8s persistent volumes | 🟡 local-PV RWO (`zfs-localpv`) | ✅ distribuované RWX (`ceph-csi`) | 🟡 local-PV (LVM CSI) |
 | Nativní S3 / object storage | ❌ (jen MinIO/Garage navrch) | ✅ RGW | ❌ (jen MinIO navrch) |
 | Deduplikace (auto, block-level) | 🟡 Fast Dedup, radši PBS | 🟡 experimentální / RGW batch | 🟡 Btrfs bees (batch) |
@@ -64,6 +64,8 @@ Symboly: ✅ silná stránka · 🟡 jde s výhradou / kompromis · ❌ slabina 
 | Změna komprese u existujících dat | 🟡 jen nová data (rewrite `send/recv`) | 🟡 jen nová data (rewrite) | ✅ in-place `defragment -c` |
 | Šifrování at-rest | ✅ ZFS native / LUKS | ✅ LUKS pod OSD | ✅ dm-crypt/LUKS |
 | Zálohy / DR | ✅ `send`/`recv` + PBS (čisté) | 🟡 3 rozhraní, mirroring křehký | 🟡 Btrfs send + snapshoty |
+| Procházení mnoha snapshotů (grep historie) | 🟡 mount per snapshot (automount `.zfs`; radši `zfs diff`/clone, §2.5) | ✅ CephFS `.snap` bez mountů (RBD ❌ map+mount ručně) | ✅ subvolume bez mountů (pozor: vlastní `st_dev`) |
+| Stabilita snapshot automountu (Linux) | ❌ historie paniců/deadlocků; fix #17943 v LTS 2.3.x k 8/2026 chybí (§2.5) | ✅ bez automount vrstvy | ✅ bez automount vrstvy |
 | **▸ Škálování & fázování** | | | |
 | Škálování na 10+ uzlů / PB | 🟡 per-node (replikace) | ✅ nativní | ❌ single-node |
 | Fázování 1 → 3 uzly | ✅ bez migrační pasti | ❌ migrační past (nebo start 3 uzly) | ❌ není cluster |
@@ -75,6 +77,7 @@ Symboly: ✅ silná stránka · 🟡 jde s výhradou / kompromis · ❌ slabina 
 - **Vyrovnané** je to v podstatném: ochrana dat proti korupci, VM failover, šifrování, blokové zařízení.
 - **Ceph vede** v distribuovaném PV (K8s RWX), nativním S3, RPO 0, auto-recovery přes uzly a škálování.
 - **Výchozí řešení** (poslední sloupec) má tři slabiny, kvůli kterým se migruje: **neopravuje tichou korupci** (jen ji detekuje přes Btrfs), **nemá HA** a jsou to **čtyři vrstvy**. ZFS všechny tři řeší v jedné vrstvě.
+- 🆕 **(2026-08-01)** Nejslabší místo ZFS na Linuxu je **snapshot automount vrstva** (`.zfs/snapshot`): mount per snapshot + historie paniců/deadlocků, poslední oprava teprve 12/2025 a v LTS 2.3.x zatím není (§2.5). CephFS i Btrfs tohle řeší z principu — je to první bod, kde výchozí stack ZFS reálně poráží.
 
 Z Ceph výher se tohoto projektu reálně týkají jen **dvě — K8s RWX PV a nativní S3** (viz §7, §14). RPO 0 jsem přijal jako nepotřebné (≤ 1 min stačí), auto-recovery i škálování míří na velké symetrické clustery, ne na plánovanou sestavu uzel 1 + uzel 2 + arbitr.
 
@@ -97,6 +100,8 @@ Tím se otázka „jak dělat Ceph fázovaně" změnila na **„potřebuješ vů
 | 2 | ZFS byl vždy „velmi pomalý" | ❌ není vlastnost ZFS | Můj dřívější test běžel na **SMR disku s téměř plným poolem** = worst case (viz §2.2). Bulk workload na CMR + dost RAM je rychlý. |
 | 3 | ZFS neumí shrink (jen expand) | 🟡 platí pro **pool/RAIDZ vdev**, **ne pro ZVOL** | Shrink RAIDZ vdev nejde; shrink **ZVOL** (blokové zařízení) jde (§6). Dvě různé operace! |
 | 4 | (výchozí server) tichá korupce se detekuje, ale neopraví | ✅ reálná díra | `dm-integrity` (stávající stack) nebo ZFS nativně (§3). |
+| 5 | Procházení snapshotů = mount každého zvlášť (tehdy „hodně přimountovaných zařízení") | ✅ **platí dodnes** | Design nezměněn: `.zfs/snapshot/<x>` = automount, N snapshotů = N mountů; novinka je jen auto-odpojení po 5 min (`zfs_expire_snapshot`). Obcházet přes `zfs diff`/`clone`/`send` (§2.5). |
+| 6 | Kernel panic při mountu mnoha snapshotů | ✅ **reálné; upstream fix až 12/2025** | Dlouhá historie (#13131, #13327), poslední inkarnace #17659 (i na Proxmoxu); oprava PR #17943 v master, v LTS 2.3.x k 8/2026 chybí → mitigace v §2.5. |
 
 ### 2.1 Mixed-size disky
 
@@ -138,6 +143,40 @@ Nezaměňovat dvě různé operace:
 - **Shrink ZVOL** (logické blokové zařízení uvnitř poolu): ✅ **jde** (§6). Pool zůstává, ZVOL se zmenší.
 
 ### 2.4 Tichá korupce — viz §3.
+
+### 2.5 Snapshot vrstva na Linuxu: mount-per-snapshot a panic bug (doplněno 2026-08-01)
+
+Obě moje historické zkušenosti (výhrady 5 a 6) se potvrdily — první jako trvalý design, druhá jako dlouhá řada reálných bugů s teprve nedávno dodanou opravou.
+
+**Mechanika (nezměněná dodnes):** `.zfs/snapshot/<jméno>` je automount trigger — vstup do adresáře připojí snapshot jako samostatný filesystem s vlastním záznamem v mount tabulce. Prohledávání 200 snapshotů = 200 mountů. Novinka od mé tehdejší zkušenosti je jen automatické odpojování nečinných snapshotů (`zfs_expire_snapshot`, default 300 s) — které ale umí vyrobit vlastní problém (hromadná expirace stovek mountů naráz; systemd navíc při každé změně re-parsuje mountinfo).
+
+**Panic bug (ověřeno 2026-08-01):**
+
+- Historie: [#13131](https://github.com/openzfs/zfs/issues/13131) „Kernel Panic and DoS on massive amounts of snapshot mount/umount" (2022, OpenZFS 2.1.2, repro Samba + hodně snapshotů), [#13327](https://github.com/openzfs/zfs/issues/13327) (procesy zaseklé v kernelu, rostoucí load).
+- Poslední inkarnace: [#17659](https://github.com/openzfs/zfs/issues/17659) (8/2025) — `VERIFY(avl_find(...)) failed / PANIC at avl.c:625:avl_add()` v `zfsctl_snapshot_mount` ← `zpl_snapdir_automount`; Debian 13 / OpenZFS 2.3.2, v threadu hlášeno i na **Proxmox VE 9 (OpenZFS 2.3.4)** se `snapdir=visible` a ~57 snapshoty — panic spouštěl jakýkoli `ls`/`find`/`stat` nad `.zfs/snapshot`. Spouštěč: souběžný automount téhož snapshotu (typicky dva mount namespacy — systemd unit, kontejner). Technicky nejde o klasický kernel panic, ale `spl_panic`/VERIFY assert — vlákno usne navždy, vše další nad ZFS uvízne v D stavu, stroj postupně umře, pomůže jen tvrdý reboot.
+- **Oprava:** [PR #17943](https://github.com/openzfs/zfs/pull/17943) (per-entry mutex) — **merged do master 8. 12. 2025**. Podle changelogů se ale do LTS řady 2.3.x (ověřeno 2.3.6–2.3.8) k 8/2026 nedostala → na distribucích s 2.3.x (vč. Proxmox VE 9) mitigace stále platí.
+- Příbuzné: [#18073](https://github.com/openzfs/zfs/issues/18073) (12/2025) — deadlock souběžného `zfs recv` × `du` nad `.zfs/snapshot` přijímaného FS (`z_teardown_lock`); oprava #18415 vyšla v releasech 5/2026. Relevantní pro DR přes `send`/`recv`: na přijímací straně nebrouzdat `.zfs` během replikačních oken.
+
+**Mitigace:**
+
+1. `snapdir=hidden` (default) nechat — `.zfs` není v readdir; panic scénáře vyžadovaly `visible` nebo cílený přístup.
+2. Historii číst přes `zfs diff` (změny bez mountu), `zfs clone` (jeden konkrétní snapshot) nebo explicitní `mount -t zfs pool/ds@snap`, ne rekurzivním `find` přes `.zfs/snapshot`.
+3. Žádné mount namespacy nad `.zfs` (kontejnery, systemd `BindReadOnlyPaths`, chroot) — přesný trigger #17659.
+4. Na přijímací straně replikace nebrouzdat `.zfs` během příjmu (#18073).
+
+**Srovnání s alternativami:** Btrfs snapshot = subvolume uvnitř už připojeného FS, žádné mounty (caveat: každý subvolume má vlastní `st_dev` → `find -xdev`/`du -x`/`rsync -x`/`tar --one-file-system` se na hranici zastaví). CephFS = `.snap` adresář v každém adresáři, bez mountů, rekurzivní — nejelegantnější; RBD naopak nejhorší (snap → map/clone → mount ručně, crash-consistency bez `fsfreeze`). **Pro workflow „grep přes celou historii snapshotů" je ZFS z trojice nejtěžkopádnější a historicky nejrizikovější** — jde to, ale jen disciplinovaně.
+
+**Dopad na verdikt:** jádra use-case (bulk zápisy/čtení, `send`/`recv` DR, Proxmox replikace, PBS zálohy) se automount vrstvy nedotýkají a mitigace jsou triviální — samo o sobě to verdikt nepřeklápí. Je to ale první potvrzený bod, kde CephFS i výchozí Btrfs stack ZFS reálně porážejí — do rozhodnutí (§14) vstupuje jako vědomě nesené riziko s mitigacemi výše.
+
+### 2.6 OpenZFS na Linuxu vs „původní ZFS" — parita a integrační rozdíly (doplněno 2026-08-01)
+
+Feature parita je dnes plná — od sloučení kódových bází (OpenZFS 2.0, 2020) je Linux de facto referenční implementace a FreeBSD 13+ jede tentýž kód; nativní šifrování dokonce vzniklo v ZFS-on-Linux (0.8, 2019). Rozdíly zůstaly v integraci s OS:
+
+- **NFSv4 ACL na Linuxu nejsou vynutitelné** — linuxový VFS je neumí, reálně se jede POSIX ACL (`acltype=posixacl`); `acltype=nfsv4` je věc FreeBSD ([#4966](https://github.com/openzfs/zfs/issues/4966), WIP [PR #13186](https://github.com/openzfs/zfs/pull/13186)). Jediná skutečná funkční mezera. Pro tento projekt (domácí Samba/NFS) POSIX ACL stačí.
+- **Kernel modul mimo mainline (CDDL vs GPL)** — na čistém Debianu DKMS a riziko „kernel bez modulu" po upgrade; **na Proxmoxu odpadá** (PVE dodává kernel a ZFS společně otestované).
+- **ARC žije mimo page cache** → `zfs_arc_max` nastavit ručně (jinak dvojité kešování a tahanice o RAM pod tlakem).
+- **Boot environments** nejsou v základu (FreeBSD má `bectl`; na Linuxu `zfsbootmenu`/`zectl`) — pro PVE nepodstatné.
+- **Nativní šifrování — dvě výhrady nezávislé na OS:** nešifruje metadata poolu (názvy datasetů a snapshotů, struktura, velikosti, časy zůstávají čitelné) a jde o nejméně prověřenou část kódu (historické bugy kolem raw send `zfs send -w` na šifrovaných datasetech). → Potvrzuje volbu **LUKS + Tang** z §12 (šifruje vše včetně metadat); případné `send --raw` zálohy testovat obnovou.
 
 ## 3. Tichá korupce: dm-integrity vs ZFS nativně
 
@@ -272,7 +311,7 @@ ZFS a Ceph jsou nekompatibilní světy — nejde konvertovat, jen kopírovat (zt
 | Passphrase + dropbear SSH | ✅ klíč v hlavě, remote unlock po rebootu; daň: ruční |
 | **Tang/Clevis (network-bound)** | ⭐ odemkne se jen v domácí síti (Tang na RPi arbitru); vynesený uzel = zamčeno; doma auto-boot |
 
-**Doporučení: LUKS + Clevis/Tang** (Tang na RPi5 arbitru), ideálně i encrypted root. Na Proxmoxu (Debian) jsou to standardní balíčky (`clevis-luks`, `clevis-initramfs`, `tang`), ale setup je ruční (instalátor šifrování root nenabízí). DR/zálohy šifruje **PBS client-side** nezávisle. Alternativa: ZFS native encryption + passphrase (umí `send --raw` = šifrované repliky bez klíče na DR straně), ale Tang unlock je s ním DIY.
+**Doporučení: LUKS + Clevis/Tang** (Tang na RPi5 arbitru), ideálně i encrypted root. Na Proxmoxu (Debian) jsou to standardní balíčky (`clevis-luks`, `clevis-initramfs`, `tang`), ale setup je ruční (instalátor šifrování root nenabízí). DR/zálohy šifruje **PBS client-side** nezávisle. Alternativa: ZFS native encryption + passphrase (umí `send --raw` = šifrované repliky bez klíče na DR straně), ale Tang unlock je s ním DIY — a navíc nešifruje metadata poolu (názvy datasetů/snapshotů, velikosti, časy) a jde o nejméně prověřenou část ZFS s historií bugů kolem raw send (§2.6). Další bod pro LUKS.
 
 **Past:** klíč (keyfile) na **nešifrovaném rootu** = útočník ho z ukradeného disku přečte → šifrování k ničemu. Proto odemykač zvenčí (Tang/passphrase), ne keyfile na plaintext disku.
 
@@ -296,17 +335,18 @@ U 150 TiB cíle je ten rozdíl desítky disků a klidně 100 000+ Kč v železe 
 
 ## 14. Rozhodnutí
 
-Tři otázky, které v průběhu analýzy zbývaly otevřené, dopadly takhle:
+Čtyři otázky, které se v průběhu analýzy otevřely, dopadly takhle:
 
 1. **K8s persistent volumes — RWX není potřeba.** Plánované aplikace (Zabbix, Grafana, Loki, Prometheus) dělají HA na aplikační vrstvě (víc replik + sdílená DB / Patroni), ne přes sdílený storage → `zfs-localpv` (RWO) + Proxmox HA stačí.
 2. **S3/RGW — není potřeba.** Jediný zvažovaný důvod (zálohy přes Kopia) S3 nevyžaduje — Kopia umí filesystem/SFTP repozitář; nice-to-have pokryje MinIO nad ZFS.
 3. **HA model — přijat.** Orchestrovaný failover (RPO ≤ 1 min, RTO ~2–5 min, failback živou migrací; §4.3) je pro tento profil dostatečný.
+4. **Snapshot automount vrstva — vědomě nesené riziko (doplněno 2026-08-01).** Potvrzená slabina ZFS na Linuxu (§2.5): mount-per-snapshot + historie paniců; upstream fix (12/2025) je zatím mimo LTS řadu 2.3.x. Nese se s mitigacemi (`snapdir=hidden`, `zfs diff`/clone, žádné mount namespacy nad `.zfs`) — jádra use-case se nedotýká.
 
-**→ Verdikt: ZFS na Proxmox VE.** Ceph by na 1–3 uzlech nepřidal nic, co by tenhle projekt reálně využil — platil by se trvalou daní v RAM, síti a provozní komplexitě. Na velkém symetrickém clusteru s mnoha klienty by verdikt klidně vyšel opačně — přesně proto je celá analýza ukotvená ke kontextu v úvodu.
+**→ Verdikt: ZFS na Proxmox VE.** Ceph by na 1–3 uzlech nepřidal nic, co by tenhle projekt reálně využil — platil by se trvalou daní v RAM, síti a provozní komplexitě. Bod 4 je jediné místo, kde CephFS objektivně vede — pro tento profil ale nepřeváží zbytek. Na velkém symetrickém clusteru s mnoha klienty by verdikt klidně vyšel opačně — přesně proto je celá analýza ukotvená ke kontextu v úvodu.
 
 ## Reference
 
-Externí zdroje (ověřeno 2026-07):
+Externí zdroje (ověřeno 2026-07; snapshot/ACL doplňky ověřeny 2026-08-01):
 
 - RAIDZ Expansion: [The Register](https://www.theregister.com/2025/01/23/openzfs_23_raid_expansion/), [FreeBSD Foundation](https://freebsdfoundation.org/blog/raid-z-expansion-feature-for-zfs/), [caveat parity ratio](https://louwrentius.com/zfs-raidz-expansion-is-awesome-but-has-a-small-caveat.html)
 - Device removal / shrink limity: [OpenZFS zpool-remove](https://openzfs.github.io/openzfs-docs/man/v2.0/8/zpool-remove.8.html), [cr0x.net](https://cr0x.net/en/zfs-vdev-removal-limits/)
@@ -315,9 +355,12 @@ Externí zdroje (ověřeno 2026-07):
 - Fast Dedup: [Klara Systems](https://klarasystems.com/articles/introducing-openzfs-fast-dedup/), [despairlabs](https://despairlabs.com/blog/posts/2024-10-27-openzfs-dedup-is-good-dont-use-it/)
 - Ceph dedup: [Ceph docs — Deduplication (experimental)](https://docs.ceph.com/en/latest/dev/deduplication/), [RGW Object Dedup](https://docs.ceph.com/en/latest/radosgw/s3_objects_dedup/)
 - ZVOL shrink: [FreeBSD Forums](https://forums.freebsd.org/threads/zfs-set-volsize-data-loss.55854/), [TrueNAS](https://www.truenas.com/community/threads/shrink-zvol-of-vm.100519/)
+- Snapshot automount / panic: [#13131](https://github.com/openzfs/zfs/issues/13131), [#13327](https://github.com/openzfs/zfs/issues/13327), [#17659](https://github.com/openzfs/zfs/issues/17659), [fix PR #17943](https://github.com/openzfs/zfs/pull/17943) (master 12/2025; mimo 2.3.6–2.3.8), [#18073](https://github.com/openzfs/zfs/issues/18073) (recv × du deadlock), [module params — `zfs_expire_snapshot`](https://openzfs.github.io/openzfs-docs/Performance%20and%20Tuning/Module%20Parameters.html)
+- NFSv4 ACL na Linuxu: [#4966](https://github.com/openzfs/zfs/issues/4966), [WIP PR #13186](https://github.com/openzfs/zfs/pull/13186)
+- CephFS snapshoty: [Ceph docs — CephFS Snapshots](https://docs.ceph.com/en/latest/dev/cephfs-snapshots/)
 
 ---
 
-*Vzniklo ve spolupráci s Claude (Anthropic); fakta ověřena proti uvedeným zdrojům k červenci 2026. Dokument je datovaný snapshot a zpětně se neaktualizuje.*
+*Vzniklo ve spolupráci s Claude (Anthropic); fakta ověřena proti uvedeným zdrojům k červenci 2026, doplňky ke snapshot vrstvě k 1. srpnu 2026. Dokument je datovaný snapshot a průběžně se neaktualizuje.*
 
 *© 2026 Petr Kratochvíl · Licence [CC BY 4.0](../LICENSE)*
