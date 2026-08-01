@@ -1,7 +1,7 @@
 # ZFS vs Ceph: choosing the storage engine for a small self-hosted cluster
 
 - **Verdict:** ⭐ **ZFS on Proxmox VE** — valid for the context described below
-- **Facts verified:** July 2026 · addendum 2026-08-01 (the Linux snapshot layer, §2.5–2.6)
+- **Facts verified:** July 2026 · addenda 2026-08-01 (the Linux snapshot layer §2.5–2.6; reliability profiles §15)
 - **Language:** 🇬🇧 English (canonical) · 🇨🇿 [Čeština — original](README.cs.md)
 - **Author:** Petr Kratochvíl — [krato.cz](https://krato.cz)
 
@@ -23,6 +23,7 @@ This is not a generic "which one is better" comparison. It is a real decision an
 3. **HA depends on node count, not on the engine** (§4). With one node there is no HA with anything (not even Ceph). ZFS HA is handled by **Proxmox ZFS replication + HA manager + an arbiter** (orchestrated failover, RPO ~1 min) — sufficient for this use case. Across a WAN, no engine gives you real-time HA.
 4. **Ceph keeps a real edge in only three things** (§7, §9): distributed/shared storage (live VM migration, **K8s RWX PVs**), native **S3/RGW**, and automatic self-healing across nodes. **Both relevant items were examined (§14) and neither requires Ceph** — monitoring HA (Zabbix/Grafana/Loki) is solved app-level + RWO, and Kopia backups don't need S3 → **the decision went to ZFS**.
 5. **The ZFS→Ceph migration trap is real but optional** (§10): it only exists if Ceph is the destination. Staying on ZFS the whole way (1 node → +2 nodes + replication) removes it — node 1 is never wiped.
+6. **The reliability deep research (§15) favours ZFS.** ZFS has the most mature integrity track record — serious bugs are rare and fixed (dirty dnode 2023; encryption send/recv closed in 2025), and **the LUKS path is untouched by them**. Ceph's risks sit exactly where this project was headed: **CephFS snapshots + multi-MDS** (incidents spanning 2021→2025), **operator error** (the main source of real-world loss; solo admin), and **practically mandatory PLP SSDs** (the planned NVMe drives are consumer-class).
 
 ## Comparison at a glance
 
@@ -34,10 +35,12 @@ Symbols: ✅ strength · 🟡 works with caveats / a compromise · ❌ weakness 
 | Min. meaningful node count | ✅ **1** | ❌ 3 (2+arbiter is fragile) | ✅ 1 (it is single-node) |
 | RAM per node | ✅ ~64 GB (ARC is flexible) | ❌ ~96–128 GB (~4 GB/OSD) | ✅ low |
 | Inter-node network | ✅ 1 GbE suffices (async) | 🟡 10 GbE ~mandatory | — (single-node) |
+| SSD requirements (PLP) | 🟡 PLP only for a SLOG (not planned) | ❌ practically mandatory (BlueStore fsync) — consumer NVMe won't do (§15) | ✅ no special requirements |
 | Operational complexity | ✅ `zpool`/`zfs`, one layer | ❌ 5+ daemons, CRUSH, PGs | 🟡 4 layers, more tools |
 | **▸ Data & integrity** | | | |
 | Auto-repair of silent corruption | ✅ native (scrub/resilver) | ✅ native (BlueStore) | ❌ **detects (Btrfs), can't repair** |
-| Capacity efficiency | ✅ RAIDZ2 75 % (grown incrementally ~67–70 % until rewritten, §2.1) | 🟡 size=3 33 % (EC better, needs nodes) | ✅ RAID6 ~75 % |
+| Data-loss bug history (§15) | 🟡 rare, fixed fast (dnode 2023; encryption send/recv closed 2025) | 🟡 core mature (CERN); fragile: CephFS snapshots+multi-MDS, operator error | 🟡 Btrfs RAID5/6 ❌ permanently (here on LV over mdadm ✓) |
+| Capacity efficiency | ✅ RAIDZ2 75 % (grown incrementally ~67–70 % until rewritten, §2.1) | 🟡 size=3 33 % (EC realistically from ~5–6 nodes; on 3 only k=2,m=1) | ✅ RAID6 ~75 % |
 | Fragmentation when full (common to all) | 🟡 yes (CoW) | 🟡 yes (BlueStore) | 🟡 yes (Btrfs CoW) + ENOSPC |
 | Defrag / cleanup | 🟡 rewrite via `send/recv` (no tool, CoW-safe) | 🟡 OSD reweight / rewrite (CoW-safe, keeps snapshots) | ✅ `defragment` + `balance` (but **breaks reflinks**) |
 | CoW granularity (1-byte write) | 🟡 128K record (tunable 4K–1M; ZVOL 16K) | ❌ 4 MB with a snapshot (~4K without) | ✅ 4K (`nodatacow` for DBs = 0) |
@@ -65,7 +68,7 @@ Symbols: ✅ strength · 🟡 works with caveats / a compromise · ❌ weakness 
 | At-rest encryption | ✅ ZFS native / LUKS | ✅ LUKS under OSDs | ✅ dm-crypt/LUKS |
 | Backups / DR | ✅ `send`/`recv` + PBS (clean) | 🟡 3 interfaces, fragile mirroring | 🟡 Btrfs send + snapshots |
 | Browsing many snapshots (grepping history) | 🟡 one mount per snapshot (`.zfs` automount; prefer `zfs diff`/clone, §2.5) | ✅ CephFS `.snap`, no mounts (RBD ❌ manual map+mount) | ✅ subvolumes, no mounts (beware: own `st_dev`) |
-| Snapshot automount stability (Linux) | ❌ history of panics/deadlocks; fix #17943 missing from 2.3.x LTS as of 8/2026 (§2.5) | ✅ no automount layer | ✅ no automount layer |
+| Snapshot-layer stability | ❌ automount: history of panics; fix #17943 missing from 2.3.x LTS as of 8/2026 (§2.5) | 🟡 no automount layer, but CephFS snapshots themselves = the most fragile area (MDS trims, §15) | ✅ subvolume snapshots mature |
 | **▸ Scaling & phasing** | | | |
 | Scaling to 10+ nodes / PB | 🟡 per-node (replication) | ✅ native | ❌ single-node |
 | Phasing 1 → 3 nodes | ✅ no migration trap | ❌ migration trap (or start with 3) | ❌ not a cluster |
@@ -78,6 +81,7 @@ Symbols: ✅ strength · 🟡 works with caveats / a compromise · ❌ weakness 
 - **Ceph leads** in distributed PVs (K8s RWX), native S3, RPO 0, auto-recovery across nodes, and scaling.
 - **The current solution** (last column) has the three weaknesses driving the migration: it **cannot repair silent corruption** (Btrfs only detects it), it **has no HA**, and it is **four layers**. ZFS fixes all three in a single layer.
 - 🆕 **(2026-08-01)** The weakest spot of ZFS on Linux is the **snapshot automount layer** (`.zfs/snapshot`): one mount per snapshot plus a history of panics/deadlocks, with the latest fix only landing 12/2025 and not yet in the 2.3.x LTS line (§2.5). CephFS and Btrfs solve this by design — the first row where the incumbent stack genuinely beats ZFS.
+- 🆕 **(2026-08-01, reliability)** The deep research (§15) favours ZFS: this design systematically routes around ZFS's risks (fresh features, native encryption), while Ceph's risks (fragile CephFS snapshots, operator error, mandatory PLP SSDs) would hit it head-on. The elegance of CephFS snapshot *access* (row above) thus gets a counterweight — the snapshot *feature* itself is more fragile on CephFS than on ZFS.
 
 Of Ceph's wins, only **two actually concern this project — K8s RWX PVs and native S3** (see §7, §14). I accepted RPO 0 as unnecessary (≤ 1 min is fine), and auto-recovery plus scaling target large symmetric clusters, not the planned node 1 + node 2 + arbiter setup.
 
@@ -176,7 +180,7 @@ Feature parity is complete today — since the codebase merge (OpenZFS 2.0, 2020
 - **The kernel module lives outside mainline (CDDL vs GPL)** — on plain Debian that means DKMS and the "kernel without a module" upgrade risk; **it disappears on Proxmox** (PVE ships the kernel and ZFS together, tested).
 - **The ARC lives outside the page cache** → set `zfs_arc_max` manually (otherwise double caching and a memory tug-of-war under pressure).
 - **Boot environments** are not built in (FreeBSD has `bectl`; on Linux you bolt on `zfsbootmenu`/`zectl`) — irrelevant for PVE.
-- **Native encryption — two caveats independent of the OS:** it does not encrypt pool metadata (dataset and snapshot names, structure, sizes and timestamps stay readable), and it is the least battle-hardened part of the codebase (a history of bugs around raw send, `zfs send -w`, on encrypted datasets). → This reinforces the **LUKS + Tang** choice from §12 (encrypts everything including metadata); test any `send --raw` backups by restoring them.
+- **Native encryption — two caveats independent of the OS:** it does not encrypt pool metadata (dataset and snapshot names, structure, sizes and timestamps stay readable), and it is the least battle-hardened part of the codebase — send/recv of encrypted datasets carried a years-long history of corruption bugs (the main issue #12014 from 2021 was closed only in 2025; fixes headed for 2.2.8/2.3.3, §15). → This reinforces the **LUKS + Tang** choice from §12 (encrypts everything including metadata); test any `send --raw` backups by restoring them.
 
 ## 3. Silent corruption: dm-integrity vs native ZFS
 
@@ -311,7 +315,7 @@ ZFS and Ceph are incompatible worlds — there is no conversion, only copying (l
 | Passphrase + dropbear SSH | ✅ key in your head, remote unlock after reboot; the cost: manual |
 | **Tang/Clevis (network-bound)** | ⭐ unlocks only inside the home network (Tang on the RPi arbiter); a carried-off node = locked; at home, auto-boot |
 
-**Recommendation: LUKS + Clevis/Tang** (Tang on the RPi5 arbiter), ideally with an encrypted root too. On Proxmox (Debian) these are standard packages (`clevis-luks`, `clevis-initramfs`, `tang`), but the setup is manual (the installer doesn't offer root encryption). DR/backups are encrypted **client-side by PBS** independently. Alternative: ZFS native encryption + a passphrase (supports `send --raw` = encrypted replicas with no key on the DR side), but Tang unlock with it is DIY — and it also leaves pool metadata unencrypted (dataset/snapshot names, sizes, timestamps) and is the least battle-hardened part of ZFS, with a history of raw-send bugs (§2.6). One more point for LUKS.
+**Recommendation: LUKS + Clevis/Tang** (Tang on the RPi5 arbiter), ideally with an encrypted root too. On Proxmox (Debian) these are standard packages (`clevis-luks`, `clevis-initramfs`, `tang`), but the setup is manual (the installer doesn't offer root encryption). DR/backups are encrypted **client-side by PBS** independently. Alternative: ZFS native encryption + a passphrase (supports `send --raw` = encrypted replicas with no key on the DR side), but Tang unlock with it is DIY — and it also leaves pool metadata unencrypted (dataset/snapshot names, sizes, timestamps) and is the least battle-hardened part of ZFS: the years-long history of send/recv corruption bugs on encrypted datasets was closed only in 2025 (§2.6, §15). One more point for LUKS.
 
 **The trap:** a keyfile on an **unencrypted root** = the attacker reads it off the stolen disk → the encryption is pointless. Hence an external unlocker (Tang/passphrase), not a keyfile on a plaintext disk.
 
@@ -321,7 +325,7 @@ ZFS and Ceph are incompatible worlds — there is no conversion, only copying (l
 
 The fill ceiling is similar for both (~80 %), so **by itself it doesn't move the needle much** — the main capacity difference is replication overhead (see "Comparison at a glance", the capacity-efficiency row).
 
-- **ZFS:** ~80 % for performance/fragmentation reasons (CoW); beyond that it slows down (no data loss), beyond ~95 % badly.
+- **ZFS:** ~80 % for performance/fragmentation reasons (CoW); beyond that it slows down (no data loss), beyond ~95 % badly. Practice (45Drives) puts the real ceiling closer to ~90 %; above 90 %, though, there is even a reported case of `zpool import` failing after a power loss ([#18041](https://github.com/openzfs/zfs/issues/18041)) — the 80 % ceiling thus has a healthy margin.
 - **Ceph:** thresholds `nearfull` 85 %, `backfillfull` 90 %, `full` 95 % (writes stop). Plus a **self-heal reserve** — an OSD/node failure must fit onto the survivors → practically ~75–80 %, **less on few nodes** (losing 1 of 3 = 33 % must fit somewhere). ZFS needs no such reserve.
 
 **Actually usable out of every 100 TB of purchased disks** (usable × 80 % fill):
@@ -342,7 +346,28 @@ The four questions that opened up during the analysis resolved as follows:
 3. **HA model — accepted.** Orchestrated failover (RPO ≤ 1 min, RTO ~2–5 min, failback via live migration; §4.3) is sufficient for this profile.
 4. **The snapshot automount layer — a consciously carried risk (added 2026-08-01).** A confirmed weakness of ZFS on Linux (§2.5): one mount per snapshot plus a history of panics; the upstream fix (12/2025) is still outside the 2.3.x LTS line. Carried with mitigations (`snapdir=hidden`, `zfs diff`/clone, no mount namespaces over `.zfs`) — the core use case never touches it.
 
-**→ Verdict: ZFS on Proxmox VE.** On 1–3 nodes, Ceph would add nothing this project would actually use — while charging a permanent tax in RAM, networking and operational complexity. Point 4 is the one place where CephFS objectively leads — for this profile it does not outweigh the rest. On a large symmetric cluster with many clients the verdict could easily flip — which is exactly why this whole analysis is anchored to the context up top.
+**→ Verdict: ZFS on Proxmox VE.** On 1–3 nodes, Ceph would add nothing this project would actually use — while charging a permanent tax in RAM, networking and operational complexity. Point 4 is the one place where CephFS objectively leads — for this profile it does not outweigh the rest; the reliability profiles (§15) further support the verdict (this design routes around ZFS's risks, while Ceph's would hit it head-on). On a large symmetric cluster with many clients the verdict could easily flip — which is exactly why this whole analysis is anchored to the context up top.
+
+## 15. Data-loss risk: reliability profiles (added 2026-08-01)
+
+This second addendum draws on an independent deep-research reliability analysis of ZFS/Btrfs/Ceph on Debian/Ubuntu ([the artifact](https://claude.ai/public/artifacts/49c04b36-c45d-4b73-8652-c79f39de5ad5), 319 sources) and a follow-up discussion; the load-bearing claims were verified against primary sources on 2026-08-01. The takeaway for this context: **the risk profiles favour ZFS** — this design systematically routes around ZFS's weaknesses, while Ceph's would hit it head-on.
+
+**ZFS — the most mature integrity track record; risks concentrated and avoidable:**
+
+- The worst recent incident: the "dirty dnode" bug [#15526](https://github.com/openzfs/zfs/issues/15526) (11/2023) — silent corruption during copies that **scrub did not detect** (checksums protect against disk bitrot, not against bugs in the FS itself → backups stay mandatory, always). Latent since ~2013; surfaced only by block cloning (2.2.0) + coreutils 9.x. Fixed in 2.2.2/2.1.14 (12/2023). The lesson: **the risk sits in freshly shipped features** → run conservative versions, let novelties mature (block cloning is off by default anyway).
+- Encryption: send/recv of encrypted datasets carried a years-long history of corruption bugs — the main issue [#12014](https://github.com/openzfs/zfs/issues/12014) (2021) was closed only in 2025 (PR #17340). **The LUKS + Tang path (§12) is untouched by this entire area.**
+- Fill levels: see §13 — practice tolerates ~90 %, so the 80 % ceiling has a healthy margin (incl. [#18041](https://github.com/openzfs/zfs/issues/18041)).
+
+**Ceph — the core is mature at massive scale, but the risks sit exactly where this project was headed:**
+
+- **CephFS snapshots + multi-MDS = historically the most fragile area.** The official best practice as late as the Mimic era (2018) read "[use a single active MDS and do not use snapshots](https://docs.ceph.com/en/mimic/cephfs/best-practices/)"; both features are supported today, yet operational incidents span versions: [#53192](https://tracker.ceph.com/issues/53192) (11/2021, Nautilus) — with snapshots enabled, `rm -rf` dropped from ~400 to ~25 unlinks/s (`SnapRealm::split_at`, 100 % CPU on the MDS), the degradation persisted even after deleting all snapshots, and the full fix only arrived with v20.2.0 (Tentacle, 11/2025) — **four years**; [Silvenga, 7/2024](https://silvenga.com/posts/notes-on-cephfs-metadata-recovery/) — MDS journal corruption during snapshot trimming after a mass delete (multi-MDS), MDS crashes and a risky recovery; [Rook #15273](https://github.com/rook/rook/issues/15273) (1/2025, Squid 19.2.0) — group snapshots of ~20 PVCs → latency spikes and the MDS "behind on trims". For a project with snapshots as a central workflow this is a direct hit — and unlike the ZFS automount bug (§2.5, which has a merged fix), this is behaviour of the MDS architecture, not a single bug with a patch.
+- **Most real-world Ceph data loss = operator error, not bugs:** `min_size=1` (the most common), `size=2`, touching OSDs during degradation/backfill, copy-pasted `--yes-i-really-mean-it` commands, ignored HEALTH_WARN. The risk grows for a **solo admin without a daily Ceph routine** — exactly this profile (§8).
+- **Enterprise SSDs with PLP are practically mandatory** (BlueStore does frequent fsyncs; consumer SSDs without PLP = collapsing sync writes + corruption risk on power loss). The planned build uses consumer NVMe → the Ceph path would mean pricier drives. ZFS needs PLP only for a SLOG, which is not planned.
+- **Debian packages have a documented history of trouble** (Reef 18.2.0 could not even be built for bookworm; dashboard PyO3 crashes) → upstream recommends cephadm in containers = one more operational layer.
+
+**Btrfs (the incumbent stack):** the RAID5/6 write hole is officially "not for production" even in 2026 ([RAID56 status](https://btrfs.readthedocs.io/en/latest/btrfs-man5.html)) — the incumbent stack (Btrfs on LV **on top of mdadm RAID6**, not Btrfs RAID5/6) correctly avoids it; the single/RAID1/10 profiles are mature (Meta on millions of machines, default on Fedora/openSUSE desktop). The flagship ENOSPC/balance annoyance remains.
+
+**Hardware, across the board:** ECC is recommended, not mandatory — the "scrub of death" is a myth (Ahrens: ZFS without ECC is no riskier than any other FS without ECC; priority: backups → checksumming FS → UPS → ECC). The real risk for all three: drives that lie about flushes, and QLC SSDs under write load.
 
 ## References
 
@@ -358,9 +383,10 @@ External sources (verified July 2026; snapshot/ACL addenda verified 2026-08-01):
 - Snapshot automount / panics: [#13131](https://github.com/openzfs/zfs/issues/13131), [#13327](https://github.com/openzfs/zfs/issues/13327), [#17659](https://github.com/openzfs/zfs/issues/17659), [fix PR #17943](https://github.com/openzfs/zfs/pull/17943) (master 12/2025; not in 2.3.6–2.3.8), [#18073](https://github.com/openzfs/zfs/issues/18073) (recv × du deadlock), [module parameters — `zfs_expire_snapshot`](https://openzfs.github.io/openzfs-docs/Performance%20and%20Tuning/Module%20Parameters.html)
 - NFSv4 ACLs on Linux: [#4966](https://github.com/openzfs/zfs/issues/4966), [WIP PR #13186](https://github.com/openzfs/zfs/pull/13186)
 - CephFS snapshots: [Ceph docs — CephFS Snapshots](https://docs.ceph.com/en/latest/dev/cephfs-snapshots/)
+- Reliability profiles (2026-08-01): [deep-research artifact](https://claude.ai/public/artifacts/49c04b36-c45d-4b73-8652-c79f39de5ad5), [#15526 dirty dnode](https://github.com/openzfs/zfs/issues/15526), [#12014 encryption send/recv](https://github.com/openzfs/zfs/issues/12014), [#18041 import >90 % after power loss](https://github.com/openzfs/zfs/issues/18041), [tracker #53192 — MDS latency with snapshots (2021→fixed 2025)](https://tracker.ceph.com/issues/53192), [Silvenga — CephFS metadata recovery (7/2024)](https://silvenga.com/posts/notes-on-cephfs-metadata-recovery/), [Rook #15273 — MDS trims with snapshots (1/2025)](https://github.com/rook/rook/issues/15273), [CephFS best practices (Mimic)](https://docs.ceph.com/en/mimic/cephfs/best-practices/), [Btrfs RAID56 status](https://btrfs.readthedocs.io/en/latest/btrfs-man5.html)
 
 ---
 
-*Researched and written in collaboration with Claude (Anthropic); facts verified against the sources above as of July 2026, with the snapshot-layer addendum verified 1 August 2026. This document is a dated snapshot and is not continuously updated.*
+*Researched and written in collaboration with Claude (Anthropic); facts verified against the sources above as of July 2026, with the addenda (snapshot layer, reliability profiles) verified 1 August 2026. This document is a dated snapshot and is not continuously updated.*
 
 *© 2026 Petr Kratochvíl · Licensed under [CC BY 4.0](../LICENSE)*
