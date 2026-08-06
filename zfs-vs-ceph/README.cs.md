@@ -1,7 +1,7 @@
 # ZFS vs Ceph — volba storage enginu pro malý self-hosted cluster
 
 - **Verdikt:** ⭐ **ZFS na Proxmox VE** — platí pro kontext popsaný níže
-- **Fakta ověřena:** červenec 2026 · doplňky 2026-08-01/02 (snapshot vrstva §2.5–2.6; spolehlivostní profily vč. timeline korupčních bugů §15)
+- **Fakta ověřena:** červenec 2026 · doplňky 2026-08-01/06 (snapshot vrstva §2.5–2.6; spolehlivostní profily vč. timelines korupčních bugů Ceph i ZFS §15)
 - **Jazyk:** 🇨🇿 čeština (originál) · 🇬🇧 [English version](README.md)
 - **Autor:** Petr Kratochvíl — [krato.cz](https://krato.cz)
 
@@ -354,14 +354,34 @@ Druhý doplněk vychází z nezávislé deep-research analýzy spolehlivosti ZFS
 
 **ZFS — nejzralejší integrity historie; rizika koncentrovaná a obejitelná:**
 
-- Nejhorší recentní incident: „dirty dnode" [#15526](https://github.com/openzfs/zfs/issues/15526) (11/2023) — tichá korupce při kopírování, kterou **scrub neodhalil** (checksumy chrání proti bitrotu disku, ne proti bugu v samotném FS → zálohy zůstávají povinné vždy). Bug byl latentní ~od 2013; zviditelnil ho až block cloning (2.2.0) + coreutils 9.x. Opraveno v 2.2.2/2.1.14 (12/2023). Lekce: **rizika sedí v čerstvých featurách** → konzervativní verze, novinky nechat uležet (block cloning je beztak default off).
-- Šifrování: send/recv šifrovaných datasetů neslo dlouholetou historii korupčních bugů — hlavní issue [#12014](https://github.com/openzfs/zfs/issues/12014) (2021) uzavřeno až 2025 (PR #17340). **Cesty LUKS + Tang (§12) se celá tato oblast netýká.**
+**Doložené korupční bugy (Open)ZFS na Linuxu — timeline** (doplněno 2026-08-06):
+
+| Kdy | Co | Vrstva | Oprava |
+|---|---|---|---|
+| 2016 | **hole_birth** — tichá korupce inkrementálních `zfs send` streamů: příjemce nehlásí chybu, ale cíl ≠ zdroj (místo nul dorazí stará data; [#4996](https://github.com/openzfs/zfs/issues/4996), [Debian #830824](https://bugs.debian.org/cgi-bin/bugreport.cgi?bug=830824)) | send/recv | ZoL 0.6.5.8 / 0.7.0-rc1: sender defaultně ignoruje vadná hole_birth metadata ([FAQ](https://openzfs.github.io/openzfs-docs/Project%20and%20Community/FAQ%20hole%20birth.html)) |
+| 3–4/2018 | Regrese v 0.7.7: „mizející" soubory (ztracené hardlinky) + falešné ENOSPC při kopírování adresářů s mnoha soubory; reálná ztráta dat dle [The Register](https://www.theregister.com/2018/04/10/zfs_on_linux_data_loss_fixed/) nulová | ZPL/VFS | urgentní 0.7.8 za 3 dny (revert) |
+| 2021→2025 | Native encryption × send/recv ([#12014](https://github.com/openzfs/zfs/issues/12014) a příbuzné): permanent errors šifrovaných snapshotů při zálohách | šifrování | uzavřeno až 2025 (PR #17340; opravy 2.2.8/2.3.3) |
+| 11/2023 | **Dirty dnode** ([#15526](https://github.com/openzfs/zfs/issues/15526)): tichá korupce při kopírování (trigger coreutils 9.x + block cloning), **latentní ~od 2013**, scrub ji neviděl | core (dnode check) | 2.2.2 / 2.1.14 (12/2023) |
+
+- **Lekce:** dva ze čtyř bugů byly **tiché** — checksumy nechytí bug, který sedí nad nimi → zálohy + ověřování replik (scrub na cíli, testovací restore); hole_birth je přesně scénář send/recv DR. Rizika sedí v send cestách a čerstvých featurách, ne v základní RAIDZ/mirror zápisové cestě → konzervativní verze, novinky nechat uležet (block cloning je beztak default off).
+- **Šifrování: cesty LUKS + Tang (§12) se celá encryption saga netýká.** Debian 13 / Ubuntu 24.04 / PVE 9 dnes vozí verze se všemi uvedenými fixy.
 - Plnost: viz §13 — praxe snese ~90 %, ale strop 80 % má zdravou rezervu (vč. [#18041](https://github.com/openzfs/zfs/issues/18041)).
 
 **Ceph — core zralý na obří škále, ale rizika přesně tam, kam tento projekt mířil:**
 
 - **CephFS snapshoty + multi-MDS = historicky nejkřehčí oblast.** Oficiální best practice ještě v éře Mimic (2018) zněla „[use a single active MDS and do not use snapshots](https://docs.ceph.com/en/mimic/cephfs/best-practices/)"; dnes jsou obě featury podporované, ale provozní incidenty se táhnou napříč verzemi: [#53192](https://tracker.ceph.com/issues/53192) (11/2021, Nautilus) — se snapshoty propad `rm -rf` ze ~400 na ~25 unlinků/s (`SnapRealm::split_at`, 100 % CPU MDS), degradace přetrvala i po smazání všech snapshotů a plné dořešení přišlo až s v20.2.0 (Tentacle, 11/2025) — **4 roky**; [Silvenga 7/2024](https://silvenga.com/posts/notes-on-cephfs-metadata-recovery/) — korupce MDS journalu při snapshot trimmingu po hromadném mazání (multi-MDS), pády MDS a riskantní recovery; [Rook #15273](https://github.com/rook/rook/issues/15273) (1/2025, Squid 19.2.0) — skupinové snapshoty ~20 PVC → latenční špičky a MDS „behind on trims". Pro projekt se snapshoty jako centrálním workflow přímý zásah — a na rozdíl od ZFS automount bugu (§2.5, má merged fix) jde o chování architektury MDS, ne o jeden bug s opravou.
-- **Doložené korupční bugy — timeline (doplněno 2026-08-02):** 11/2019 Nautilus 14.2.3/14.2.4 — BlueStore fastbmap alokátor, trefoval **jen OSD s odděleným DB/WAL zařízením** (přesně doporučenou konfiguraci „block.db na SSD"), expedovaný fix 14.2.5 ([advisory](https://lists.ceph.io/hyperkitty/list/ceph-users@ceph.io/thread/X6TNSDQK5DVKO6XFJW3DMJAJV63PLDYM/)); 5/2020 `bluefs_preextend_wal_files` → korupce RocksDB WAL ([#45613](https://tracker.ceph.com/issues/45613)); 2021 BlueFS špatně zvládal >4GB zápisy z RocksDB (fix 14.2.22/15.2.13); 10–12/2021 Pacific OMAP konverze při upgradu ([#53062](https://tracker.ceph.com/issues/53062), „IMPORTANT NOTICE", fix 16.2.7). K tomu skoro-ztráty na MDS vrstvě: [Edinburgh 9/2020](https://blogs.ed.ac.uk/mhagdorn/2020/09/09/anatomy-of-a-cephfs-disaster/) (korupce MDS journalu po síťové rekonfiguraci, týden disaster recovery na ~40TB FS) a Silvenga 7/2024. Vzorec: **RADOS core na zdravém HW doložený případ „sám ztratil data" nemá** — korupce sedí v BlueFS↔RocksDB interakci, upgrade konverzích a MDS vrstvě; každý z bugů ale vyžadoval včasnou reakci na advisory (sledovat ceph-users, nejezdit na point-release první den) = další položka provozní daně solo admina. Pro srovnání: ZFS má za stejné období vážné korupční bugy dva (dnode, encryption send/recv) — méně, ale dnode byl tichý (scrub ho neviděl).
+**Doložené korupční bugy Ceph — timeline** (doplněno 2026-08-02, jako tabulka 2026-08-06):
+
+| Kdy | Co | Vrstva | Oprava |
+|---|---|---|---|
+| 11/2019 | Fastbmap alokátor v 14.2.3/14.2.4 — RocksDB checksum errors; trefoval **jen OSD s odděleným DB/WAL zařízením** (doporučenou konfiguraci „block.db na SSD"; [advisory](https://lists.ceph.io/hyperkitty/list/ceph-users@ceph.io/thread/X6TNSDQK5DVKO6XFJW3DMJAJV63PLDYM/)) | BlueStore | expedovaná 14.2.5 |
+| 5/2020 | `bluefs_preextend_wal_files` → korupce RocksDB WAL ([#45613](https://tracker.ceph.com/issues/45613)) | BlueFS | volba vypnuta, fix 15.2.x |
+| 9/2020 | *Edinburgh:* korupce MDS journalu po síťové rekonfiguraci → kaskáda pádů MDS, týden disaster recovery na ~40TB FS; data zachráněna ([postmortem](https://blogs.ed.ac.uk/mhagdorn/2020/09/09/anatomy-of-a-cephfs-disaster/)) | CephFS/MDS | — (provozní havárie) |
+| 2021 | BlueFS špatně zvládal **>4GB zápisy z RocksDB** → potenciální korupce ([openSUSE advisory 5/2021](https://osv.dev/vulnerability/openSUSE-SU-2021:0672-1)) | BlueFS | 14.2.22 / 15.2.13 |
+| 10–12/2021 | Pacific **OMAP konverze** při upgradu: `quick_fix/repair` → poškozené OMAP klíče ([#53062](https://tracker.ceph.com/issues/53062), „IMPORTANT NOTICE") | upgrade cesta | 16.2.7 (12/2021) |
+| 7/2024 | *Silvenga:* korupce MDS journalu při snapshot trimmingu po hromadném mazání; zachránily zálohy ([postmortem](https://silvenga.com/posts/notes-on-cephfs-metadata-recovery/)) | CephFS/MDS | — (provozní havárie) |
+
+Vzorec: **RADOS core na zdravém HW doložený případ „sám ztratil data" nemá** — čisté korupční bugy se koncentrují do 2019–2021 (zrání BlueStore: BlueFS↔RocksDB interakce, upgrade konverze); co je čerstvé (2024), je MDS/CephFS metadata vrstva. Každý z bugů ale vyžadoval včasnou reakci na advisory (sledovat ceph-users, nejezdit na point-release první den) = další položka provozní daně solo admina. Srovnání s tabulkou ZFS výše: ZFS jich má méně, ale dva tiché.
 - **Většina reálných ztrát dat v Ceph = operátorské chyby, ne bugy:** `min_size=1` (nejčastější), `size=2`, zásahy do OSD během degradace/backfillu, kopírované `--yes-i-really-mean-it` příkazy, ignorovaný HEALTH_WARN. Riziko roste u **solo admina bez každodenní Ceph rutiny** — přesně tento profil (§8).
 - **Enterprise SSD s PLP prakticky povinné** (BlueStore dělá časté fsync; consumer SSD bez PLP = propad sync zápisů + riziko korupce při výpadku napájení). Plánovaná sestava stojí na consumer NVMe → Ceph cesta by znamenala dražší disky. ZFS potřebuje PLP jen pro SLOG, který se neplánuje.
 - **Debian balíčky mají doloženou historii problémů** (Reef 18.2.0 pro bookworm vůbec nešel sestavit; dashboard PyO3 pády) → upstream doporučuje cephadm v kontejnerech = další provozní vrstva navíc.
@@ -386,9 +406,10 @@ Externí zdroje (ověřeno 2026-07; snapshot/ACL doplňky ověřeny 2026-08-01):
 - CephFS snapshoty: [Ceph docs — CephFS Snapshots](https://docs.ceph.com/en/latest/dev/cephfs-snapshots/)
 - Spolehlivostní profily (2026-08-01): [deep-research artefakt](https://claude.ai/public/artifacts/49c04b36-c45d-4b73-8652-c79f39de5ad5), [#15526 dirty dnode](https://github.com/openzfs/zfs/issues/15526), [#12014 encryption send/recv](https://github.com/openzfs/zfs/issues/12014), [#18041 import >90 % po výpadku](https://github.com/openzfs/zfs/issues/18041), [tracker #53192 — MDS latence se snapshoty (2021→fix 2025)](https://tracker.ceph.com/issues/53192), [Silvenga — CephFS metadata recovery (7/2024)](https://silvenga.com/posts/notes-on-cephfs-metadata-recovery/), [Rook #15273 — MDS trims při snapshotech (1/2025)](https://github.com/rook/rook/issues/15273), [CephFS best practices (Mimic)](https://docs.ceph.com/en/mimic/cephfs/best-practices/), [Btrfs RAID56 status](https://btrfs.readthedocs.io/en/latest/btrfs-man5.html)
 - Ceph korupční bugy — timeline (ověřeno 2026-08-02): [advisory 14.2.3/14.2.4 (11/2019)](https://lists.ceph.io/hyperkitty/list/ceph-users@ceph.io/thread/X6TNSDQK5DVKO6XFJW3DMJAJV63PLDYM/), [#45613 — bluefs_preextend_wal_files (5/2020)](https://tracker.ceph.com/issues/45613), [BlueFS >4GB writes (openSUSE advisory 5/2021)](https://osv.dev/vulnerability/openSUSE-SU-2021:0672-1), [#53062 — Pacific OMAP + IMPORTANT NOTICE (10/2021)](https://lists.ceph.io/hyperkitty/list/ceph-users@ceph.io/thread/U4QX4E32BR5IOICOUW4FR7E56YEET3CN/), [Edinburgh — Anatomy of a CephFS disaster (9/2020)](https://blogs.ed.ac.uk/mhagdorn/2020/09/09/anatomy-of-a-cephfs-disaster/)
+- ZFS korupční bugy — timeline (ověřeno 2026-08-06): [hole_birth #4996](https://github.com/openzfs/zfs/issues/4996), [Debian #830824](https://bugs.debian.org/cgi-bin/bugreport.cgi?bug=830824), [FAQ hole birth](https://openzfs.github.io/openzfs-docs/Project%20and%20Community/FAQ%20hole%20birth.html), [0.7.7→0.7.8 „mizející soubory" (The Register, 4/2018)](https://www.theregister.com/2018/04/10/zfs_on_linux_data_loss_fixed/)
 
 ---
 
-*Vzniklo ve spolupráci s Claude (Anthropic); fakta ověřena proti uvedeným zdrojům k červenci 2026, doplňky (snapshot vrstva, spolehlivostní profily, timeline korupčních bugů) k 1.–2. srpnu 2026. Dokument je datovaný snapshot a průběžně se neaktualizuje.*
+*Vzniklo ve spolupráci s Claude (Anthropic); fakta ověřena proti uvedeným zdrojům k červenci 2026, doplňky (snapshot vrstva, spolehlivostní profily, timelines korupčních bugů) k 1.–6. srpnu 2026. Dokument je datovaný snapshot a průběžně se neaktualizuje.*
 
 *© 2026 Petr Kratochvíl · Licence [CC BY 4.0](../LICENSE)*
