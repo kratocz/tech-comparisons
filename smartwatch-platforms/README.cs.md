@@ -2,7 +2,7 @@
 
 - **Verdikt:** ⏳ zatím žádný — kostra založena 2026-08-08, rešerše neproběhla; rozhodovací pravidla sepsána předem (§2)
 - **Sycené rozhodnutí:** koupě repasovaného iPhone 15 Pro vs 16 Pro (vs zatím žádný) — horizont ~září 2026
-- **Fakta ověřena:** 🟡 §2 párovací tvrzení + §3 trvanlivá vrstva 2026-08-09 (reference §6); §4 datovaná vrstva a verdikt zatím ne
+- **Fakta ověřena:** 🟢 §2 + §3 + §4 ověřeny 2026-08-09 (reference §6); zbývá verdikt (§5), EN překlad a řádek v kořenovém README
 - **Jazyk:** 🇨🇿 pracovní draft (originál); 🇬🇧 kanonická anglická verze vznikne při publikaci
 - **Autor:** Petr Kratochvíl — [krato.cz](https://krato.cz)
 
@@ -12,7 +12,7 @@
 - [x] potvrdit rozhodovací pravidla (§2) — kauzální řetěz potvrzen uživatelem 2026-08-09
 - [x] ověřit párovací tvrzení §2 (2026-08-09): všechna tři potvrzena → pravidla drží beze změny
 - [x] rešerše trvanlivé vrstvy (§3) — 2026-08-09, reference [R8]–[R26]
-- [ ] datovaný snapshot (§4): tabulka funkcí/senzorů + dostupnost v ČR + ceny, s datem ověření
+- [x] datovaný snapshot (§4) — 2026-08-09: zdravotní funkce v ČR, ceny, časování trhu (reference [R27]–[R37])
 - [ ] verdikt (§5) + řádek do kořenového README + EN překlad (`README.md`)
 
 ## 1. Kontext: jaké rozhodnutí se tu doopravdy dělá
@@ -98,15 +98,40 @@ Zásada: držet se certifikovaných tvrzení výrobců s odkazem; nic v tomto do
 
 Durable pointa: regulovaná funkce není vlastnost hodinek, ale trojice (hodinky, telefon/aplikace, země) — u Samsungu navíc značky telefonu. Per-model a per-země detaily → §4.
 
-## 4. Datovaná vrstva (snapshot — rychle zastarává)
+## 4. Datovaná vrstva (snapshot k 2026-08-09 — rychle zastarává)
 
-Vyplnit až s datem ověření; explicitně: tato tabulka je datovaný snapshot a nebude retro-aktualizována.
+Datovaný snapshot; nebude retro-aktualizován. Kontext trhu v okamžiku pořízení: **Galaxy Watch 9 / Ultra 2 v prodeji od 7. 8. 2026** (dva dny; plné ceny, cashback do 31. 8.) [R34][R37]; **Apple Watch Series 12 / Ultra 4 očekávány ~září 2026** (nový čip, bez redesignu, cena mírně nahoru — tj. Series 11 brzy zlevní) [R37]; **iOS 27 (~září 2026) ukáže, zda iPhone 12 mini vypadl z podpory** (inference §2).
 
-| Funkce / senzor | Garmin (řada) | Apple Watch | Samsung Galaxy Watch | Pozn. / dostupnost ČR |
-|---|---|---|---|---|
-| _(doplnit při rešerši)_ | | | | |
+### 4.1 Certifikované zdravotní funkce v ČR (k 2026-08-09)
 
-Plus: cenový snapshot relevantních modelů; dostupnost certifikovaných zdravotních funkcí v ČR.
+| Funkce | Apple Watch | Samsung Galaxy Watch | Garmin |
+|---|---|---|---|
+| EKG | ✅ ČR [R27] | ✅ ČR — ale jen se Samsung telefonem [R6][R24] | ✅ ČR od 1/2025 — Venu 3/4, Forerunner 970 (sw 5.02+), Fenix 8, Enduro 3; **ne** Venu X1 [R28][R29] |
+| Krevní tlak — měření na zápěstí | ❌ nemá | ✅ ČR — **jediný z trojice**; Samsung telefon + kalibrace pažní manžetou à 28 dní [R24][R7] | ❌ nemá |
+| Tlak/hypertenze — trend a notifikace | ✅ hypertension notifications, ČR ✓ (Series 9+ / Ultra 2+; SE 3 ne) [R27][R30] | 🆕 Blood Pressure Trend (jen Watch 9 / Ultra 2, od 7/2026; wellness, kalibrace i Samsung telefon dál nutné; nahrazuje Vascular Load) [R31] | ❌ |
+| Spánková apnoe — notifikace | ✅ ČR (Series 9+ / Ultra 2 / SE 3) [R27] | 🟡 funkce existuje (SHM), dostupnost v ČR neověřena [OVĚŘIT] | ❌ (spánek jen wellness) |
+| SpO₂ | ✅ ČR (US Masimo sága se EU kusů netýká, §3.7) [R27] | ✅ (wellness) | ✅ (wellness, Pulse Ox) |
+
+Čtení tabulky pro tento kontext: s Motorolou se celý sloupec Samsungu u EKG/tlaku škrtá (§2) — reálná volba „certifikované zdraví na zápěstí“ je tedy Apple (široké pokrytí, bez měření tlaku) vs Garmin (EKG od 1/2025, nic víc).
+
+### 4.2 Cenový snapshot ČR (orientačně, 8/2026)
+
+| Model (relevantní výběr) | Cena ČR k 8/2026 | Pozn. |
+|---|---|---|
+| Apple Watch SE 3 | od ~5 600 Kč (akce až ~4 500) [R32] | vstupní model; apnoe ✓, hypertenzní notifikace ❌ |
+| Apple Watch Series 11 | od ~9 000–10 790 Kč (Al 42 mm); LTE titan ~20 500 Kč [R33] | plná zdravotní výbava; Series 12 ~za měsíc [R37] |
+| Samsung Galaxy Watch 9 | 9 990–9 999 Kč (40 mm BT), 10 790 Kč (44 mm); LTE +~1 300; cashback −2 000 do 31. 8. [R34] | novinka 8/2026; Snapdragon, 5 let podpory [R19] |
+| Garmin Venu 4 | od ~10 300 Kč (Heureka) / ~13 500 Kč (Alza, MSRP 13 490) [R35] | EKG ✓, výdrž ~12 dní, lifestyle řada |
+| Garmin Forerunner 970 | ~15 000–15 990 Kč (MSRP 18 790) [R36] | EKG ✓, běžecký flagship |
+| Garmin Fenix 8 | ~20 000–27 500 Kč dle varianty (MSRP sníženo z 29 990) [R36] | outdoor flagship, EKG ✓ |
+
+Ceny silně kolísají akcemi (cashback, slevové kódy) — před nákupem ověřit na Heureka/Zbozi; tabulka je referenční bod, ne ceník.
+
+### 4.3 Poznámky k časování (k 2026-08-09)
+
+- Hodinky se teď nekupují (§1) — snapshot slouží jako budoucí referenční bod „co platilo v době rozhodnutí o telefonu“.
+- Kdyby se nákup hodinek posunul jen na podzim 2026: Series 12 (~9/2026) stlačí ceny Series 11; cashback na Watch 9 končí 31. 8.; Venu 4 je rok v cyklu (nástupce ~2027, inference z dvouletého cyklu Venu 2→3→4).
+- Pro rozhodnutí o telefonu je klíčové září 2026: vyjde iOS 27 a bude jasno, jestli iPhone 12 mini drží (§2 inference se ověří do měsíce).
 
 ## 5. Verdikt (zatím žádný)
 
@@ -146,7 +171,21 @@ Ověřeno 2026-08-09 (trvanlivá vrstva §3):
 - [R25] 9to5Mac — návrat SpO₂ v USA přes workaround (8/2025): <https://9to5mac.com/2025/08/14/apple-watch-blood-oxygen-feature-returning-in-the-u-s-today/>; AppleInsider — nové vyšetřování ITC (11/2025): <https://appleinsider.com/articles/25/11/14/apple-under-investigation-again-by-usitc-over-apple-watch-blood-oxygen-sensing>
 - [R26] Android Central — přehled výdrží (Garmin dny–týdny vs Apple ~den vs Samsung ~2–3 dny): <https://www.androidcentral.com/wearables/best-smartwatches-for-battery-life>
 
-Pozn.: zdroje [R1]–[R7] jsou US stránky výrobců; per-model a per-země detaily (vč. cen v ČR) dostane §4 při svém datovaném snapshotu. Ceny předplatných jsou US ceníky (orientační).
+Ověřeno 2026-08-09 (datovaná vrstva §4):
+
+- [R27] Apple — watchOS 26 Feature Availability (Czechia: ECG, Sleep Apnea, Hypertension Notifications, Blood Oxygen): <https://www.apple.com/watchos/feature-availability/>
+- [R28] Garmin EKG v ČR (1/2025): <https://samsungmagazine.eu/en/2025/01/16/update-your-garmin-ekg-finally-coming-to-the-czech-republic/>; Garmin — ECG App Region Compatibility: <https://support.garmin.com/en-US/?faq=QssFZHtIOfAYNSSmzXNwY9>
+- [R29] Garmin — What Garmin Watches Have the ECG App: <https://support.garmin.com/en-US/?productID=873008&faq=XW4TwGAinJ2juGDNiANMt8>; Venu 4 s EKG: <https://www.notebookcheck.net/Garmin-Venu-4-rears-its-head-again-before-release-with-ECG-support-confirmed.1113199.0.html>; Venu X1 bez EKG: <https://the5krunner.com/2025/06/12/garmin-venu-x1-all-you-need-to-know-comparison-first-look-review/>
+- [R30] MacRumors — hypertension notifications spuštěny (9/2025, Series 9+/Ultra 2+): <https://www.macrumors.com/2025/09/15/apple-watch-hypertension-notifications-now-live/>; expanze na 170 zemí (1/2026): <https://www.macrumors.com/2026/01/27/hypertension-alerts-expansion-six-countries/>
+- [R31] Samsung Blood Pressure Trend (7/2026, Watch 9/Ultra 2): <https://www.sammyfans.com/2026/07/01/samsung-announces-new-blood-pressure-trend-feature/>; nahrazuje Vascular Load: <https://9to5google.com/2026/07/02/samsung-galaxy-watch-vascular-load/>
+- [R32] Apple Watch SE 3 ceny ČR: <https://www.appliste.cz/apple-watch-se-3-sleva/>; Alza kategorie: <https://www.alza.cz/apple-watch-se-2025/18918319.htm>
+- [R33] Apple Watch Series 11 ceny ČR: <https://www.alza.cz/apple-watch-11/18918318.htm>
+- [R34] Galaxy Watch 9 ceny ČR: <https://mobilizujeme.cz/clanky/samsung-galaxy-watch-9-jsou-oficialni-chytrejsi-hodinky-s-ai-stoji-od-9-999-kc>; Alza: <https://www.alza.cz/samsung-galaxy-watch-9/18923449.htm>
+- [R35] Garmin Venu 4 ceny ČR: <https://chytre-hodinky.heureka.cz/garmin-venu-4-41mm_3/>; MSRP: <https://www.alza.cz/garmin-venu-4-recenze>
+- [R36] Forerunner 970 / Fenix 8 ceny ČR: <https://www.zivotsgarminem.cz/hodinky-forerunner-970-spadly-pod-15-tisic-jde-o-model-s-nejlepsim-pomerem-ceny-vykonu>; <https://www.zivotsgarminem.cz/node/4408/recenze-hodinek-fenix-8-nove-prostredi-dedictvi-forerunneru-hlasove-ovladani-volani-2>
+- [R37] Galaxy Watch 9 / Ultra 2 launch (22. 7. 2026, prodej 7. 8. 2026): <https://www.droid-life.com/2026/07/22/galaxy-watch-9-galaxy-watch-ultra-2-made-official/>; Apple Watch Series 12 očekávání (~9/2026): <https://www.macrumors.com/2026/07/20/apple-watch-series-12-rumored-features/>
+
+Pozn.: zdroje [R1]–[R7] jsou US stránky výrobců. Ceny předplatných (§3.4) jsou US ceníky, ceny hodinek (§4.2) české maloobchodní k datu snapshotu — obojí orientační.
 
 ---
 
