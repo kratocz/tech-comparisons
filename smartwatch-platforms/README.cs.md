@@ -1,9 +1,9 @@
 # Platformy chytrých hodinek: Garmin vs Apple vs Samsung — a co z toho plyne pro nákup iPhonu
 
-- **Verdikt:** ⏳ zatím žádný — kostra založena 2026-08-08, rešerše neproběhla; rozhodovací pravidla sepsána předem (§2)
+- **Verdikt:** ⏳ zatím žádný — rešerše hotová 2026-08-09 (§2–§4 + obě srovnávací tabulky); rozhodovací pravidla sepsána předem (§2), zbývá jen verdikt (§5)
 - **Sycené rozhodnutí:** koupě repasovaného iPhone 15 Pro vs 16 Pro (vs zatím žádný) — horizont ~září 2026
-- **Fakta ověřena:** 🟢 §2 + §3 + §4 ověřeny 2026-08-09 (reference §6); zbývá verdikt (§5), EN překlad a řádek v kořenovém README
-- **Jazyk:** 🇨🇿 pracovní draft (originál); 🇬🇧 kanonická anglická verze vznikne při publikaci
+- **Fakta ověřena:** 🟡 §2–§4 i obě srovnávací tabulky ověřeny 2026-08-09, reference [R1]–[R60] v §6 — se třemi otevřenými [OVĚŘIT] (ceny pozáručního servisu, GPS výdrž Samsungu, apnoe v ČR). Zbývá verdikt (§5) a EN překlad
+- **Jazyk:** 🇨🇿 publikovaný pracovní draft (originál); 🇬🇧 kanonická anglická verze zatím nevznikla
 - **Autor:** Petr Kratochvíl — [krato.cz](https://krato.cz)
 
 ## 0. Stav a otevřené úkoly
@@ -16,7 +16,10 @@
 - [x] datovaný snapshot (§4) — 2026-08-09: zdravotní funkce v ČR, ceny, časování trhu (reference [R27]–[R37])
 - [x] souhrnná tabulka „Srovnání v kostce“ — 2026-08-09, vč. dokrývací rešerše každodenních funkcí (platby ČR, hudba, mapy, zprávy, asistent; [R38]–[R46])
 - [x] sportovní tabulka — 2026-08-09, rešerše senzorů, GNSS, tréninkových a závodních funkcí ([R47]–[R60])
-- [ ] verdikt (§5) + řádek do kořenového README + EN překlad (`README.md`)
+- [x] řádek v kořenovém README (2026-08-09)
+- [ ] doplnit tři otevřená [OVĚŘIT] místa v tabulkách (servis, GPS výdrž Samsungu, apnoe v ČR)
+- [ ] verdikt (§5)
+- [ ] EN překlad (`README.md`) jako kanonická verze
 
 ## 1. Kontext: jaké rozhodnutí se tu doopravdy dělá
 
@@ -43,7 +46,7 @@ Doplněk 2026-08-09 — nový fakt kontextu (ne výsledek rešerše, proto se pr
 
 ## Srovnání v kostce (pro tento kontext)
 
-Symboly: ✅ plně / 🟡 s výhradami či podmínkou / ❌ ne či chybí. Hodnoceno **pro tento kontext** (Motorola + iPhone 12 mini, Strava, vývojář, ČR) — ne obecně; s Galaxy telefonem by sloupec Samsungu vypadal jinak. Detaily a zdroje: §3, §4 a reference §6.
+Symboly: ✅ plně / 🟡 s výhradami či podmínkou / ❌ ne či chybí. Hodnoceno **pro tento kontext** (Motorola + iPhone 12 mini, **už vlastním Garmin Venu 3** → status quo, §1/§2; Strava, vývojář, ČR) — ne obecně; s Galaxy telefonem by sloupec Samsungu vypadal jinak. Detaily a zdroje: §3, §4 a reference §6.
 
 | Kritérium | Garmin | Apple Watch | Samsung Galaxy Watch |
 |---|---|---|---|

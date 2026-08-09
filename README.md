@@ -8,7 +8,7 @@ Real decision analyses from real projects — not neutral feature matrices. Each
 
 - **anchors to a concrete context** — a "Context" section up front; the verdict claims validity only for that profile,
 - **compares honestly** — including the rows where the losing side wins,
-- **ends with a verdict** — the option actually chosen, with the accepted trade-offs spelled out,
+- **ends with a verdict once complete** — the option actually chosen, with the accepted trade-offs spelled out; analyses still under way are marked ⏳ in the table below,
 - **is a dated snapshot** — facts carry a verification date and the document is not retro-updated.
 
 ## Comparisons
@@ -20,7 +20,7 @@ Real decision analyses from real projects — not neutral feature matrices. Each
 
 ## Languages
 
-English is canonical. Analyses that originated in Czech keep the Czech original alongside (`README.cs.md`).
+English is canonical. Analyses that originated in Czech keep the Czech original alongside (`README.cs.md`). Drafts still in progress may exist in Czech only until the English version is written.
 
 ## Author
 
