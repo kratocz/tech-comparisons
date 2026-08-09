@@ -9,6 +9,7 @@
 ## 0. Stav a otevřené úkoly
 
 - [x] doplnit současné telefony do kontextu (2026-08-08: Motorola s Androidem + iPhone 12 mini)
+- [x] doplnit vlastnictví hodinek do kontextu (2026-08-09: Garmin Venu 3)
 - [x] potvrdit rozhodovací pravidla (§2) — kauzální řetěz potvrzen uživatelem 2026-08-09
 - [x] ověřit párovací tvrzení §2 (2026-08-09): všechna tři potvrzena → pravidla drží beze změny
 - [x] rešerše trvanlivé vrstvy (§3) — 2026-08-09, reference [R8]–[R26]
@@ -24,7 +25,7 @@ Tohle není „které hodinky jsou nejlepší". Nákup hodinek je odložený (m�
 - **Bezprostřední rozhodnutí (~do září 2026):** koupit repasovaný **iPhone 15 Pro, 16 Pro, nebo zatím žádný**.
 - **Současný stav:** dva telefony — **Motorola (Android)** a **iPhone 12 mini**. Nejde tedy o vstup do Apple ekosystému, ale o to, zda a jak hluboko v něm pokračovat; Android zůstává souběžně k dispozici.
 - **Profil:** full-stack vývojář; aktivní účet **Strava** → integrace, vlastnictví a exportovatelnost sportovních/zdravotních dat jsou prioritní kritéria.
-- **Hodinky:** nákup v horizontu měsíců až let; konkrétní model se vybere až při nákupu podle tehdejší nabídky — tento dokument volí platformu, ne model.
+- **Hodinky: už vlastním Garmin Venu 3** (doplněno 2026-08-09). Budoucí nákup (měsíce až roky) je tedy náhrada, ne vstup — otázka nezní „kterou platformu zvolit“, ale **„zůstat u Garminu, nebo přestoupit“**. Případný přestup nese reálný výstupní náklad: historie wellness metrik (spánek, tep, Body Battery) se mezi platformami nepřenáší (§3.1); aktivity chrání průběžné zrcadlení do Stravy. Tento dokument volí platformu, ne model.
 
 ## 2. Rozhodovací pravidla (sepsána 2026-08-08 — PŘED rešerší; párovací fakta ověřena 2026-08-09)
 
@@ -37,6 +38,8 @@ Pravidla se píší před měřením; po výsledku se čtou, ne vymýšlejí. St
 | **Samsung** | jako Garmin — iPhone hodinky nepotřebují; párují s Motorolou | ✅ Ověřeno: Watch4 a novější „rely on Google Play services which is not supported on iOS“ [R5] → jen Android. ✅ Potvrzena i výhrada: EKG/tlak vyžadují aplikaci Samsung Health Monitor, oficiálně jen pro Galaxy telefony (distribuce výhradně přes Galaxy Store) [R6] → s Motorolou tyto funkce oficiálně nefungují (neoficiální APK obchvaty existují, ale nestavět na nich). Samsung pro tento kontext oslabuje. |
 
 Poznámka k přímému vlivu (ověřeno 2026-08-09): práh aktuální generace je „iPhone 11 nebo novější s iOS 26“ [R1] — 15 Pro i 16 Pro jsou hluboko nad ním a oba na seznamu iOS 26 [R2]; žádný watch-specifický rozdíl mezi nimi nenalezen → vliv hodinek na volbu modelu zůstává nepřímý (délka závazku k ekosystému), ne přímý (feature gate). Evidovaný rozpor ve zdrojích: stránka Samsungu o měření tlaku [R7] zmiňuje jen „Android 12 or later“ bez požadavku na Samsung telefon; oficiální stránka aplikace SHM [R6] Galaxy telefon vyžaduje explicitně — za směrodatnou beru [R6] (stránka samotné aplikace + fakt distribuce přes Galaxy Store), rozpor nechávám zaznamenaný.
+
+Doplněk 2026-08-09 — nový fakt kontextu (ne výsledek rešerše, proto se pravidla nepřepisují): **vlastním Garmin Venu 3 → status quo je Garmin.** Pravidla výše platí beze změny, ale čtou se asymetricky: směr Garmin je výchozí stav bez migračních nákladů, zatímco směr Apple/Samsung musí kromě svých předností ospravedlnit i výstupní náklad (reset historie metrik, §3.1; u Apple navíc doživotní vazba na iPhone). Pro telefon z toho plyne: dokud aktivně nepadne rozhodnutí přestoupit, platí řádek Garmin — telefon se vybírá čistě podle telefonních kritérií.
 
 ## Srovnání v kostce (pro tento kontext)
 
