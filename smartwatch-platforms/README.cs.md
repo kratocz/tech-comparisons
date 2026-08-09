@@ -13,6 +13,7 @@
 - [x] ověřit párovací tvrzení §2 (2026-08-09): všechna tři potvrzena → pravidla drží beze změny
 - [x] rešerše trvanlivé vrstvy (§3) — 2026-08-09, reference [R8]–[R26]
 - [x] datovaný snapshot (§4) — 2026-08-09: zdravotní funkce v ČR, ceny, časování trhu (reference [R27]–[R37])
+- [x] souhrnná tabulka „Srovnání v kostce“ — 2026-08-09, vč. dokrývací rešerše každodenních funkcí (platby ČR, hudba, mapy, zprávy, asistent; [R38]–[R46])
 - [ ] verdikt (§5) + řádek do kořenového README + EN překlad (`README.md`)
 
 ## 1. Kontext: jaké rozhodnutí se tu doopravdy dělá
@@ -35,6 +36,46 @@ Pravidla se píší před měřením; po výsledku se čtou, ne vymýšlejí. St
 | **Samsung** | jako Garmin — iPhone hodinky nepotřebují; párují s Motorolou | ✅ Ověřeno: Watch4 a novější „rely on Google Play services which is not supported on iOS“ [R5] → jen Android. ✅ Potvrzena i výhrada: EKG/tlak vyžadují aplikaci Samsung Health Monitor, oficiálně jen pro Galaxy telefony (distribuce výhradně přes Galaxy Store) [R6] → s Motorolou tyto funkce oficiálně nefungují (neoficiální APK obchvaty existují, ale nestavět na nich). Samsung pro tento kontext oslabuje. |
 
 Poznámka k přímému vlivu (ověřeno 2026-08-09): práh aktuální generace je „iPhone 11 nebo novější s iOS 26“ [R1] — 15 Pro i 16 Pro jsou hluboko nad ním a oba na seznamu iOS 26 [R2]; žádný watch-specifický rozdíl mezi nimi nenalezen → vliv hodinek na volbu modelu zůstává nepřímý (délka závazku k ekosystému), ne přímý (feature gate). Evidovaný rozpor ve zdrojích: stránka Samsungu o měření tlaku [R7] zmiňuje jen „Android 12 or later“ bez požadavku na Samsung telefon; oficiální stránka aplikace SHM [R6] Galaxy telefon vyžaduje explicitně — za směrodatnou beru [R6] (stránka samotné aplikace + fakt distribuce přes Galaxy Store), rozpor nechávám zaznamenaný.
+
+## Srovnání v kostce (pro tento kontext)
+
+Symboly: ✅ plně / 🟡 s výhradami či podmínkou / ❌ ne či chybí. Hodnoceno **pro tento kontext** (Motorola + iPhone 12 mini, Strava, vývojář, ČR) — ne obecně; s Galaxy telefonem by sloupec Samsungu vypadal jinak. Detaily a zdroje: §3, §4 a reference §6.
+
+| Kritérium | Garmin | Apple Watch | Samsung Galaxy Watch |
+|---|---|---|---|
+| **▸ Telefon a vazba** | | | |
+| Podporované telefony | ✅ iOS i Android [R3][R4] | ❌ jen iPhone [R1] | ❌ jen Android [R5] |
+| Plný provoz s Motorolou | ✅ | ❌ | 🟡 ano, ale bez EKG/tlaku [R6] |
+| Provoz bez telefonu | ✅ plně standalone, i bez účtu (FIT po USB) [R9] | 🟡 cellular ano; aktivace jen iPhonem | 🟡 LTE ano; aktivace jen Androidem |
+| Odpovídání na zprávy z hodinek | 🟡 na Androidu ano; na iPhonu ❌ (restrikce Apple, platí pro všechny cizí hodinky) [R38] | ✅ jediné plnohodnotné na iPhonu | ✅ na Androidu (plná klávesnice) |
+| **▸ Data a Strava** | | | |
+| Export surových dat | ✅ FIT per aktivita + bulk ZIP účtu [R9] | 🟡 úplný, ale jeden XML blob + GPX [R11] | ❌ CSV/XML bez re-importu; GPX bez tepu [R14] |
+| Synchronizace do Stravy | ✅ nativní auto-sync + bulk import historie [R8] | 🟡 jen nativní Cvičení, 30 dní zpětně; nebo Strava app v hodinkách [R10] | 🟡 jen aktivity s GPS [R12][R13] |
+| Přenos historie metrik při odchodu z platformy | ❌ | ❌ | ❌ (všude jen aktivity; pojistka = průběžné zrcadlení do Stravy, §3.1) |
+| **▸ Výdrž a každodennost** | | | |
+| Výdrž baterie | ✅ dny–týdny [R26] | ❌ ~1 den (Ultra ~2) [R26] | 🟡 ~1,5–3 dny [R26] |
+| Platby hodinkami v ČR | ✅ Garmin Pay — prakticky všechny běžné banky [R39] | ✅ Apple Pay — všechny běžné banky [R40] | ✅ Google Wallet (Samsung Pay v ČR nefunguje) [R41] |
+| Offline hudba (Spotify) | ✅ music modely (Premium, stahování po Wi-Fi) [R42] | ✅ (Premium) [R43] | ✅ (Wear OS) |
+| Mapy / navigace v hodinkách | ✅ offline mapy vč. Venu 4 (turn-by-turn) [R44] | 🟡 Apple Maps (vázané na iPhone) | ✅ Google Maps vč. offline [R43] |
+| Hlasový asistent | 🟡 pass-through Siri/Google z telefonu (jen modely s mikrofonem) [R45] | ✅ Siri přímo v hodinkách | ✅ Gemini přímo v hodinkách (Watch 9) [R46] |
+| **▸ Služby a podpora** | | | |
+| Předplatné — tlak na paywall | 🟡 Connect+ a potvrzený příklon nových funkcí k němu [R15][R16] | ✅ data i health zdarma; Fitness+ jen obsah | 🟡 premium tier zvažují [R17] |
+| Formální závazek délky podpory | ❌ žádný (empiricky roky) | 🟡 bez příslibu; empiricky ~5–6 let [R18] | ✅ 5 let (od Watch 9, 7/2026) [R19] |
+| Výměna baterie / pozáruční servis | 🟡 výměna za refurbished kus za poplatek [R20] | 🟡 placený servis [OVĚŘIT ceny ČR] | 🟡 placený servis [OVĚŘIT ceny ČR] |
+| Vývojářská platforma | ✅ Monkey C, volný sideload, vývoj z libovolného OS [R21] | 🟡 vyžaduje Mac; $99/rok na distribuci [R22] | ✅ standardní Android stack, ADB sideload |
+| **▸ Zdraví v ČR (k 8/2026; detail §4.1)** | | | |
+| EKG | ✅ vybrané modely (Venu 3/4, FR 970, Fenix 8) [R28][R29] | ✅ [R27] | 🟡 v ČR ano, ale jen se Samsung telefonem [R6][R24] |
+| Krevní tlak | ❌ | 🟡 měření ne; hypertenzní notifikace ✅ [R27][R30] | 🟡 měření ✅ (jediný), ale Samsung telefon + manžeta à 28 dní [R24] |
+| Spánková apnoe | ❌ (spánek jen wellness) | ✅ [R27] | 🟡 dostupnost v ČR neověřena |
+| **▸ Cena** | | | |
+| Vstupní cena (nejlevnější rozumný model, 8/2026) | 🟡 od ~10 tis. Kč (Venu 4) [R35] | ✅ od ~5,6 tis. Kč (SE 3) [R32] | ✅ od ~8–10 tis. Kč (Watch 9 s cashbackem) [R34] |
+
+### Jak tabulku číst pro tento kontext
+
+- **Garmin vede** tam, kde jde o nezávislost: telefony, data, Strava, výdrž, sideload. Nemá ale tlak, apnoe, a asistent i zprávy řeší oklikou.
+- **Apple vede** ve zdraví v ČR (nejúplnější certifikované pokrytí), vstupní ceně (SE 3) a jako jediný umí plnohodnotné zprávy na iPhonu — výměnou za nejtvrdší lock-in a ~denní výdrž.
+- **Samsung vede** ve formálním závazku podpory (5 let) a každodenních Wear OS aplikacích — ale jeho unikátní karta (tlak) je s Motorolou mrtvá a sloupec zdraví se celý škrtá.
+- **Platby v ČR jsou remíza** — všude ✅ (u Samsungu ironicky přes Google Wallet, ne Samsung Pay). Jinde ve světě běžný diferenciátor, tady ne.
 
 ## 3. Trvanlivá vrstva (nese verdikt)
 
@@ -184,6 +225,18 @@ Ověřeno 2026-08-09 (datovaná vrstva §4):
 - [R35] Garmin Venu 4 ceny ČR: <https://chytre-hodinky.heureka.cz/garmin-venu-4-41mm_3/>; MSRP: <https://www.alza.cz/garmin-venu-4-recenze>
 - [R36] Forerunner 970 / Fenix 8 ceny ČR: <https://www.zivotsgarminem.cz/hodinky-forerunner-970-spadly-pod-15-tisic-jde-o-model-s-nejlepsim-pomerem-ceny-vykonu>; <https://www.zivotsgarminem.cz/node/4408/recenze-hodinek-fenix-8-nove-prostredi-dedictvi-forerunneru-hlasove-ovladani-volani-2>
 - [R37] Galaxy Watch 9 / Ultra 2 launch (22. 7. 2026, prodej 7. 8. 2026): <https://www.droid-life.com/2026/07/22/galaxy-watch-9-galaxy-watch-ultra-2-made-official/>; Apple Watch Series 12 očekávání (~9/2026): <https://www.macrumors.com/2026/07/20/apple-watch-series-12-rumored-features/>
+
+Ověřeno 2026-08-09 (dokrývka pro tabulku „Srovnání v kostce“):
+
+- [R38] Garmin — odpovědi na zprávy jen na Androidu (restrikce Apple): <https://www.tomsguide.com/wellness/smartwatches/finally-the-massive-garmin-update-weve-all-been-waiting-for-is-here-but-theres-a-catch>; WhatsApp na Garminu: <https://tech.yahoo.com/wearables/articles/whatsapp-now-officially-available-garmin-164156066.html>
+- [R39] Garmin Pay — banky v ČR: <https://www.garmin.com/cs-CZ/garminpay/banks/>; přehled Pay služeb v ČR: <https://www.mesec.cz/clanky/apple-google-garmin-fitbit-samsung-huawei-pay-karty-banky-seznam-prehled/>
+- [R40] Apple Pay v ČR: <https://www.alza.cz/apple-pay>
+- [R41] Samsung Wallet v ČR bez plateb; Galaxy Watch platí přes Google Wallet: <https://www.svetandroida.cz/samsung-wallet-cesko-aplikace/>; <https://www.alza.cz/jak-platit-samsung-galaxy-watch4-classic>
+- [R42] Spotify na Garminu (music modely, Premium, Wi-Fi): <https://www.wareable.com/features/how-to-use-spotify-on-garmin-watch-6590>
+- [R43] Spotify na Apple Watch: <https://support.spotify.com/us/article/spotify-on-apple-watch/>; offline Google Maps na Wear OS: <https://m.gsmarena.com/google_maps_offline_support_wear_os_beta-news-64174.php>
+- [R44] Garmin Venu 4 — offline mapy a navigace (manuál): <https://www8.garmin.com/manuals/webhelp/GUID-2CF5620C-E585-4E0A-9CC3-9565533EEE4D/EN-US/GUID-AE6741EA-7DCC-4A8D-BCD4-7CD12AEBABD8.html>
+- [R45] Garmin — Setting Up Voice Assistant (pass-through z telefonu): <https://support.garmin.com/en-US/?faq=B0n9YwrwMg4j7yEgevIWgA>
+- [R46] Galaxy Watch 9 specs (Gemini v hodinkách): <https://the5krunner.com/specs/samsung/galaxy-watch-9/>
 
 Pozn.: zdroje [R1]–[R7] jsou US stránky výrobců. Ceny předplatných (§3.4) jsou US ceníky, ceny hodinek (§4.2) české maloobchodní k datu snapshotu — obojí orientační.
 
