@@ -32,8 +32,8 @@ Pravidla se píší před měřením; po výsledku se čtou, ne vymýšlejí. St
 
 | Výsledek volby platformy | Důsledek pro nákup iPhonu | Zdůvodnění |
 |---|---|---|
-| **Apple Watch** | **16 Pro** | ✅ Ověřeno: Apple Watch párují výhradně s iPhonem — Series 11 „requires iPhone 11 or later with iOS 26 or later“ [R1]; párování s Androidem neexistuje. iPhone 12 mini na seznamu iOS 26 ještě je [R2] (fakt), ale podle vzoru XR/XS (podpora ~7 hlavních verzí; vypadly s iOS 26) mu hlavní verze dojdou ~iOS 27–28, tj. 2026–2027 (inference) → v horizontu nákupu hodinek (měsíce–roky) už nové watchOS s 12 mini nejspíš nespáruješ. Směr Apple tedy reálně vyžaduje novější iPhone. |
 | **Garmin** | telefon čistě podle telefonních kritérií (klidně levnější 15 Pro, nebo odklad nákupu) | ✅ Ověřeno: Garmin Connect existuje oficiálně pro iOS („Requires iOS 18.2 or later“ [R3]) i Android [R4] → hodinky na volbu telefonu nijak netlačí. |
+| **Apple Watch** | **16 Pro** | ✅ Ověřeno: Apple Watch párují výhradně s iPhonem — Series 11 „requires iPhone 11 or later with iOS 26 or later“ [R1]; párování s Androidem neexistuje. iPhone 12 mini na seznamu iOS 26 ještě je [R2] (fakt), ale podle vzoru XR/XS (podpora ~7 hlavních verzí; vypadly s iOS 26) mu hlavní verze dojdou ~iOS 27–28, tj. 2026–2027 (inference) → v horizontu nákupu hodinek (měsíce–roky) už nové watchOS s 12 mini nejspíš nespáruješ. Směr Apple tedy reálně vyžaduje novější iPhone. |
 | **Samsung** | jako Garmin — iPhone hodinky nepotřebují; párují s Motorolou | ✅ Ověřeno: Watch4 a novější „rely on Google Play services which is not supported on iOS“ [R5] → jen Android. ✅ Potvrzena i výhrada: EKG/tlak vyžadují aplikaci Samsung Health Monitor, oficiálně jen pro Galaxy telefony (distribuce výhradně přes Galaxy Store) [R6] → s Motorolou tyto funkce oficiálně nefungují (neoficiální APK obchvaty existují, ale nestavět na nich). Samsung pro tento kontext oslabuje. |
 
 Poznámka k přímému vlivu (ověřeno 2026-08-09): práh aktuální generace je „iPhone 11 nebo novější s iOS 26“ [R1] — 15 Pro i 16 Pro jsou hluboko nad ním a oba na seznamu iOS 26 [R2]; žádný watch-specifický rozdíl mezi nimi nenalezen → vliv hodinek na volbu modelu zůstává nepřímý (délka závazku k ekosystému), ne přímý (feature gate). Evidovaný rozpor ve zdrojích: stránka Samsungu o měření tlaku [R7] zmiňuje jen „Android 12 or later“ bez požadavku na Samsung telefon; oficiální stránka aplikace SHM [R6] Galaxy telefon vyžaduje explicitně — za směrodatnou beru [R6] (stránka samotné aplikace + fakt distribuce přes Galaxy Store), rozpor nechávám zaznamenaný.
@@ -175,13 +175,13 @@ Datovaný snapshot; nebude retro-aktualizován. Kontext trhu v okamžiku poříz
 
 ### 4.1 Certifikované zdravotní funkce v ČR (k 2026-08-09)
 
-| Funkce | Apple Watch | Samsung Galaxy Watch | Garmin |
+| Funkce | Garmin | Apple Watch | Samsung Galaxy Watch |
 |---|---|---|---|
-| EKG | ✅ ČR [R27] | ✅ ČR — ale jen se Samsung telefonem [R6][R24] | ✅ ČR od 1/2025 — Venu 3/4, Forerunner 970 (sw 5.02+), Fenix 8, Enduro 3; **ne** Venu X1 [R28][R29] |
-| Krevní tlak — měření na zápěstí | ❌ nemá | ✅ ČR — **jediný z trojice**; Samsung telefon + kalibrace pažní manžetou à 28 dní [R24][R7] | ❌ nemá |
-| Tlak/hypertenze — trend a notifikace | ✅ hypertension notifications, ČR ✓ (Series 9+ / Ultra 2+; SE 3 ne) [R27][R30] | 🆕 Blood Pressure Trend (jen Watch 9 / Ultra 2, od 7/2026; wellness, kalibrace i Samsung telefon dál nutné; nahrazuje Vascular Load) [R31] | ❌ |
-| Spánková apnoe — notifikace | ✅ ČR (Series 9+ / Ultra 2 / SE 3) [R27] | 🟡 funkce existuje (SHM), dostupnost v ČR neověřena [OVĚŘIT] | ❌ (spánek jen wellness) |
-| SpO₂ | ✅ ČR (US Masimo sága se EU kusů netýká, §3.7) [R27] | ✅ (wellness) | ✅ (wellness, Pulse Ox) |
+| EKG | ✅ ČR od 1/2025 — Venu 3/4, Forerunner 970 (sw 5.02+), Fenix 8, Enduro 3; **ne** Venu X1 [R28][R29] | ✅ ČR [R27] | ✅ ČR — ale jen se Samsung telefonem [R6][R24] |
+| Krevní tlak — měření na zápěstí | ❌ nemá | ❌ nemá | ✅ ČR — **jediný z trojice**; Samsung telefon + kalibrace pažní manžetou à 28 dní [R24][R7] |
+| Tlak/hypertenze — trend a notifikace | ❌ | ✅ hypertension notifications, ČR ✓ (Series 9+ / Ultra 2+; SE 3 ne) [R27][R30] | 🆕 Blood Pressure Trend (jen Watch 9 / Ultra 2, od 7/2026; wellness, kalibrace i Samsung telefon dál nutné; nahrazuje Vascular Load) [R31] |
+| Spánková apnoe — notifikace | ❌ (spánek jen wellness) | ✅ ČR (Series 9+ / Ultra 2 / SE 3) [R27] | 🟡 funkce existuje (SHM), dostupnost v ČR neověřena [OVĚŘIT] |
+| SpO₂ | ✅ (wellness, Pulse Ox) | ✅ ČR (US Masimo sága se EU kusů netýká, §3.7) [R27] | ✅ (wellness) |
 
 Čtení tabulky pro tento kontext: s Motorolou se celý sloupec Samsungu u EKG/tlaku škrtá (§2) — reálná volba „certifikované zdraví na zápěstí“ je tedy Apple (široké pokrytí, bez měření tlaku) vs Garmin (EKG od 1/2025, nic víc).
 
@@ -189,12 +189,12 @@ Datovaný snapshot; nebude retro-aktualizován. Kontext trhu v okamžiku poříz
 
 | Model (relevantní výběr) | Cena ČR k 8/2026 | Pozn. |
 |---|---|---|
-| Apple Watch SE 3 | od ~5 600 Kč (akce až ~4 500) [R32] | vstupní model; apnoe ✓, hypertenzní notifikace ❌ |
-| Apple Watch Series 11 | od ~9 000–10 790 Kč (Al 42 mm); LTE titan ~20 500 Kč [R33] | plná zdravotní výbava; Series 12 ~za měsíc [R37] |
-| Samsung Galaxy Watch 9 | 9 990–9 999 Kč (40 mm BT), 10 790 Kč (44 mm); LTE +~1 300; cashback −2 000 do 31. 8. [R34] | novinka 8/2026; Snapdragon, 5 let podpory [R19] |
 | Garmin Venu 4 | od ~10 300 Kč (Heureka) / ~13 500 Kč (Alza, MSRP 13 490) [R35] | EKG ✓, výdrž ~12 dní, lifestyle řada |
 | Garmin Forerunner 970 | ~15 000–15 990 Kč (MSRP 18 790) [R36] | EKG ✓, běžecký flagship |
 | Garmin Fenix 8 | ~20 000–27 500 Kč dle varianty (MSRP sníženo z 29 990) [R36] | outdoor flagship, EKG ✓ |
+| Apple Watch SE 3 | od ~5 600 Kč (akce až ~4 500) [R32] | vstupní model; apnoe ✓, hypertenzní notifikace ❌ |
+| Apple Watch Series 11 | od ~9 000–10 790 Kč (Al 42 mm); LTE titan ~20 500 Kč [R33] | plná zdravotní výbava; Series 12 ~za měsíc [R37] |
+| Samsung Galaxy Watch 9 | 9 990–9 999 Kč (40 mm BT), 10 790 Kč (44 mm); LTE +~1 300; cashback −2 000 do 31. 8. [R34] | novinka 8/2026; Snapdragon, 5 let podpory [R19] |
 
 Ceny silně kolísají akcemi (cashback, slevové kódy) — před nákupem ověřit na Heureka/Zbozi; tabulka je referenční bod, ne ceník.
 
