@@ -1,5 +1,7 @@
 # Srovnání sluchátek pro tvůj profil (full-stack dev, 2–5 h denně, elektronika/DnB + videohovory)
 
+> **Stav souboru:** syrový výstup rešerše bez zdrojů. Výjimka: **řádek Koss Porta Pro Wireless 2.0 byl 2026-08-09 ověřen a opraven** — viz oprava pod hlavní tabulkou. Zbytek dokumentu je nadále neověřený.
+
 ## TL;DR
 - **Pro tvé priority (basy „ani moc, ani málo", 5 h komfort, izolace v obou směrech, hovory) je nejlepší koupí Sennheiser Momentum 4 Wireless** — lehká (přesně 293 g / 10,3 oz dle Tom's Guide), over-ear okolo uší (přátelské k brýlím), basy výrazně silnější a přitom kontrolovanější než u Monitoru III ANC, ~60 h výdrž a slušné ANC. Na Alze černá v akci kolem 4 700 Kč.
 - **Univerzální „nešlápneš vedle" volba je Sony WH-1000XM6** (~9 500 Kč): nejlepší ANC na trhu, teplý basově laděný zvuk, skládací, funguje i mimo Apple; ale mělčí mušle + vyšší přítlak dělají části lidí problém na 5 h.
@@ -21,7 +23,7 @@
 | **Sony WH-CH400** (baseline) | doprodáno („Prodej skončil") | on-ear, zavřená | ~140 g | — (baseline) | ne | BT 4.0, SBC/AAC | jack, ne | ~20 h | střední | Alza 4,5/5 (6×) |
 | **Marshall Major V** | ~2 390 Kč (bomba) | on-ear, zavřená | ~186 g | víc basů | ne | BT 5.3, SBC/AAC/LC3 | jack, ano | 100+ h | vyšší (koženka, on-ear) | Alza 4,7/5 (279×), Heureka 98 % |
 | **Marshall Monitor III ANC** | 4 990 Kč | over-ear, zavřená | ~245 g | kalibrační bod | ano (70 h) | BT 5.3, SBC/AAC, LE Audio | ne (jen USB-C) | 70/100 h | střední | — |
-| **Koss Porta Pro Wireless 2.0** | 2 499 Kč | supra-aural, polootevřená | ~60 g | víc basů (teplé) | ne | BT, SBC | jack přes USB-C | 20+ h | nízké (mřížka) | Alza 4,7/5 (108×) |
+| **Koss Porta Pro Wireless 2.0** | 2 499 Kč | supra-aural, polootevřená | ~60 g | víc basů (teplé) | ne | **BT 5.2, SBC/AAC** (opraveno 2026-08-09) | USB-C→3,5 mm, ano | 20+ h | nízké (mřížka) | Alza 4,7/5 (108×) |
 | **HP Poly Voyager 4320-M** | 2 999 Kč | on-ear, zavřená | ~150 g | slabé (řeč) | ne (jen mic NC) | BT 5.2 + BT700 dongle | USB | ~24 h talk | střední | Alza 5/5 (2×) |
 | **AirPods Max (2024)** | ~9 390 Kč | over-ear, zavřená | 384,8 g | střídmé | ano (výborné) | BT 5.0, AAC | jen s adapt. | 20 h | vysoké (kondenzace) | Alza 4,8/5 |
 | **AirPods Max 2 (2026)** | 13 990 Kč | over-ear, zavřená | 385 g | víc než 1. gen | ano (1,5×) | BT 5.3, AAC | USB-C lossless | 20 h | vysoké (kondenzace) | novinka |
@@ -33,6 +35,18 @@
 | **Sennheiser Accentum Wireless** | ~2 690 Kč | over-ear, zavřená | ~222 g | víc, laditelné | ano | BT 5.2, aptX HD | jack, ne | 50 h | střední | Alza 4,5/5 (17×) |
 
 *(Ceny na Alze silně kolísají promo akcemi „cenová bomba"/slevovými kódy — ber je jako orientační. U Momentum 4 se černá varianta prodává heavy-discount ~4 700 Kč, ostatní barvy ~7 300–7 700 Kč. Sony XM6 na Heurece od 8 475 Kč, Bose QC Ultra od 7 641 Kč.)*
+
+### 🔧 Oprava: Koss Porta Pro Wireless 2.0 (ověřeno 2026-08-09)
+
+Původní řádek uváděl „BT, SBC" a „jack přes USB-C". Obojí bylo nepřesné:
+
+- **Kodeky: Bluetooth 5.2, SBC i AAC** — ne pouze SBC. Headphonecheck testoval prakticky: *„In our test setup with a Samsung S9, only SBC and AAC were used in terms of codec technology. LDAC and aptX are still missing from the feature list."* [[headphonecheck]](https://www.headphonecheck.com/test/koss-porta-pro-wireless-2-0/) BT 5.2 potvrzuje výrobce [[Koss]](https://koss.com/products/porta-pro-wireless). LC3 je ve specifikaci čipu, ale v testu se nepoužil.
+- **⚠️ Otazník nad AAC bitrate na macOS (jednozdrojové, neověřeno recenzí).** Uživatelský log z Head-Fi uvádí, že si sluchátka od zdroje vyžádají jen 112 kbps AAC (*„Setting AAC-LC max bitrate to sink requested bitrate of 112"*), zatímco Bose QC na stejném Macu 192 kbps [[Head-Fi]](https://www.head-fi.org/threads/new-koss-porta-pro-wireless-2-0.974194/). Bitrate si vyžádají sluchátka, takže jde o konfiguraci jejich čipu — uživatel to nezmění. Pokud to platí, je to relevantní právě pro macOS, které sáhne po AAC automaticky. **Status: jeden uživatelský log, samotné vlákno se nepodařilo otevřít (ochrana Head-Fi); žádná recenze to nepotvrzuje ani nevyvrací.**
+- **Mikrofon: mají ho** — *„Integrated microphone and controls give users the ability to talk wirelessly on the phone"* [[Koss]](https://koss.com/products/porta-pro-wireless). Kvalita hovorů je ale asymetrická: *„two-way phone calls in good quality"*, přičemž zvuk, který slyší uživatel, je *„slightly better than that received by the other party"* [[headphonecheck]](https://www.headphonecheck.com/test/koss-porta-pro-wireless-2-0/) — protistrana slyší hůř.
+- **Drátový režim: vlastní 3,5mm jack sluchátka nemají.** Přiložený kabel je USB-C (do sluchátek) → 3,5 mm (do zdroje), 1,2 m, a funguje i s vybitou baterií. Dva háčky: port je jen jeden, takže drátový poslech a nabíjení současně nejdou; a **přiložený kabel je bez mikrofonu** — verze s vestavěným mikrofonem (KUSB-50) je samostatné příslušenství k dokoupení [[Koss KUSB-50]](https://koss.com/products/kusb-50) [[son-vidéo]](https://blog.son-video.com/en/2025/05/koss-porta-pro-wireless-2-0-headphones-review-vintage-in-wireless-mode/).
+- **Izolace: potvrzeně slabá** — *„poor isolation (avoid noisy environments)"* [[son-vidéo]](https://blog.son-video.com/en/2025/05/koss-porta-pro-wireless-2-0-headphones-review-vintage-in-wireless-mode/); u on-ear konstrukce *„you inevitably remain in acoustic contact with your surroundings"* [[headphonecheck]](https://www.headphonecheck.com/test/koss-porta-pro-wireless-2-0/). Potvrzuje to výhradu z Key Findings výše.
+
+**Dopad na doporučení:** pro profil „5 h denně, izolace v obou směrech, videohovory na MacBooku" mluví proti Kossu nově tři věci (izolace, otazník nad AAC na macOS, asymetrický mikrofon), ne jen izolace. Jako lehká sekundární sluchátka za 2 499 Kč zůstávají dobrá volba.
 
 ### Pohodlí při delším nošení (2–5 h) — ranking pro tebe
 1. **Koss Porta Pro Wireless 2.0** — ~60 g, nejmenší tlak na hlavu; ale supra-aural (leží na uchu).
