@@ -14,6 +14,7 @@
 - [x] rešerše trvanlivé vrstvy (§3) — 2026-08-09, reference [R8]–[R26]
 - [x] datovaný snapshot (§4) — 2026-08-09: zdravotní funkce v ČR, ceny, časování trhu (reference [R27]–[R37])
 - [x] souhrnná tabulka „Srovnání v kostce“ — 2026-08-09, vč. dokrývací rešerše každodenních funkcí (platby ČR, hudba, mapy, zprávy, asistent; [R38]–[R46])
+- [x] sportovní tabulka — 2026-08-09, rešerše senzorů, GNSS, tréninkových a závodních funkcí ([R47]–[R60])
 - [ ] verdikt (§5) + řádek do kořenového README + EN překlad (`README.md`)
 
 ## 1. Kontext: jaké rozhodnutí se tu doopravdy dělá
@@ -76,6 +77,35 @@ Symboly: ✅ plně / 🟡 s výhradami či podmínkou / ❌ ne či chybí. Hodno
 - **Apple vede** ve zdraví v ČR (nejúplnější certifikované pokrytí), vstupní ceně (SE 3) a jako jediný umí plnohodnotné zprávy na iPhonu — výměnou za nejtvrdší lock-in a ~denní výdrž.
 - **Samsung vede** ve formálním závazku podpory (5 let) a každodenních Wear OS aplikacích — ale jeho unikátní karta (tlak) je s Motorolou mrtvá a sloupec zdraví se celý škrtá.
 - **Platby v ČR jsou remíza** — všude ✅ (u Samsungu ironicky přes Google Wallet, ne Samsung Pay). Jinde ve světě běžný diferenciátor, tady ne.
+
+### Sportovní funkce a vlastnosti (co zajímá sportovce)
+
+Stejná legenda (✅/🟡/❌), stejné pořadí sloupců; rešerše 2026-08-09, reference [R47]–[R60]. Řádky Strava a výdrž „civilní“ jsou v hlavní tabulce výše.
+
+| Kritérium | Garmin | Apple Watch | Samsung Galaxy Watch |
+|---|---|---|---|
+| **▸ Senzory a přesnost záznamu** | | | |
+| Externí senzory (hrudní pás, výkonoměr, kadence) | ✅ ANT+ i Bluetooth, nativně | 🟡 jen Bluetooth; pásy ✅, cyklosenzory vč. výkonoměrů od watchOS 10 [R48] | ❌ nativně žádné — jediný z velkých výrobců; jen přes třetí aplikace [R47] |
+| Dvoupásmová GNSS (L1+L5, přesnost ve městě/lese) | ✅ multiband + SatIQ (Venu 4, FR 970, Fenix 8 i střední třída) [R49] | 🟡 jen řada Ultra; Series 11 ne [R50] | ✅ Watch 9 i Ultra 2 (Snapdragon Wear Elite) [R51] |
+| Výdrž při GPS záznamu | ✅ ~20–26 h (FR 265/970), Fenix/Enduro desítky hodin [R52] | ❌ ~10 h (Series 11) [R52] | 🟡 [OVĚŘIT — výrobce hodiny v GPS režimu neuvádí jednoznačně] |
+| Fyzické ovládání (pot, rukavice, závod) | ✅ 5 tlačítek (Fenix/FR; Venu více dotykové) | 🟡 koruna + tlačítko (Ultra + akční tlačítko) | 🟡 luneta + 2 tlačítka |
+| **▸ Běh** | | | |
+| Běžecký výkon (running power) | ✅ nativně (novější modely ze zápěstí; starší s pásem/podem) [R53] | ✅ nativně ze zápěstí (od watchOS 9) [R53] | 🟡 jen přes Stryd (aplikace/pod, 12/2025) [R53] |
+| Track mode (dráha 400 m) | ✅ Track Run bez omezení zemí | 🟡 auto detekce dráhy jen ve vyjmenovaných zemích — **ČR chybí** (US, UK, DE, FR, IT, NL, CA, AU) [R54] | ❌ nemá |
+| Strukturované tréninky a plány | ✅ nativní intervaly + adaptivní Garmin Coach zdarma | 🟡 vlastní intervaly ve Cvičení (watchOS 9+); adaptivní plány ne | ✅ vlastní intervaly/routiny [R55] + AI Running Coach 5K–maraton (Watch 8+) [R56] |
+| Závodní funkce (race predictor, PacePro, ClimbPro) | ✅ kompletní sada | ❌ | ❌ (jen Race na dráze vlastního plánu) |
+| TrainingPeaks (strukturované tréninky do hodinek) | ✅ nativní sync [R57] | ✅ oficiální app (push plánu; RPE tréninky ne) [R57] | 🟡 jen přes třetí app (Watchletic) [R57] |
+| **▸ Kolo, voda, multisport** | | | |
+| Multisport / triatlon mód | ✅ historicky nejsilnější | ✅ multisport s auto přechody (watchOS 9+) [R58] | ❌ nativně chybí |
+| Radar Varia (cyklo bezpečnost) | ✅ nativní podpora | 🟡 přes třetí aplikace (ARadar, NAVIGR8) [R60] | ❌ podpora nenalezena [R60] |
+| Plavání (bazén i open water) | ✅ | ✅ | ✅ |
+| Potápění | 🟡 Fenix 8 (dive funkce do 40 m) | 🟡 Ultra + aplikace Oceanic+ | 🟡 Ultra 2 + aplikace Mares [R37] |
+| Import a sledování GPX trasy | ✅ courses nativně, turn-by-turn, ClimbPro [R44] | 🟡 nativně ne; třetí aplikace (WorkOutDoors) [R59] | 🟡 v Samsung Health jen Watch5 Pro a Watch Ultra [R59] |
+| **▸ Regenerace a tréninkové metriky** | | | |
+| Připravenost / regenerace | ✅ Body Battery + Training Readiness/Status | 🟡 Vitals + Training Load (watchOS 11); souhrnné readiness skóre chybí | ✅ Energy Score (Galaxy AI) [R56] |
+| VO₂max a kondiční odhady | ✅ + race predictor | ✅ (odhad) | ✅ (odhad) |
+
+**Čtení pro sportovce:** Garmin je jediný bez zásadní díry — proto je pro vytrvalostní sport default. Apple je překvapivě kompetentní (výkon nativně, multisport, TrainingPeaks, senzory od watchOS 10), sráží ho výdrž ~10 h GPS, chybějící dual-band mimo Ultra a track mode nefunkční v ČR. Samsung je pro rekreační běh v pořádku (Running Coach, Energy Score), ale ❌ externí senzory + ❌ multisport + 🟡 GPX ho pro ambicióznějšího sportovce prakticky diskvalifikují.
 
 ## 3. Trvanlivá vrstva (nese verdikt)
 
@@ -237,6 +267,23 @@ Ověřeno 2026-08-09 (dokrývka pro tabulku „Srovnání v kostce“):
 - [R44] Garmin Venu 4 — offline mapy a navigace (manuál): <https://www8.garmin.com/manuals/webhelp/GUID-2CF5620C-E585-4E0A-9CC3-9565533EEE4D/EN-US/GUID-AE6741EA-7DCC-4A8D-BCD4-7CD12AEBABD8.html>
 - [R45] Garmin — Setting Up Voice Assistant (pass-through z telefonu): <https://support.garmin.com/en-US/?faq=B0n9YwrwMg4j7yEgevIWgA>
 - [R46] Galaxy Watch 9 specs (Gemini v hodinkách): <https://the5krunner.com/specs/samsung/galaxy-watch-9/>
+
+Ověřeno 2026-08-09 (sportovní tabulka):
+
+- [R47] Samsung — chybějící podpora externích HR senzorů (community feature request; „jediný z velkých výrobců“): <https://eu.community.samsung.com/t5/wearables/critical-feature-request-native-external-bluetooth-hr-strap/td-p/13519535>
+- [R48] Apple — párování cyklosenzorů (výkon/kadence/rychlost, BLE) od watchOS 10: <https://www.bikeradar.com/news/apple-watch-os10-update>; <https://support.apple.com/guide/watch/go-cycling-apd4cbc876c7/watchos>
+- [R49] Garmin — multiband/SatIQ přehled: <https://www.wareable.com/garmin/garmin-satellite-systems-explained-gps-glonass-multi-band-tracking>; Venu 4 multiband: <https://wiki.garminrumors.com/Venu_4>
+- [R50] Apple — dual-band GPS jen Ultra: <https://www.xda-developers.com/apple-watch-ultra-gps-support/>
+- [R51] Samsung — Watch 9 / Ultra 2 dual-band L1+L5: <https://www.sammobile.com/news/galaxy-watch-9-ultra-2-bluetooth-wi-fi-versions-gps/>
+- [R52] Výdrž v GPS režimu (Series 11 ~10 h; FR 970 ~26 h): <https://www.garagegymreviews.com/garmin-vs-apple-watch>
+- [R53] Running power — srovnání a stav: Apple nativně: <https://www.dcrainmaker.com/2022/06/running-comparison-garmin.html>; Garmin: <https://www.advnture.com/news/your-garmin-watch-can-now-track-running-power-but-theres-a-catch>; Stryd pro Wear OS (12/2025): <https://the5krunner.com/2025/12/22/stryd-wear-os-app-pixel-galaxy-watch/>
+- [R54] Apple Track Detection — seznam zemí: <https://www.macrumors.com/2023/04/20/apple-watch-track-detection-france-netherlands/>
+- [R55] Samsung — vlastní tréninkové routiny (One UI 6): <https://9to5google.com/set-custom-workout-on-galaxy-watch/>
+- [R56] Samsung — Running Coach a Energy Score: <https://news.samsung.com/global/user-guide-galaxy-watch8-series-running-coach-for-every-distance-from-5k-to-half-marathon>; <https://www.samsung.com/us/apps/samsung-health/>
+- [R57] TrainingPeaks — sync per platforma: <https://help.trainingpeaks.com/hc/en-us/articles/115000325647-Structured-Workout-sync-and-Manual-Export>; Apple Watch: <https://help.trainingpeaks.com/hc/en-us/articles/360039727152-TrainingPeaks-and-Apple-Watch>; Galaxy Watch přes Watchletic: <https://www.watchletic.com/blog/galaxy-watch-trainingpeaks>
+- [R58] Apple — multisport/triatlon s auto přechody (test v závodě): <https://www.dcrainmaker.com/2022/08/apple-triathlon-multisport.html>
+- [R59] GPX na Apple Watch (WorkOutDoors): <https://applewatchlab.com/how-to-upload-gpx-to-apple-watch/>; GPX v Samsung Health jen Watch5 Pro/Ultra: <https://www.samsung.com/us/support/answer/ANS10003407>
+- [R60] Varia radar na Apple Watch přes třetí aplikace: <https://aradar-app.com/>; <https://the5krunner.com/2023/10/23/navigr8-garmin-varia-support-watch-app-apple/>
 
 Pozn.: zdroje [R1]–[R7] jsou US stránky výrobců. Ceny předplatných (§3.4) jsou US ceníky, ceny hodinek (§4.2) české maloobchodní k datu snapshotu — obojí orientační.
 
