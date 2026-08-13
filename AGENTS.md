@@ -21,9 +21,11 @@ but do not copy it. Inside:
 - `README.cs.md` — the Czech original, kept alongside when the analysis
   originated in Czech.
 
-Every published comparison has a row in the root `README.md` index table. An
-analysis still in progress may be indexed with `⏳ in progress` in the verdict
-column.
+Every comparison directory on `main` has a row in the root `README.md` index
+table — including one still being researched, which carries `⏳ in progress` in
+the verdict column until it is done. The ⏳ is what lets unfinished work sit in
+the open instead of hiding on a branch nobody reads; what clears it is the
+second bar in the workflow section below.
 
 ## Anatomy of a comparison
 
@@ -125,16 +127,31 @@ instead of letting the rules read as pre-registered. A rule presented as
 pre-written when it was not is a false claim in a document whose whole value is
 that its claims can be trusted.
 
-A comparison reaches `main` only when all of these hold:
+There are **two bars**, and collapsing them into one is what makes an index
+full of ⏳ rows look like a mess rather than a work log.
+
+**To land on `main` at all**, carrying `⏳ in progress`:
+
+1. The **Context** section is written, so a reader knows what question the
+   document answers and for whom. A draft without it is not an early analysis,
+   it is notes.
+2. The header states what is verified and what is not, and names any open
+   `[OVĚŘIT]` / `[VERIFY]` tags — so nobody mistakes a draft for a finding.
+3. The root README index has its row, with `⏳ in progress` in the verdict
+   column.
+
+**To drop the ⏳** and count as finished:
 
 1. It ends with a **verdict** — the option actually chosen, with the accepted
    trade-offs spelled out. A menu of options is research, not a decision.
 2. Load-bearing claims carry sources and a verification date.
 3. The English `README.md` exists (English is canonical).
-4. The root README index has its row.
+4. The index row states that verdict and its verification date.
 
-A document that fails any of these stays on its branch rather than landing
-half-finished.
+Work that does not clear the first bar stays on its branch. Work that clears the
+first but not the second lives on `main` under a ⏳ — `smartwatch-platforms` is
+there now — which is the point of the marker: an analysis that stalls stays
+visible, and a reader is told exactly how far it got.
 
 Most of the mechanical conventions above are checkable, so check them instead of
 re-reading for them:
