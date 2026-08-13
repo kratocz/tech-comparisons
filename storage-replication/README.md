@@ -1,7 +1,8 @@
 # Incremental replication between two storage clusters: ZFS send/recv vs Ceph mirroring
 
-- **Verdict:** ⭐ **`zfs send -i` orchestrated by zrepl** — valid for the context described below
-- **Facts verified:** 2026-08-13 (OpenZFS master man pages, docs.ceph.com latest, Proxmox wiki, zrepl docs, Red Hat/IBM Ceph docs)
+- **Verdict:** ⭐ **`zfs send -i`** (orchestrated by zrepl *or* syncoid — §12) — valid for the context described below
+- **Facts verified:** 2026-08-13 (OpenZFS master man pages, docs.ceph.com latest, Proxmox wiki, zrepl docs, sanoid/syncoid README + issue tracker, Red Hat/IBM Ceph docs)
+- **Adversarial verify:** run 2026-08-13 against the verdict. It did **not** overturn the mechanism (§2–§8 held), but it **did overturn the orchestrator pick**: the differentiator originally claimed for zrepl over syncoid rested on sanoid issues #304/#528, which have been closed since 2019/2020. §12 was rewritten to state the orchestration as an open, close call rather than a settled one.
 - **Open tags:** `[VERIFY]` — whether `cephfs-mirror` preserves sparse regions (§5)
 - **Process note:** the decision rules (§1) were written on 2026-08-13 **after** the mechanism research in §2–§7 but **before** choosing the orchestration and the verdict. This is therefore not full pre-registration in the sense of `AGENTS.md`; stated here so the rules do not read as stronger than they are.
 - **Language:** 🇬🇧 English (canonical) · 🇨🇿 [Čeština — original](README.cs.md)
@@ -22,7 +23,7 @@ Out of scope: replication to cloud (solved by dedup backup, not replication), sy
 
 ## Summary (TL;DR)
 
-1. ⭐ **Recommendation: `zfs send -i` under zrepl.** It covers files and block devices with one mechanism, ships a block-level delta, resumes an interrupted transfer via a resume token, and is the only option here that can state the **exact transfer size up front** (`zfs send -nvP`, §3). With a hard data cap that is decisive (§1, §12).
+1. ⭐ **Recommendation: `zfs send -i`.** It covers files and block devices with one mechanism, ships a block-level delta, resumes an interrupted transfer via a resume token, and is the only option here that can state the **exact transfer size up front** (`zfs send -nvP`, §3). With a hard data cap that is decisive (§1, §12).
 2. **ZFS does not distinguish files from blocks, Ceph does — and that is the single most important structural difference** (§2). A dataset and a ZVOL are the same object to `send`/`recv`; CephFS and RBD, by contrast, have two unrelated daemons with **granularity that differs by orders of magnitude**.
 3. **`cephfs-mirror` is not send/receive, it is rsync with better change detection** (§5). It copies files into the live remote directory and only then creates a snapshot there. A changed file is transferred **in full**, and hardlinks decompose into separate copies. For large continuously-modified files that is disqualifying.
 4. **Atomicity is the most-overlooked difference** (§6). `zfs recv` is transactional — the destination dataset is a valid past state at every moment. With `cephfs-mirror` the consistent point is **only a completed snapshot**; the live directory during a sync is not one. That belongs in the DR runbook, not in a footnote.
@@ -212,8 +213,8 @@ The second boundary is harder: neither `send`/`recv` nor `rbd-mirror` can **cros
 
 | Tool | Scope | Notes |
 |---|---|---|
-| **zrepl** | two separate machines | A daemon. Push and pull, resumable transfer, replication cursor implemented as a bookmark, pruning policies. Transports: `tcp` (**unencrypted**), `tls` (client certificates, CN = identity), `ssh+stdinserver` (less efficient, but does not expose the daemon to the internet), `local`. |
-| **syncoid** (sanoid) | two machines over SSH | A script, not a daemon. The fastest route to working replication; retention is handled separately by sanoid. |
+| **zrepl** | two separate machines | A supervised daemon — retry and status reporting are built in. Push and pull, resumable transfer, replication cursor implemented as a bookmark, pruning policies. Transports: `tcp` (**unencrypted**), `tls` (client certificates, CN = identity), `ssh+stdinserver` (less efficient, but does not expose the daemon to the internet), `local`. Cost: its own config language and, for `tls`, certificate management. |
+| **syncoid** (sanoid) | two machines over SSH | A script run from cron, not a daemon. Resume is supported and enabled automatically since 1.4.18; also `--create-bookmark`, `--source-bwlimit`/`--target-bwlimit`, and destination-side pruning via `--delete-target-snapshots`. sanoid handles snapshot creation and source retention. Residual gap: when a resume attempt itself fails, it does not fall back to a non-resumed send on its own ([#672](https://github.com/jimsalterjrs/sanoid/issues/672), open since 2021). Failure detection is the operator's job — a cron script that stopped running is silent. |
 | **pve-zsync** | two **separate** Proxmox hosts | Over SSH, **no cluster membership required**. Push or pull, 15-minute default interval via cron. Exactly the "two sites, two clusters" profile. |
 | **pvesr** | nodes of the **same** Proxmox cluster | ❗ **Not usable here.** Minimum interval 1 minute, but it only works within a single cluster. Easily confused with `pve-zsync`. |
 
@@ -245,7 +246,7 @@ This section is the only perishable part of the document. When it goes stale, th
 
 ## 12. Verdict
 
-⭐ **`zfs send -i` orchestrated by zrepl, transport `tls` or `ssh+stdinserver`.**
+⭐ **The mechanism: `zfs send -i`.** This is what the analysis supports, and it supports it strongly.
 
 Against the decision rules from §1:
 
@@ -255,6 +256,8 @@ Against the decision rules from §1:
 4. **One mechanism for files and VM disks** ✅ — a direct consequence of §2; no Ceph variant satisfies it even in principle.
 
 The **disqualifying criterion** ruled out both Ceph options independently of their quality: the second site starts as a single machine, and a Ceph cluster on one node is an anti-pattern (see [zfs-vs-ceph](../zfs-vs-ceph/README.md)).
+
+**The orchestrator is a much closer call, and this analysis does not settle it.** An earlier draft recommended zrepl outright; the adversarial pass killed that reasoning, because the resume-robustness argument it rested on described sanoid's 2018–2020 state (issues [#304](https://github.com/jimsalterjrs/sanoid/issues/304), [#528](https://github.com/jimsalterjrs/sanoid/issues/528), both closed) rather than today's. Verified as of 2026-08-13, syncoid does resume automatically, does bookmarks, does bandwidth limits and does destination-side pruning — so on the four decision rules the two are equivalent. What actually separates them is a trade-off the context pulls in both directions at once: zrepl is a **supervised daemon**, so "did last night's replication run?" is answerable without extra plumbing — which matters with no on-call; syncoid is **a cron line**, which is less to operate and less to misconfigure — which matters for a solo admin who values simplicity. **Pick zrepl if you want failure detection included; pick syncoid if you already run monitoring that would notice a silent cron job.** Either satisfies §1. Whichever is chosen, do not use zrepl's `tcp` transport — it is unencrypted.
 
 **Consciously accepted trade-offs:**
 
@@ -274,7 +277,7 @@ External sources verified 2026-08-13:
 - Ceph RBD: [RBD Mirroring](https://docs.ceph.com/en/latest/rbd/rbd-mirroring/), [rbd(8) — export-diff / import-diff / merge-diff / fast-diff](https://docs.ceph.com/en/latest/man/8/rbd/), [Incremental Snapshots with RBD (ceph.io)](https://ceph.io/en/news/blog/2013/incremental-snapshots-with-rbd/)
 - CephFS: [CephFS Snapshot Mirroring (user)](https://docs.ceph.com/en/latest/cephfs/cephfs-mirroring/), [CephFS Mirroring (dev)](https://docs.ceph.com/en/latest/dev/cephfs-mirroring/), [the source rst on GitHub](https://github.com/ceph/ceph/blob/main/doc/dev/cephfs-mirroring.rst), [PR #37876 — cephfs-mirror: synchronize directory snapshots](https://github.com/ceph/ceph/pull/37876), [Red Hat Ceph Storage 8 — File System mirrors (hardlinks)](https://docs.redhat.com/en/documentation/red_hat_ceph_storage/8/html/file_system_guide/ceph-file-system-mirrors), [IBM Storage Ceph — File System mirrors](https://www.ibm.com/docs/en/storage-ceph/6.1.0?topic=systems-ceph-file-system-mirrors), [croit — CephFS Snapdiff Feature](https://www.croit.io/blog/introducing-the-innovative-cephfs-snapdiff-feature)
 - Ceph releases: [Ceph Releases (index)](https://docs.ceph.com/en/latest/releases/), [v20.2.0 Tentacle](https://ceph.io/en/news/blog/2025/v20-2-0-tentacle-released/), [v20.2.1 Tentacle](https://ceph.io/en/news/blog/2026/v20-2-1-tentacle-released/), [v19.2.4 Squid](https://ceph.io/en/news/blog/2026/v19-2-4-squid-released/)
-- Orchestration: [zrepl — Configuration Overview](https://zrepl.github.io/configuration/overview.html), [zrepl — Transports](https://zrepl.github.io/configuration/transports.html), [Proxmox — Storage Replication (`pvesr`)](https://pve.proxmox.com/wiki/Storage_Replication), [Proxmox — PVE-zsync](https://pve.proxmox.com/wiki/PVE-zsync)
+- Orchestration: [zrepl — Configuration Overview](https://zrepl.github.io/configuration/overview.html), [zrepl — Transports](https://zrepl.github.io/configuration/transports.html), [sanoid/syncoid — README](https://github.com/jimsalterjrs/sanoid), [sanoid #672 — automatic fallback when resume fails (open)](https://github.com/jimsalterjrs/sanoid/issues/672), [Proxmox — Storage Replication (`pvesr`)](https://pve.proxmox.com/wiki/Storage_Replication), [Proxmox — PVE-zsync](https://pve.proxmox.com/wiki/PVE-zsync)
 - Related context: [ZFS vs Ceph — this repository](../zfs-vs-ceph/README.md) (§12 encryption, §15 reliability profiles and the silent-corruption timelines)
 
 ---

@@ -1,7 +1,8 @@
 # Inkrementální replikace mezi dvěma storage clustery: ZFS send/recv vs Ceph mirroring
 
-- **Verdikt:** ⭐ **`zfs send -i` orchestrované zreplem** — platí pro kontext popsaný níže
-- **Fakta ověřena:** 2026-08-13 (OpenZFS man pages master, docs.ceph.com latest, Proxmox wiki, zrepl docs, Red Hat/IBM Ceph docs)
+- **Verdikt:** ⭐ **`zfs send -i`** (orchestrace zreplem *nebo* syncoidem — §12) — platí pro kontext popsaný níže
+- **Fakta ověřena:** 2026-08-13 (OpenZFS man pages master, docs.ceph.com latest, Proxmox wiki, zrepl docs, README a issue tracker sanoid/syncoid, Red Hat/IBM Ceph docs)
+- **Adversariální ověření:** provedeno 2026-08-13 proti verdiktu. Mechanismus **nevyvrátilo** (§2–§8 obstály), ale **vyvrátilo volbu orchestrace**: rozlišovací argument pro zrepl proti syncoidu stál na issues sanoid #304/#528, které jsou zavřené od 2019/2020. §12 byla přepsána tak, aby orchestraci uváděla jako otevřené, těsné rozhodnutí, ne jako uzavřené.
 - **Otevřené tagy:** `[OVĚŘIT]` — zachování sparse oblastí u `cephfs-mirror` (§5)
 - **Poznámka k procesu:** rozhodovací pravidla (§1) byla sepsána 2026-08-13 **po** sběru mechanismových faktů §2–§7, ale **před** volbou orchestrace a verdiktu. Nejde tedy o plnou pre-registraci ve smyslu `AGENTS.md`; uvádím to, aby pravidla nevypadala silněji, než jsou.
 - **Jazyk:** 🇨🇿 čeština (originál) · 🇬🇧 [English version](README.md)
@@ -22,7 +23,7 @@ Mimo rozsah: replikace do cloudu (řeší se dedup zálohou, ne replikací), syn
 
 ## Shrnutí (TL;DR)
 
-1. ⭐ **Doporučení: `zfs send -i` pod zreplem.** Pokrývá soubory i bloková zařízení jedním mechanismem, posílá blokovou deltu, umí resumovat přerušený přenos přes resume token a jako jediný z porovnávaných umí říct **přesný objem přenosu předem** (`zfs send -nvP`, §3). Při stropu na data je to rozhodující (§1, §12).
+1. ⭐ **Doporučení: `zfs send -i`.** Pokrývá soubory i bloková zařízení jedním mechanismem, posílá blokovou deltu, umí resumovat přerušený přenos přes resume token a jako jediný z porovnávaných umí říct **přesný objem přenosu předem** (`zfs send -nvP`, §3). Při stropu na data je to rozhodující (§1, §12).
 2. **ZFS nerozlišuje soubory a bloky, Ceph ano — a je to ten nejdůležitější strukturální rozdíl** (§2). Dataset i ZVOL jsou pro `send`/`recv` tentýž objekt; naproti tomu CephFS a RBD mají dva nesouvisející démony s **řádově odlišnou granularitou**.
 3. **`cephfs-mirror` není send/receive, je to rsync s lepší detekcí změn** (§5). Kopíruje soubory do živého vzdáleného adresáře a teprve pak tam vytvoří snapshot. Změněný soubor se přenáší **celý** a hardlinky se rozpadají na samostatné kopie. Pro velké průběžně měněné soubory je to diskvalifikace.
 4. **Atomicita je nejpřehlíženější rozdíl** (§6). `zfs recv` je transakční — cílový dataset je v každém okamžiku nějaký platný minulý stav. U `cephfs-mirror` je konzistentní bod **jen dokončený snapshot**, živý adresář během syncu ne. To patří do DR runbooku, ne do poznámky pod čarou.
@@ -212,8 +213,8 @@ Druhá hranice je tvrdší: `send`/`recv` ani `rbd-mirror` **neumí přenášet 
 
 | Nástroj | Rozsah | Poznámka |
 |---|---|---|
-| **zrepl** | dva samostatné stroje | Démon. Push i pull, resumovatelný přenos, replikační kurzor jako bookmark, pruning policy. Transporty: `tcp` (**nešifrovaný**), `tls` (klientské certifikáty, CN = identita), `ssh+stdinserver` (méně efektivní, ale nevystavuje démona do internetu), `local`. |
-| **syncoid** (sanoid) | dva stroje přes SSH | Skript, ne démon. Nejrychlejší cesta k funkční replikaci; retenci řeší sanoid zvlášť. |
+| **zrepl** | dva samostatné stroje | Dohlížený démon — retry a hlášení stavu má vestavěné. Push i pull, resumovatelný přenos, replikační kurzor jako bookmark, pruning policy. Transporty: `tcp` (**nešifrovaný**), `tls` (klientské certifikáty, CN = identita), `ssh+stdinserver` (méně efektivní, ale nevystavuje démona do internetu), `local`. Cena: vlastní konfigurační jazyk a u `tls` správa certifikátů. |
+| **syncoid** (sanoid) | dva stroje přes SSH | Skript spouštěný z cronu, ne démon. Resume podporuje a zapíná automaticky od 1.4.18; dále `--create-bookmark`, `--source-bwlimit`/`--target-bwlimit` a promazávání na cíli přes `--delete-target-snapshots`. Tvorbu snapshotů a retenci na zdroji řeší sanoid. Zbytková mezera: když selže samotný pokus o resume, neumí se sám přepnout na přenos bez resume ([#672](https://github.com/jimsalterjrs/sanoid/issues/672), otevřené od 2021). Detekce selhání je na provozovateli — cron skript, který přestal běžet, mlčí. |
 | **pve-zsync** | dva **samostatné** Proxmox hosty | Přes SSH, **nevyžaduje členství v clusteru**. Push i pull, default interval 15 min přes cron. Přesně profil „dvě lokality, dva clustery". |
 | **pvesr** | uzly **téhož** Proxmox clusteru | ❗ **Nepoužitelné pro tenhle případ.** Minimální interval 1 min, ale funguje jen uvnitř jednoho clusteru. Snadná záměna s `pve-zsync`. |
 
@@ -245,7 +246,7 @@ Tahle sekce je jediná perishable část dokumentu. Až zestárne, závěry §2�
 
 ## 12. Verdikt
 
-⭐ **`zfs send -i` orchestrované zreplem, transport `tls` nebo `ssh+stdinserver`.**
+⭐ **Mechanismus: `zfs send -i`.** To je to, co analýza podporuje — a podporuje to silně.
 
 Proti rozhodovacím pravidlům z §1:
 
@@ -255,6 +256,8 @@ Proti rozhodovacím pravidlům z §1:
 4. **Jeden mechanismus pro soubory i VM disky** ✅ — přímý důsledek §2; žádná Ceph varianta to nesplní ani teoreticky.
 
 **Vyřazující kritérium** vyloučilo obě Ceph varianty nezávisle na jejich kvalitě: druhá lokalita startuje jedním strojem a Ceph cluster na jednom uzlu je antipattern (viz [zfs-vs-ceph](../zfs-vs-ceph/README.cs.md)).
+
+**Volba orchestrace je mnohem těsnější a tahle analýza ji nerozhoduje.** Dřívější verze doporučovala rovnou zrepl; adversariální průchod tu úvahu zabil, protože argument o robustnosti resume popisoval stav sanoidu z let 2018–2020 (issues [#304](https://github.com/jimsalterjrs/sanoid/issues/304), [#528](https://github.com/jimsalterjrs/sanoid/issues/528), obě zavřené), ne dnešek. Ověřeno k 2026-08-13: syncoid resumuje automaticky, umí bookmarky, limity pásma i promazávání na cíli — na všech čtyřech rozhodovacích pravidlech jsou tedy rovnocenné. Skutečně je odlišuje kompromis, který kontext tahá na obě strany současně: zrepl je **dohlížený démon**, takže na otázku „proběhla dneska v noci replikace?" se dá odpovědět bez dalšího lešení — což při absenci on-callu váží; syncoid je **řádek v cronu**, tedy míň provozu a míň příležitostí ke špatné konfiguraci — což váží u sólo admina, který cení jednoduchost. **Zvol zrepl, pokud chceš detekci selhání v ceně; zvol syncoid, pokud už provozuješ monitoring, který si mlčícího cronu všimne.** §1 splní obojí. Ať padne cokoliv, nepoužívej u zreplu transport `tcp` — je nešifrovaný.
 
 **Vědomě přijaté kompromisy:**
 
@@ -274,7 +277,7 @@ Externí zdroje ověřené 2026-08-13:
 - Ceph RBD: [RBD Mirroring](https://docs.ceph.com/en/latest/rbd/rbd-mirroring/), [rbd(8) — export-diff / import-diff / merge-diff / fast-diff](https://docs.ceph.com/en/latest/man/8/rbd/), [Incremental Snapshots with RBD (ceph.io)](https://ceph.io/en/news/blog/2013/incremental-snapshots-with-rbd/)
 - CephFS: [CephFS Snapshot Mirroring (user)](https://docs.ceph.com/en/latest/cephfs/cephfs-mirroring/), [CephFS Mirroring (dev)](https://docs.ceph.com/en/latest/dev/cephfs-mirroring/), [zdrojový rst na GitHubu](https://github.com/ceph/ceph/blob/main/doc/dev/cephfs-mirroring.rst), [PR #37876 — cephfs-mirror: synchronize directory snapshots](https://github.com/ceph/ceph/pull/37876), [Red Hat Ceph Storage 8 — File System mirrors (hardlinky)](https://docs.redhat.com/en/documentation/red_hat_ceph_storage/8/html/file_system_guide/ceph-file-system-mirrors), [IBM Storage Ceph — File System mirrors](https://www.ibm.com/docs/en/storage-ceph/6.1.0?topic=systems-ceph-file-system-mirrors), [croit — CephFS Snapdiff Feature](https://www.croit.io/blog/introducing-the-innovative-cephfs-snapdiff-feature)
 - Vydání Ceph: [Ceph Releases (index)](https://docs.ceph.com/en/latest/releases/), [v20.2.0 Tentacle](https://ceph.io/en/news/blog/2025/v20-2-0-tentacle-released/), [v20.2.1 Tentacle](https://ceph.io/en/news/blog/2026/v20-2-1-tentacle-released/), [v19.2.4 Squid](https://ceph.io/en/news/blog/2026/v19-2-4-squid-released/)
-- Orchestrace: [zrepl — Configuration Overview](https://zrepl.github.io/configuration/overview.html), [zrepl — Transports](https://zrepl.github.io/configuration/transports.html), [Proxmox — Storage Replication (`pvesr`)](https://pve.proxmox.com/wiki/Storage_Replication), [Proxmox — PVE-zsync](https://pve.proxmox.com/wiki/PVE-zsync)
+- Orchestrace: [zrepl — Configuration Overview](https://zrepl.github.io/configuration/overview.html), [zrepl — Transports](https://zrepl.github.io/configuration/transports.html), [sanoid/syncoid — README](https://github.com/jimsalterjrs/sanoid), [sanoid #672 — automatický fallback při selhání resume (otevřené)](https://github.com/jimsalterjrs/sanoid/issues/672), [Proxmox — Storage Replication (`pvesr`)](https://pve.proxmox.com/wiki/Storage_Replication), [Proxmox — PVE-zsync](https://pve.proxmox.com/wiki/PVE-zsync)
 - Navazující kontext: [ZFS vs Ceph — tento repozitář](../zfs-vs-ceph/README.cs.md) (§12 šifrování, §15 spolehlivostní profily a timelines tichých korupčních bugů)
 
 ---
