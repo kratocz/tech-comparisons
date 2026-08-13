@@ -1,7 +1,7 @@
 # ZFS vs Ceph: choosing the storage engine for a small self-hosted cluster
 
 - **Verdict:** ⭐ **ZFS on Proxmox VE** — valid for the context described below
-- **Facts verified:** July 2026 · addenda 2026-08-01/06 (the Linux snapshot layer §2.5–2.6; reliability profiles incl. the Ceph and ZFS corruption-bug timelines §15)
+- **Facts verified:** July 2026 · addenda 2026-08-01/06 (the Linux snapshot layer §2.5–2.6; reliability profiles incl. the Ceph and ZFS corruption-bug timelines §15) · **2026-08-13 (growing one disk at a time, EC 2+2 vs RAIDZ2 §16 — including two corrections to earlier claims)**
 - **Language:** 🇬🇧 English (canonical) · 🇨🇿 [Čeština — original](README.cs.md)
 - **Author:** Petr Kratochvíl — [krato.cz](https://krato.cz)
 
@@ -390,6 +390,90 @@ The pattern: **the RADOS core has no documented case of losing data by itself on
 
 **Hardware, across the board:** ECC is recommended, not mandatory — the "scrub of death" is a myth (Ahrens: ZFS without ECC is no riskier than any other FS without ECC; priority: backups → checksumming FS → UPS → ECC). The real risk for all three: drives that lie about flushes, and QLC SSDs under write load.
 
+## 16. Growing one disk at a time: EC 2+2 vs RAIDZ2 (added 2026-08-13)
+
+This third addendum comes from a clarification that changes the brief: **I am not buying the target configuration in one go — I start with 3–4 disks and grow one disk at a time.** Growing by a single disk is classically Ceph territory and classically a RAIDZ weakness, so it was worth checking whether that flips the verdict. It did not — but along the way I had to **correct two of my own claims from earlier revisions of this document**, both in Ceph's favour.
+
+### 16.1 How many disks a two-failure tolerance actually needs
+
+`m` is directly the number of OSDs you may lose: *"The value of M defines how many OSDs can be lost simultaneously without losing any data."* Tolerating two therefore means `m=2`, spread over `k+m` failure domains.
+
+| layout | disks | usable capacity | efficiency |
+|---|---:|---:|---:|
+| Ceph replica3 | 3 | 1 disk | 33 % |
+| Ceph replica3 | 4 | 1.33 disks | 33 % |
+| **Ceph EC 2+2** | **4** | **2 disks** | **50 %** |
+| **ZFS RAIDZ2** | **4** | **2 disks** | **50 %** |
+| ZFS RAIDZ1 | 3 | 2 disks | 67 %, but survives only 1 |
+
+A `k=1, m=2` profile (3 disks, tolerance 2) is mathematically degenerate — Reed-Solomon with a single data chunk produces copies, i.e. exactly what `size=3` does at the same 33 % efficiency. Whether Ceph rejects it outright I did not verify (the documentation states no minimum for `k`), but it has no reason to exist.
+
+**The practical consequence:** 3 disks in RAIDZ1 and 4 in RAIDZ2 both yield two disks' worth of usable capacity, because both have two data disks. The fourth disk therefore buys not capacity but an entire level of resilience. At today's ~30 TB capacities, where a resilver runs for days while reading every remaining disk, RAIDZ1 is a bad trade.
+
+### 16.2 "Survives 2" means something different for each engine
+
+⚠️ **A correction to an earlier claim.** Previous revisions of this document placed ZFS and Ceph failure tolerance side by side as equivalent. They are not.
+
+Ceph defines `min_size` as *"the minimum number of active replicas (or shards) required for PGs to be active and thus for I/O operations to proceed"*, and a PG that is not `active` serves no requests. For EC the documentation recommends *"min_size be K+1 or greater to prevent loss of writes and loss of data"*.
+
+| state | ZFS RAIDZ2 (4 disks) | Ceph EC 2+2 (4 OSDs) | Ceph replica3 (4 OSDs) |
+|---|---|---|---|
+| 1 disk lost | reads and writes | reads and writes | reads and writes |
+| 2 disks lost | **reads and writes** | data survives, but `min_size=3` → **I/O stalls** | some PGs drop to 1 copy, below `min_size=2` → **part of the data unavailable** |
+| self-heal without a replacement disk | no (needs a hot spare) | no (4 shards need 4 OSDs) | yes, if the data fits on the surviving OSDs |
+
+With replication, **self-heal headroom** further eats into nominal capacity: for the cluster to restore three copies after losing a disk, the data must fit on the remaining OSDs. On four disks that caps you at roughly one disk's worth of user data rather than a third of four — and less still once the `nearfull`/`full` ratios are applied. On three disks, three copies cannot be placed on two survivors at all.
+
+### 16.3 RAIDZ expansion exists — and that retires one of the historical objections
+
+**Proxmox VE 9.0 shipped with ZFS 2.3.3**, and RAIDZ expansion is officially supported there. A disk is added with `zpool attach`, preceded by `zpool upgrade` to activate the `raidz_expansion` feature flag. Resilience is preserved: *"Fault tolerance is unchanged — a RAID-Z2 stays a RAID-Z2."*
+
+**Earlier revisions of this document assumed a RAIDZ vdev is fixed-width forever.** That held through ZFS 2.2; from 2.3 it no longer does.
+
+Two caveats:
+
+- **Old data keeps its original ratio:** *"blocks written before the expansion keep their original data-to-parity ratio, just spread over more disks. Only newly written blocks use the wider ratio."*
+- **The open issue [OpenZFS #17784](https://github.com/openzfs/zfs/issues/17784)** reports that after expanding a RAIDZ2 from 4 to 5 disks the physical allocation is roughly double the logical data (20.7 TiB for 10.3 TiB) with over 10 TiB of expected capacity missing; the related PR #18324 has not closed it. The reporter is running a 2.4.99 development build rather than 2.3.x LTS, so **I have not verified whether the version in Proxmox is affected**. Before relying on expansion for a production pool, rehearse it in a VM with virtual disks — it takes minutes.
+
+Expansion reads and rewrites all allocated space, so expanding sooner costs less than expanding later. A rough order-of-magnitude estimate at ~200 MB/s sequential: 10 TB occupied ≈ 14 hours, 30 TB ≈ 1.7 days, 60 TB ≈ 3.5 days (not measured).
+
+### 16.4 An existing pool's EC profile cannot be changed
+
+The Ceph documentation is categorical: *"the profile cannot be modified after the pool is created"* and *"There is no way to alter the profile of a pool after the pool has been created."* Moving from 2+2 to 3+2 therefore means **a new pool**. The standard copy tool does not work on EC pools either — `rados cppool` returns `error copying pool testpool => newpool: (95) Operation not supported`. The `--force` flag on `ceph osd erasure-code-profile set` merely overwrites the named profile (and demands `--yes-i-really-mean-it`); it does not reach back into existing pools.
+
+Two mitigations:
+
+1. **CephFS supports multiple data pools.** New data can be directed into a wider pool through a layout (`setfattr -n ceph.dir.layout -v pool=ec42 /ceph/logs`) without copying the old data; both pools share the same OSDs.
+2. **Pool Migration is in the works.** The developer documentation describes a proposal targeting the **Umbrella** release, intended to *"change the erasure code profile (and in particular the choice of K and M) non-disruptively"* as well as *"Converting between replica and erasure coded pools"*, with no outage. It is a **proposal, not a feature**: the first release will require an empty target pool, will offer no cancel or suspend, and will require every client and daemon to be upgraded.
+
+### 16.5 Correction: on growth, capacity is a draw
+
+⚠️ **The second and more consequential correction.** It is tempting to say "EC is locked at 50 % while RAIDZ2 grows to 67 %". That is unfair twice over: CephFS lets you add a second pool with a wider profile (§16.4), so "locked forever" is false — and, more importantly, **RAIDZ expansion has exactly the property I would be holding against Ceph**: old data keeps its original ratio, so the pool as a whole does not become more efficient under ZFS either.
+
+The efficiency of **freshly written** data is identical for both:
+
+| disks | RAIDZ2 width | equivalent EC profile | efficiency |
+|---:|---|---|---:|
+| 4 | 2+2 | EC 2+2 | 50 % |
+| 5 | 3+2 | EC 3+2 | 60 % |
+| 6 | 4+2 | EC 4+2 | 67 % |
+
+The difference is therefore **operational, not capacity-related**: with ZFS it is one `zpool attach` and new data is automatically written wider; with Ceph it is creating another pool and managing per-directory layouts, with several pools of differing geometry side by side.
+
+### 16.6 Small-write performance — this is the real difference
+
+Ceph's developer documentation describes the `parity-delta-write` technique for `m=2` at a cost of *"just 3 read and 3 writes to perform an overwrite of less than one chunk"* — six disk operations, three of them reads on the critical path, against three parallel writes for replication. ZFS RAIDZ is copy-on-write: a small write becomes a new, narrower stripe with its own parity, so **no read-modify-write happens at all**.
+
+Measurements confirm that `k=2` is the worst end of the spectrum. The official Fast EC benchmark in Tentacle shows that *"wider erasure codes performance improves as K increases"*, and even with Fast EC on NVMe, three-way replication retains roughly **50 % better performance** than EC on a 70/30 mix at 16K. Operational experience on spinning disks (ceph-users): *"EC pools have high throughput but low IOP/s compared with replicated pools"*, having tested `k` from 5 to 12 and concluding *"Best results in decreasing order: k=8, k=6. All other choices were poor."*
+
+On versions: **Proxmox VE 9.2 ships Ceph Tentacle 20.2.1 as the default**, so Fast EC is available — but the benchmark gains come from a 16K `stripe_unit` rather than the 4K default, i.e. from configuration, not from the upgrade alone.
+
+### 16.7 Conclusion for this scenario
+
+For **a single node with four disks, growing one disk at a time**, **ZFS RAIDZ2** wins — not on capacity, which is a draw (§16.5), but because in this configuration Ceph pays the small-write overhead (§16.6), stalls on a second failure (§16.2), requires a replicated metadata pool on SSD plus enterprise SSDs with PLP (§15), and adds multi-pool administration. Its one genuine counterweight is self-healing without a replacement disk, once there are more OSDs than `k+m`.
+
+**What would flip this:** growing by **nodes** instead of disks — then Ceph is the right choice from the start and saves a later migration (§10); or a workload dominated by **large sequential writes** (media archive, backups) rather than VM disks, where the read-modify-write overhead disappears.
+
 ## References
 
 External sources (verified July 2026; snapshot/ACL addenda verified 2026-08-01):
@@ -407,9 +491,10 @@ External sources (verified July 2026; snapshot/ACL addenda verified 2026-08-01):
 - Reliability profiles (2026-08-01): [deep-research artifact](https://claude.ai/public/artifacts/49c04b36-c45d-4b73-8652-c79f39de5ad5), [#15526 dirty dnode](https://github.com/openzfs/zfs/issues/15526), [#12014 encryption send/recv](https://github.com/openzfs/zfs/issues/12014), [#18041 import >90 % after power loss](https://github.com/openzfs/zfs/issues/18041), [tracker #53192 — MDS latency with snapshots (2021→fixed 2025)](https://tracker.ceph.com/issues/53192), [Silvenga — CephFS metadata recovery (7/2024)](https://silvenga.com/posts/notes-on-cephfs-metadata-recovery/), [Rook #15273 — MDS trims with snapshots (1/2025)](https://github.com/rook/rook/issues/15273), [CephFS best practices (Mimic)](https://docs.ceph.com/en/mimic/cephfs/best-practices/), [Btrfs RAID56 status](https://btrfs.readthedocs.io/en/latest/btrfs-man5.html)
 - Ceph corruption bugs — timeline (verified 2026-08-02): [the 14.2.3/14.2.4 advisory (11/2019)](https://lists.ceph.io/hyperkitty/list/ceph-users@ceph.io/thread/X6TNSDQK5DVKO6XFJW3DMJAJV63PLDYM/), [#45613 — bluefs_preextend_wal_files (5/2020)](https://tracker.ceph.com/issues/45613), [BlueFS >4GB writes (openSUSE advisory 5/2021)](https://osv.dev/vulnerability/openSUSE-SU-2021:0672-1), [#53062 — Pacific OMAP + IMPORTANT NOTICE (10/2021)](https://lists.ceph.io/hyperkitty/list/ceph-users@ceph.io/thread/U4QX4E32BR5IOICOUW4FR7E56YEET3CN/), [Edinburgh — Anatomy of a CephFS disaster (9/2020)](https://blogs.ed.ac.uk/mhagdorn/2020/09/09/anatomy-of-a-cephfs-disaster/)
 - ZFS corruption bugs — timeline (verified 2026-08-06): [hole_birth #4996](https://github.com/openzfs/zfs/issues/4996), [Debian #830824](https://bugs.debian.org/cgi-bin/bugreport.cgi?bug=830824), [FAQ hole birth](https://openzfs.github.io/openzfs-docs/Project%20and%20Community/FAQ%20hole%20birth.html), [0.7.7→0.7.8 "disappearing files" (The Register, 4/2018)](https://www.theregister.com/2018/04/10/zfs_on_linux_data_loss_fixed/)
+- Growing one disk at a time, EC vs RAIDZ2 (verified 2026-08-13): [Ceph — Erasure code](https://docs.ceph.com/en/latest/rados/operations/erasure-code/), [Ceph — Erasure code profiles](https://docs.ceph.com/en/latest/rados/operations/erasure-code-profile/), [Ceph — Pools (min_size)](https://docs.ceph.com/en/latest/rados/operations/pools/), [Ceph — Create a CephFS](https://docs.ceph.com/en/latest/cephfs/createfs/), [Ceph dev — Erasure coding enhancements](https://docs.ceph.com/en/latest/dev/osd_internals/erasure_coding/enhancements/), [Ceph dev — Design of Pool Migration](https://docs.ceph.com/en/latest/dev/pool-migration-design/), [Ceph.io — Tentacle Fast EC performance](https://ceph.io/en/news/blog/2025/tentacle-fastec-performance-updates/), [ceph-users — best practice for Erasure Coding](https://lists.ceph.io/hyperkitty/list/ceph-users@ceph.io/thread/QCEFF2DEGV2J6IQAIK3MKVBSX5BCQHAM/), [OpenZFS — RAIDZ](https://openzfs.github.io/openzfs-docs/Basic%20Concepts/Pool%20Structure/RAIDZ.html), [OpenZFS #17784](https://github.com/openzfs/zfs/issues/17784), [Proxmox — raidz extension for PVE 9 / ZFS 2.3.3](https://lore.proxmox.com/pve-devel/20250717133753.408101-1-d.herzig@proxmox.com/), [Proxmox — Ceph Squid to Tentacle](https://pve.proxmox.com/wiki/Ceph_Squid_to_Tentacle)
 
 ---
 
-*Researched and written in collaboration with Claude (Anthropic); facts verified against the sources above as of July 2026, with the addenda (snapshot layer, reliability profiles, corruption-bug timelines) verified 1–6 August 2026. This document is a dated snapshot and is not continuously updated.*
+*Researched and written in collaboration with Claude (Anthropic); facts verified against the sources above as of July 2026, with the addenda (snapshot layer, reliability profiles, corruption-bug timelines) verified 1–6 August 2026 and the growth addendum verified 13 August 2026. This document is a dated snapshot and is not continuously updated.*
 
 *© 2026 Petr Kratochvíl · Licensed under [CC BY 4.0](../LICENSE)*

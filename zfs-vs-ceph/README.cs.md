@@ -1,7 +1,7 @@
 # ZFS vs Ceph — volba storage enginu pro malý self-hosted cluster
 
 - **Verdikt:** ⭐ **ZFS na Proxmox VE** — platí pro kontext popsaný níže
-- **Fakta ověřena:** červenec 2026 · doplňky 2026-08-01/06 (snapshot vrstva §2.5–2.6; spolehlivostní profily vč. timelines korupčních bugů Ceph i ZFS §15)
+- **Fakta ověřena:** červenec 2026 · doplňky 2026-08-01/06 (snapshot vrstva §2.5–2.6; spolehlivostní profily vč. timelines korupčních bugů Ceph i ZFS §15) · **2026-08-13 (růst po jednom disku, EC 2+2 vs RAIDZ2 §16 — vč. dvou oprav dřívějších tvrzení)**
 - **Jazyk:** 🇨🇿 čeština (originál) · 🇬🇧 [English version](README.md)
 - **Autor:** Petr Kratochvíl — [krato.cz](https://krato.cz)
 
@@ -390,6 +390,90 @@ Vzorec: **RADOS core na zdravém HW doložený případ „sám ztratil data“ 
 
 **Hardware napříč:** ECC doporučené, ne povinné — „scrub of death“ je mýtus (Ahrens: ZFS bez ECC není rizikovější než jiný FS bez ECC; priorita: zálohy → checksumující FS → UPS → ECC). Skutečné riziko všech tří: disky lžoucí o flushi a QLC SSD pod zápisovou zátěží.
 
+## 16. Růst po jednom disku: EC 2+2 vs RAIDZ2 (doplněno 2026-08-13)
+
+Třetí doplněk vznikl z upřesnění, které mění zadání: **nekupuju cílovou sestavu najednou, ale začínám 3–4 disky a rozšiřuju po jednom.** Rozšiřitelnost po jednom disku je klasicky doména Cephu a klasická slabina RAIDZ, takže stálo za to ověřit, jestli to verdikt neotáčí. Neotočilo — ale cestou jsem musel **opravit dvě vlastní tvrzení z předchozích verzí tohoto dokumentu**, obě ve prospěch Cephu.
+
+### 16.1 Kolik disků potřebuje tolerance dvou výpadků
+
+`m` je přímo počet ztratitelných OSD: *„The value of M defines how many OSDs can be lost simultaneously without losing any data.“* Pro toleranci 2 tedy `m=2` a celkem `k+m` failure domén.
+
+| varianta | disků | použitelná kapacita | efektivita |
+|---|---:|---:|---:|
+| Ceph replica3 | 3 | 1 disk | 33 % |
+| Ceph replica3 | 4 | 1,33 disku | 33 % |
+| **Ceph EC 2+2** | **4** | **2 disky** | **50 %** |
+| **ZFS RAIDZ2** | **4** | **2 disky** | **50 %** |
+| ZFS RAIDZ1 | 3 | 2 disky | 67 %, ale snese jen 1 |
+
+Profil `k=1, m=2` (3 disky, tolerance 2) je matematicky degenerovaný — Reed-Solomon s jediným datovým chunkem produkuje kopie, tedy totéž co `size=3` při stejné 33% efektivitě. Jestli ho Ceph rovnou odmítne, jsem neověřil (dokumentace minimum `k` neuvádí), ale nemá důvod existovat.
+
+**Praktický důsledek:** 3 disky v RAIDZ1 a 4 v RAIDZ2 dají shodně dva disky užitečné kapacity, protože v obou případech jsou to dva datové disky. Čtvrtý disk tedy nekupuje kapacitu, ale celou úroveň odolnosti. U dnešních kapacit kolem 30 TB, kde resilver trvá dny a čte přitom všechny ostatní disky, je RAIDZ1 špatný obchod.
+
+### 16.2 „Snese 2“ znamená u každého enginu něco jiného
+
+⚠️ **Oprava dřívějšího tvrzení.** V předchozích verzích tohoto dokumentu jsem toleranci výpadků u ZFS a Cephu stavěl vedle sebe jako rovnocennou. Není.
+
+Ceph definuje `min_size` jako *„the minimum number of active replicas (or shards) required for PGs to be active and thus for I/O operations to proceed“* a PG bez stavu `active` neobsluhuje požadavky. Pro EC dokumentace doporučuje *„min_size be K+1 or greater to prevent loss of writes and loss of data“*.
+
+| stav | ZFS RAIDZ2 (4 disky) | Ceph EC 2+2 (4 OSD) | Ceph replica3 (4 OSD) |
+|---|---|---|---|
+| ztráta 1 disku | čte i zapisuje | čte i zapisuje | čte i zapisuje |
+| ztráta 2 disků | **čte i zapisuje** | data přežijí, ale `min_size=3` → **I/O stojí** | část PG má 1 kopii pod `min_size=2` → **část dat nedostupná** |
+| self-heal bez náhradního disku | ne (potřebuje hot spare) | ne (4 shardy chtějí 4 OSD) | ano, pokud se data vejdou na zbylé OSD |
+
+U replikace navíc **rezerva na self-heal** ukrajuje z nominální kapacity: aby se cluster po ztrátě disku dorovnal zpět na tři kopie, musí se data vejít na zbývající OSD. Na čtyřech discích to znamená strop kolem jednoho disku užitečných dat místo nominální třetiny ze čtyř, a po započtení `nearfull`/`full` poměrů ještě míň. Na třech discích nelze tři kopie umístit na dva přeživší vůbec.
+
+### 16.3 RAIDZ expansion existuje — a tím padá jedna z historických výhrad
+
+**Proxmox VE 9.0 přišel se ZFS 2.3.3** a rozšiřování RAIDZ je v něm oficiálně podporované. Disk se přidá přes `zpool attach`, předtím je nutný `zpool upgrade` kvůli feature flagu `raidz_expansion`. Odolnost zůstává: *„Fault tolerance is unchanged — a RAID-Z2 stays a RAID-Z2.“*
+
+**Starší verze tohoto dokumentu počítaly s tím, že RAIDZ vdev má navždy pevnou šířku.** To platilo do ZFS 2.2; od 2.3 už ne.
+
+Dvě výhrady:
+
+- **Stará data si nesou původní poměr:** *„blocks written before the expansion keep their original data-to-parity ratio, just spread over more disks. Only newly written blocks use the wider ratio.“*
+- **Otevřené [OpenZFS #17784](https://github.com/openzfs/zfs/issues/17784)** hlásí po expanzi RAIDZ2 ze 4 na 5 disků zhruba dvojnásobnou fyzickou alokaci proti logickým datům (20,7 TiB na 10,3 TiB) a ztrátu přes 10 TiB očekávané kapacity; související PR #18324 ho nezavřel. Reportér ale jede vývojový build 2.4.99, ne 2.3.x LTS — **dopad na verzi v Proxmoxu jsem neověřil**. Před nasazením expanze na ostrý pool ji vyzkoušet ve VM s virtuálními disky; trvá to minuty.
+
+Expanze přečte a přepíše všechen alokovaný prostor, takže se vyplatí rozšiřovat dřív než později. Hrubý odhad při ~200 MB/s sekvenčně: 10 TB obsazených ≈ 14 hodin, 30 TB ≈ 1,7 dne, 60 TB ≈ 3,5 dne (nenaměřeno, jen řádová orientace).
+
+### 16.4 EC profil existujícího poolu změnit nelze
+
+Dokumentace Cephu je kategorická: *„the profile cannot be modified after the pool is created“* a *„There is no way to alter the profile of a pool after the pool has been created.“* Přechod z 2+2 na 3+2 tedy znamená **nový pool**. Standardní kopírovací nástroj přitom na EC poolech nefunguje — `rados cppool` vrací `error copying pool testpool => newpool: (95) Operation not supported`. Flag `--force` u `ceph osd erasure-code-profile set` jen přepíše pojmenovaný profil (a chce k tomu `--yes-i-really-mean-it`); na existující pooly zpětně nesáhne.
+
+Dvě zmírnění:
+
+1. **CephFS umí víc datových poolů.** Nová data lze nasměrovat do širšího poolu přes layout (`setfattr -n ceph.dir.layout -v pool=ec42 /ceph/logs`) bez kopírování těch starých; oba pooly sdílejí tytéž OSD.
+2. **Pool Migration je v přípravě.** Vývojová dokumentace popisuje návrh cílený na release **Umbrella**, který má umožnit *„change the erasure code profile (and in particular the choice of K and M) non-disruptively“* i *„Converting between replica and erasure coded pools“*, a to bez výpadku. Zatím je to **návrh, ne funkce**: první verze bude vyžadovat prázdný cílový pool, nepůjde ji zrušit ani pozastavit a bude chtít upgradované všechny klienty i démony.
+
+### 16.5 Oprava: kapacitně jsou při růstu na remíze
+
+⚠️ **Druhá a podstatnější oprava.** Nabízelo se říct „EC je zamčené na 50 %, zatímco RAIDZ2 roste na 67 %“. To je nefér ve dvou směrech: u CephFS lze přidat druhý pool se širším profilem (§16.4), takže „zamčeno navždy“ neplatí — a hlavně **RAIDZ expansion má úplně tutéž vlastnost, kterou bych Cephu vyčítal**: stará data si nesou původní poměr, takže ani u ZFS se pool jako celek na vyšší efektivitu nepřepočítá.
+
+Efektivita **čerstvě zapsaných** dat je u obou stejná:
+
+| disků | šířka RAIDZ2 | odpovídající EC profil | efektivita |
+|---:|---|---|---:|
+| 4 | 2+2 | EC 2+2 | 50 % |
+| 5 | 3+2 | EC 3+2 | 60 % |
+| 6 | 4+2 | EC 4+2 | 67 % |
+
+Rozdíl tedy **není kapacitní, ale provozní**: u ZFS je to jeden `zpool attach` a nová data se automaticky píšou širší; u Cephu je to založení dalšího poolu a správa layoutů po adresářích, s několika pooly různé geometrie vedle sebe.
+
+### 16.6 Výkon malých zápisů — tady je ten skutečný rozdíl
+
+Vývojová dokumentace Cephu popisuje pro `m=2` techniku `parity-delta-write` s nákladem *„just 3 read and 3 writes to perform an overwrite of less than one chunk“* — tedy šest diskových operací, z toho tři čtení na kritické cestě, proti třem paralelním zápisům u replikace. ZFS RAIDZ je copy-on-write: malý zápis se stane novým užším stripem s vlastní paritou, tedy **bez read-modify-write vůbec**.
+
+Měření potvrzují, že `k=2` je nejhorší konec spektra. Oficiální benchmark Fast EC v Tentacle ukazuje, že *„wider erasure codes performance improves as K increases“*, a i s Fast EC na NVMe si trojnásobná replikace drží u mixu 70/30 na 16K zhruba **o 50 % lepší výkon** než EC. Provozní zkušenost s rotačními disky (ceph-users): *„EC pools have high throughput but low IOP/s compared with replicated pools“*, s testovanými `k` = 5 až 12 a závěrem *„Best results in decreasing order: k=8, k=6. All other choices were poor.“*
+
+K verzím: **Proxmox VE 9.2 vede jako výchozí Ceph Tentacle 20.2.1**, takže Fast EC je dostupná — ale zisky v benchmarku plynou z `stripe_unit` 16K proti výchozím 4K, tedy z konfigurace, ne ze samotného upgradu.
+
+### 16.7 Závěr pro tenhle scénář
+
+Pro **jeden uzel se čtyřmi disky, rostoucí po jednom** vychází **ZFS RAIDZ2** — ne kvůli kapacitě, tam je remíza (§16.5), ale proto, že Ceph v téhle konfiguraci platí režii malých zápisů (§16.6), zastaví se při dvou výpadcích (§16.2), vyžaduje replikovaný metadata pool na SSD a k němu enterprise SSD s PLP (§15), a přidává správu více poolů. Jedinou reálnou protihodnotou je self-heal bez náhradního disku, jakmile je OSD víc než `k+m`.
+
+**Co by závěr otočilo:** růst po **uzlech** místo po discích — pak je Ceph správná volba od začátku a ušetří pozdější migraci (§10); nebo workload převážně **velké sekvenční zápisy** (archiv médií, zálohy) místo VM disků, kde režie read-modify-write mizí.
+
 ## Reference
 
 Externí zdroje (ověřeno 2026-07; snapshot/ACL doplňky ověřeny 2026-08-01):
@@ -407,9 +491,10 @@ Externí zdroje (ověřeno 2026-07; snapshot/ACL doplňky ověřeny 2026-08-01):
 - Spolehlivostní profily (2026-08-01): [deep-research artefakt](https://claude.ai/public/artifacts/49c04b36-c45d-4b73-8652-c79f39de5ad5), [#15526 dirty dnode](https://github.com/openzfs/zfs/issues/15526), [#12014 encryption send/recv](https://github.com/openzfs/zfs/issues/12014), [#18041 import >90 % po výpadku](https://github.com/openzfs/zfs/issues/18041), [tracker #53192 — MDS latence se snapshoty (2021→fix 2025)](https://tracker.ceph.com/issues/53192), [Silvenga — CephFS metadata recovery (7/2024)](https://silvenga.com/posts/notes-on-cephfs-metadata-recovery/), [Rook #15273 — MDS trims při snapshotech (1/2025)](https://github.com/rook/rook/issues/15273), [CephFS best practices (Mimic)](https://docs.ceph.com/en/mimic/cephfs/best-practices/), [Btrfs RAID56 status](https://btrfs.readthedocs.io/en/latest/btrfs-man5.html)
 - Ceph korupční bugy — timeline (ověřeno 2026-08-02): [advisory 14.2.3/14.2.4 (11/2019)](https://lists.ceph.io/hyperkitty/list/ceph-users@ceph.io/thread/X6TNSDQK5DVKO6XFJW3DMJAJV63PLDYM/), [#45613 — bluefs_preextend_wal_files (5/2020)](https://tracker.ceph.com/issues/45613), [BlueFS >4GB writes (openSUSE advisory 5/2021)](https://osv.dev/vulnerability/openSUSE-SU-2021:0672-1), [#53062 — Pacific OMAP + IMPORTANT NOTICE (10/2021)](https://lists.ceph.io/hyperkitty/list/ceph-users@ceph.io/thread/U4QX4E32BR5IOICOUW4FR7E56YEET3CN/), [Edinburgh — Anatomy of a CephFS disaster (9/2020)](https://blogs.ed.ac.uk/mhagdorn/2020/09/09/anatomy-of-a-cephfs-disaster/)
 - ZFS korupční bugy — timeline (ověřeno 2026-08-06): [hole_birth #4996](https://github.com/openzfs/zfs/issues/4996), [Debian #830824](https://bugs.debian.org/cgi-bin/bugreport.cgi?bug=830824), [FAQ hole birth](https://openzfs.github.io/openzfs-docs/Project%20and%20Community/FAQ%20hole%20birth.html), [0.7.7→0.7.8 „mizející soubory“ (The Register, 4/2018)](https://www.theregister.com/2018/04/10/zfs_on_linux_data_loss_fixed/)
+- Růst po jednom disku, EC vs RAIDZ2 (ověřeno 2026-08-13): [Ceph — Erasure code](https://docs.ceph.com/en/latest/rados/operations/erasure-code/), [Ceph — Erasure code profiles](https://docs.ceph.com/en/latest/rados/operations/erasure-code-profile/), [Ceph — Pools (min_size)](https://docs.ceph.com/en/latest/rados/operations/pools/), [Ceph — Create a CephFS](https://docs.ceph.com/en/latest/cephfs/createfs/), [Ceph dev — Erasure coding enhancements](https://docs.ceph.com/en/latest/dev/osd_internals/erasure_coding/enhancements/), [Ceph dev — Design of Pool Migration](https://docs.ceph.com/en/latest/dev/pool-migration-design/), [Ceph.io — Tentacle Fast EC performance](https://ceph.io/en/news/blog/2025/tentacle-fastec-performance-updates/), [ceph-users — best practice for Erasure Coding](https://lists.ceph.io/hyperkitty/list/ceph-users@ceph.io/thread/QCEFF2DEGV2J6IQAIK3MKVBSX5BCQHAM/), [OpenZFS — RAIDZ](https://openzfs.github.io/openzfs-docs/Basic%20Concepts/Pool%20Structure/RAIDZ.html), [OpenZFS #17784](https://github.com/openzfs/zfs/issues/17784), [Proxmox — raidz extension pro PVE 9 / ZFS 2.3.3](https://lore.proxmox.com/pve-devel/20250717133753.408101-1-d.herzig@proxmox.com/), [Proxmox — Ceph Squid to Tentacle](https://pve.proxmox.com/wiki/Ceph_Squid_to_Tentacle)
 
 ---
 
-*Vzniklo ve spolupráci s Claude (Anthropic); fakta ověřena proti uvedeným zdrojům k červenci 2026, doplňky (snapshot vrstva, spolehlivostní profily, timelines korupčních bugů) k 1.–6. srpnu 2026. Dokument je datovaný snapshot a průběžně se neaktualizuje.*
+*Vzniklo ve spolupráci s Claude (Anthropic); fakta ověřena proti uvedeným zdrojům k červenci 2026, doplňky (snapshot vrstva, spolehlivostní profily, timelines korupčních bugů) k 1.–6. srpnu 2026 a doplněk o růstu po jednom disku k 13. srpnu 2026. Dokument je datovaný snapshot a průběžně se neaktualizuje.*
 
 *© 2026 Petr Kratochvíl · Licence [CC BY 4.0](../LICENSE)*
