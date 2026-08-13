@@ -2,6 +2,7 @@
 
 - **Verdikt:** ⭐ **`zfs send -i`** (orchestrace zreplem *nebo* syncoidem — §12) — platí pro kontext popsaný níže
 - **Fakta ověřena:** 2026-08-13 (OpenZFS man pages master, docs.ceph.com latest, Proxmox wiki, zrepl docs, README a issue tracker sanoid/syncoid, Red Hat/IBM Ceph docs)
+- **Opravy:** §13 (2026-08-13) — hodnocení „min. 3 uzly" a vyřazující kritérium v §1 byly chybné; jednouzlový Ceph cluster je podporován. Verdikt přežil, ale na jiné argumentaci.
 - **Adversariální ověření:** provedeno 2026-08-13 proti verdiktu. Mechanismus **nevyvrátilo** (§2–§8 obstály), ale **vyvrátilo volbu orchestrace**: rozlišovací argument pro zrepl proti syncoidu stál na issues sanoid #304/#528, které jsou zavřené od 2019/2020. §12 byla přepsána tak, aby orchestraci uváděla jako otevřené, těsné rozhodnutí, ne jako uzavřené.
 - **Otevřené tagy:** `[OVĚŘIT]` — zachování sparse oblastí u `cephfs-mirror` (§5)
 - **Poznámka k procesu:** rozhodovací pravidla (§1) byla sepsána 2026-08-13 **po** sběru mechanismových faktů §2–§7, ale **před** volbou orchestrace a verdiktu. Nejde tedy o plnou pre-registraci ve smyslu `AGENTS.md`; uvádím to, aby pravidla nevypadala silněji, než jsou.
@@ -55,7 +56,7 @@ Symboly: ✅ silná stránka · 🟡 funguje s výhradami / kompromis · ❌ sla
 | Nutný démon | ✅ žádný (nebo zrepl) | ❌ `rbd-mirror` | ❌ `cephfs-mirror` | ✅ žádný |
 | Kde démon běží / směr | ✅ push i pull | 🟡 **sekundár** (pull) | 🟡 **primár** (push) | ✅ oboje |
 | Obousměrně / failback | 🟡 ruční prohození rolí | ✅ promote/demote, two-way | ❌ jednosměrně, **jediný peer** | 🟡 ruční |
-| Min. počet uzlů na cíli | ✅ **1** | ❌ 3 (je to Ceph cluster) | ❌ 3 | ✅ 1 |
+| Min. počet uzlů na cíli | ✅ **1** | 🟡 1 podporován, ne pro produkci (§13) | 🟡 1, navíc caveat kernel klienta (§13) | ✅ 1 |
 | **▸ Vhodnost pro workload** | | | | |
 | Velké průběžně měněné soubory (VM, DB) | ✅ | ✅ | ❌ přenese celý soubor | 🟡 delta ano, ale čte celý soubor |
 | Miliony malých souborů, málo změn | ✅ | — | ✅ | ❌ walk dominuje nad přenosem |
@@ -75,7 +76,7 @@ Sepsáno před volbou nástroje a verdiktu (viz poznámka k procesu v hlavičce)
 3. **Cílová strana má být kdykoliv použitelná jako DR bod, bez ručního posuzování.** „Podívej se, jestli to doběhlo" není operace, kterou chci dělat v krizi.
 4. **Jeden mechanismus pro soubory i VM disky.** Dvě replikační roury se dvěma sadami selhání a dvěma runbooky jsou u sólo admina větší riziko než cokoliv, co ušetří.
 
-**Vyřazující kritérium:** cokoliv, co vyžaduje ≥3 uzly na cílové straně, je mimo — druhá lokalita startuje jako jeden stroj.
+**Vyřazující kritérium:** cokoliv, co vyžaduje ≥3 uzly na cílové straně, je mimo — druhá lokalita startuje jako jeden stroj. *(Čteno zpětně: toto pravidlo **nezabralo** — jednouzlový Ceph cluster je podporován. Viz oprava v §13; pravidlo zůstává, jak bylo napsáno, místo aby bylo přepsáno na míru výsledku.)*
 
 ## 2. Strukturální asymetrie: ZFS má jeden mechanismus, Ceph dva
 
@@ -255,7 +256,7 @@ Proti rozhodovacím pravidlům z §1:
 3. **Cíl je kdykoliv platný DR bod** ✅ — transakční `recv` (§6). U `cephfs-mirror` by tohle pravidlo padlo.
 4. **Jeden mechanismus pro soubory i VM disky** ✅ — přímý důsledek §2; žádná Ceph varianta to nesplní ani teoreticky.
 
-**Vyřazující kritérium** vyloučilo obě Ceph varianty nezávisle na jejich kvalitě: druhá lokalita startuje jedním strojem a Ceph cluster na jednom uzlu je antipattern (viz [zfs-vs-ceph](../zfs-vs-ceph/README.cs.md)).
+**Vyřazující kritérium nezabralo** — jednouzlový Ceph cluster je upstreamem explicitně podporován, takže obě Ceph varianty bylo nutné porazit na jejich vlastních kvalitách: CephFS mirror na pravidlech 1, 3 a 4, RBD mirror na pravidle 4. Úplná oprava a to, co o jednouzlovém cíli platí doopravdy, jsou v §13.
 
 **Volba orchestrace je mnohem těsnější a tahle analýza ji nerozhoduje.** Dřívější verze doporučovala rovnou zrepl; adversariální průchod tu úvahu zabil, protože argument o robustnosti resume popisoval stav sanoidu z let 2018–2020 (issues [#304](https://github.com/jimsalterjrs/sanoid/issues/304), [#528](https://github.com/jimsalterjrs/sanoid/issues/528), obě zavřené), ne dnešek. Ověřeno k 2026-08-13: syncoid resumuje automaticky, umí bookmarky, limity pásma i promazávání na cíli — na všech čtyřech rozhodovacích pravidlech jsou tedy rovnocenné. Skutečně je odlišuje kompromis, který kontext tahá na obě strany současně: zrepl je **dohlížený démon**, takže na otázku „proběhla dneska v noci replikace?" se dá odpovědět bez dalšího lešení — což při absenci on-callu váží; syncoid je **řádek v cronu**, tedy míň provozu a míň příležitostí ke špatné konfiguraci — což váží u sólo admina, který cení jednoduchost. **Zvol zrepl, pokud chceš detekci selhání v ceně; zvol syncoid, pokud už provozuješ monitoring, který si mlčícího cronu všimne.** §1 splní obojí. Ať padne cokoliv, nepoužívej u zreplu transport `tcp` — je nešifrovaný.
 
@@ -269,6 +270,35 @@ Proti rozhodovacím pravidlům z §1:
 
 **Změním názor, pokud:** (a) druhá lokalita bude potřebovat sdílený RWX filesystém replikovaný mezi lokalitami — tam ZFS nemá co nabídnout a i slabší `cephfs-mirror` je lepší než nic; (b) objem denní změny klesne tak nízko, že rozdíl mezi souborovou a blokovou granularitou zmizí v šumu linky, čímž zmizí hlavní argument; (c) DR lokalita se stane aktivním zapisujícím uzlem, čímž se ruční failback změní z nepohodlí v riziko.
 
+## 13. Oprava (2026-08-13): cíl na jednom uzlu
+
+**Původní vyřazující kritérium v §1 a hodnocení „min. 3 uzly" byly chybné.** Opraveno tentýž den, kdy dokument vyšel, poté co je čtenář zpochybnil. Níže je opravená pozice; pravidlo v §1 zůstává, jak bylo napsáno, protože rozhodovací pravidlo přepsané po zhlédnutí výsledku už není rozhodovací pravidlo (čte se tedy nově jako: *pravidlo nezabralo*).
+
+**Fakt: jednouzlový Ceph cluster je upstreamem explicitně podporován.** cephadm na to má vlastní přepínač — *"To deploy a Ceph cluster running on a single host, use the `--single-host-defaults` flag when bootstrapping."* Nastaví tři volby:
+
+```
+global/osd_crush_chooseleaf_type = 0     # failure domain klesá z hostu na OSD
+global/osd_pool_default_size     = 2
+mgr/mgr_standby_modules          = False
+```
+
+Upstream k tomu jedním dechem dodává výhradu: *"such clusters are generally not suitable for production."* Oba mirroring démoni jsou na počtu uzlů nezávislí — `rbd-mirror` i `cephfs-mirror` jsou obyčejné démony a replikační dvojice 1 uzel → 1 uzel funguje.
+
+**Vyřazující kritérium tedy nezabralo a obě Ceph varianty bylo nutné porazit na jejich vlastních kvalitách.** Poraženy byly:
+
+- **CephFS mirror** padá na rozhodovacím pravidle 1 (nelze zjistit objem přenosu předem), pravidle 3 (živý vzdálený adresář není v půlce syncu platný DR bod, §6) a pravidle 4 (jen soubory). Tři pravidla, ani jedno o počtu uzlů.
+- **RBD mirror** projde pravidly 1, 2 i 3 — je to skutečně dobrý mechanismus — ale padá na pravidle 4: umí jen bloky. Pokrýt jím ~150 TiB souborových médií by znamenalo buď přidat vedle CephFS (dva mechanismy, dva runbooky — přesně to, čemu pravidlo 4 předchází), nebo držet všechna média uvnitř RBD images, což je pro dataset obsluhovaný Plexem a Nextcloudem zvláštní tvar.
+
+**Verdikt přežil, a to na lepší argumentaci, než měl původně.** Argument o počtu uzlů nebyl jen chybný, byl i slabší než ten, který ho nahradil: pravidlo 4 je vlastnost toho, **čím ty mechanismy jsou**, zatímco počet uzlů byla vlastnost nasazení, které jsem předpokládal.
+
+**Co o jednouzlovém cíli platí doopravdy** a co je dobré vědět, než ho někdo postaví:
+
+- **Redundance klesá na úroveň OSD.** Při `osd_crush_chooseleaf_type = 0` a `size = 2` mohou obě repliky přistát na témže hostu — o to jde —, takže cluster přežije ztrátu disku, ale ne ztrátu hostu, při 50% kapacitní efektivitě. ZFS RAIDZ2 na téže bedně přežije ztrátu dvou disků při ~75 %. Na jednom uzlu vycházejí ekonomicky lépe ZFS bez ohledu na otázku replikace.
+- **Nemountuj CephFS kernel klientem na uzlu, kde běží OSD.** Při tlaku na paměť se kernel klient snaží vyprázdnit buffer do OSD, zatímco OSD se snaží alokovat paměť, a uzel se zadeadlockuje — hlášeno od [#1317](https://tracker.ceph.com/issues/1317) (2011) a stále vedeno v [#3076](https://tracker.ceph.com/issues/3076) a [#12648](https://tracker.ceph.com/issues/12648). Příručka Red Hatu to říká natvrdo: *"DO NOT mount kernel clients directly on the same node as your Ceph Storage Cluster."* Obchvaty: `ceph-fuse` (userspace paměť je stránkovatelná, takže se systém vzpamatuje) nebo mount z VM. Tohle kouše přesně jednouzlový CephFS případ a tříuzlový ne. Na samotný `cephfs-mirror` to **nedopadá** — ten používá libcephfs v userspace.
+- **Provozní náklad se s počtem uzlů nezmenšuje.** Jeden uzel pořád znamená mon + mgr + OSD + MDS, cephadm kontejnery a ~4 GB RAM na OSD, aby na hardwaru, který nemá co distribuovat, běžel distribuovaný systém.
+
+*(Tato sekce je dodatek; předchozí sekce zůstávají tak, jak vyšly, s výjimkou dotčeného řádku tabulky.)*
+
 ## Reference
 
 Externí zdroje ověřené 2026-08-13:
@@ -278,6 +308,7 @@ Externí zdroje ověřené 2026-08-13:
 - CephFS: [CephFS Snapshot Mirroring (user)](https://docs.ceph.com/en/latest/cephfs/cephfs-mirroring/), [CephFS Mirroring (dev)](https://docs.ceph.com/en/latest/dev/cephfs-mirroring/), [zdrojový rst na GitHubu](https://github.com/ceph/ceph/blob/main/doc/dev/cephfs-mirroring.rst), [PR #37876 — cephfs-mirror: synchronize directory snapshots](https://github.com/ceph/ceph/pull/37876), [Red Hat Ceph Storage 8 — File System mirrors (hardlinky)](https://docs.redhat.com/en/documentation/red_hat_ceph_storage/8/html/file_system_guide/ceph-file-system-mirrors), [IBM Storage Ceph — File System mirrors](https://www.ibm.com/docs/en/storage-ceph/6.1.0?topic=systems-ceph-file-system-mirrors), [croit — CephFS Snapdiff Feature](https://www.croit.io/blog/introducing-the-innovative-cephfs-snapdiff-feature)
 - Vydání Ceph: [Ceph Releases (index)](https://docs.ceph.com/en/latest/releases/), [v20.2.0 Tentacle](https://ceph.io/en/news/blog/2025/v20-2-0-tentacle-released/), [v20.2.1 Tentacle](https://ceph.io/en/news/blog/2026/v20-2-1-tentacle-released/), [v19.2.4 Squid](https://ceph.io/en/news/blog/2026/v19-2-4-squid-released/)
 - Orchestrace: [zrepl — Configuration Overview](https://zrepl.github.io/configuration/overview.html), [zrepl — Transports](https://zrepl.github.io/configuration/transports.html), [sanoid/syncoid — README](https://github.com/jimsalterjrs/sanoid), [sanoid #672 — automatický fallback při selhání resume (otevřené)](https://github.com/jimsalterjrs/sanoid/issues/672), [Proxmox — Storage Replication (`pvesr`)](https://pve.proxmox.com/wiki/Storage_Replication), [Proxmox — PVE-zsync](https://pve.proxmox.com/wiki/PVE-zsync)
+- Jednouzlový Ceph (§13): [cephadm — `--single-host-defaults`](https://docs.ceph.com/en/latest/cephadm/install/), [tracker #1317 — deadlock, kernel klient na uzlu s OSD](https://tracker.ceph.com/issues/1317), [#3076](https://tracker.ceph.com/issues/3076), [#12648](https://tracker.ceph.com/issues/12648), [Red Hat — Mounting and Unmounting Ceph File Systems](https://docs.redhat.com/en/documentation/red_hat_ceph_storage/2/html/ceph_file_system_guide_technology_preview/mounting_and_unmounting_ceph_file_systems)
 - Navazující kontext: [ZFS vs Ceph — tento repozitář](../zfs-vs-ceph/README.cs.md) (§12 šifrování, §15 spolehlivostní profily a timelines tichých korupčních bugů)
 
 ---

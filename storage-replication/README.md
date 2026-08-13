@@ -2,6 +2,7 @@
 
 - **Verdict:** ⭐ **`zfs send -i`** (orchestrated by zrepl *or* syncoid — §12) — valid for the context described below
 - **Facts verified:** 2026-08-13 (OpenZFS master man pages, docs.ceph.com latest, Proxmox wiki, zrepl docs, sanoid/syncoid README + issue tracker, Red Hat/IBM Ceph docs)
+- **Corrections:** §13 (2026-08-13) — the "min. 3 nodes" ratings and the §1 disqualifying criterion were wrong; a single-node Ceph cluster is supported. The verdict survives on different reasoning.
 - **Adversarial verify:** run 2026-08-13 against the verdict. It did **not** overturn the mechanism (§2–§8 held), but it **did overturn the orchestrator pick**: the differentiator originally claimed for zrepl over syncoid rested on sanoid issues #304/#528, which have been closed since 2019/2020. §12 was rewritten to state the orchestration as an open, close call rather than a settled one.
 - **Open tags:** `[VERIFY]` — whether `cephfs-mirror` preserves sparse regions (§5)
 - **Process note:** the decision rules (§1) were written on 2026-08-13 **after** the mechanism research in §2–§7 but **before** choosing the orchestration and the verdict. This is therefore not full pre-registration in the sense of `AGENTS.md`; stated here so the rules do not read as stronger than they are.
@@ -55,7 +56,7 @@ Symbols: ✅ strength · 🟡 works with caveats / a compromise · ❌ weakness 
 | Daemon required | ✅ none (or zrepl) | ❌ `rbd-mirror` | ❌ `cephfs-mirror` | ✅ none |
 | Where the daemon runs / direction | ✅ push or pull | 🟡 **secondary** (pull) | 🟡 **primary** (push) | ✅ either |
 | Bidirectional / failback | 🟡 manual role swap | ✅ promote/demote, two-way | ❌ one-way, **single peer** | 🟡 manual |
-| Min. nodes on the destination | ✅ **1** | ❌ 3 (it is a Ceph cluster) | ❌ 3 | ✅ 1 |
+| Min. nodes on the destination | ✅ **1** | 🟡 1 supported, not production-grade (§13) | 🟡 1, plus a kernel-client caveat (§13) | ✅ 1 |
 | **▸ Fit for the workload** | | | | |
 | Large continuously-modified files (VM, DB) | ✅ | ✅ | ❌ transfers the whole file | 🟡 delta yes, but reads the whole file |
 | Millions of small files, few changes | ✅ | — | ✅ | ❌ the walk dominates the transfer |
@@ -75,7 +76,7 @@ Written before choosing a tool and before the verdict (see the process note in t
 3. **The destination must be usable as a DR point at any moment, with no judgement call.** "Go check whether it finished" is not an operation I want to perform during an incident.
 4. **One mechanism for both files and VM disks.** Two replication pipelines with two failure sets and two runbooks are, for a solo admin, a bigger risk than anything they save.
 
-**Disqualifying criterion:** anything requiring ≥3 nodes on the destination side is out — the second site starts as a single machine.
+**Disqualifying criterion:** anything requiring ≥3 nodes on the destination side is out — the second site starts as a single machine. *(Read after the fact: this rule **did not fire** — a single-node Ceph cluster is supported. See the correction in §13; the rule is left as written rather than rewritten to fit the outcome.)*
 
 ## 2. The structural asymmetry: ZFS has one mechanism, Ceph has two
 
@@ -255,7 +256,7 @@ Against the decision rules from §1:
 3. **The destination is a valid DR point at any moment** ✅ — transactional `recv` (§6). `cephfs-mirror` would fail this rule.
 4. **One mechanism for files and VM disks** ✅ — a direct consequence of §2; no Ceph variant satisfies it even in principle.
 
-The **disqualifying criterion** ruled out both Ceph options independently of their quality: the second site starts as a single machine, and a Ceph cluster on one node is an anti-pattern (see [zfs-vs-ceph](../zfs-vs-ceph/README.md)).
+The **disqualifying criterion did not fire** — a single-node Ceph cluster is explicitly supported upstream, so both Ceph options had to be beaten on their merits: CephFS mirror on rules 1, 3 and 4, RBD mirror on rule 4. See §13 for the full correction and for what is genuinely true about a single-node destination.
 
 **The orchestrator is a much closer call, and this analysis does not settle it.** An earlier draft recommended zrepl outright; the adversarial pass killed that reasoning, because the resume-robustness argument it rested on described sanoid's 2018–2020 state (issues [#304](https://github.com/jimsalterjrs/sanoid/issues/304), [#528](https://github.com/jimsalterjrs/sanoid/issues/528), both closed) rather than today's. Verified as of 2026-08-13, syncoid does resume automatically, does bookmarks, does bandwidth limits and does destination-side pruning — so on the four decision rules the two are equivalent. What actually separates them is a trade-off the context pulls in both directions at once: zrepl is a **supervised daemon**, so "did last night's replication run?" is answerable without extra plumbing — which matters with no on-call; syncoid is **a cron line**, which is less to operate and less to misconfigure — which matters for a solo admin who values simplicity. **Pick zrepl if you want failure detection included; pick syncoid if you already run monitoring that would notice a silent cron job.** Either satisfies §1. Whichever is chosen, do not use zrepl's `tcp` transport — it is unencrypted.
 
@@ -269,6 +270,35 @@ The **disqualifying criterion** ruled out both Ceph options independently of the
 
 **I will change my mind if:** (a) the second site needs a shared RWX filesystem replicated across sites — ZFS has nothing to offer there and even the weaker `cephfs-mirror` beats nothing; (b) the daily change volume drops so low that the difference between file-level and block-level granularity disappears into the link's noise, which removes the main argument; (c) the DR site becomes an active writing node, turning manual failback from an inconvenience into a risk.
 
+## 13. Correction (2026-08-13): the single-node destination
+
+**The original §1 disqualifying criterion and the "min. 3 nodes" ratings were wrong.** They were corrected the same day the document was published, after a reader challenged them. What follows is the corrected position; the rule in §1 is left as written, because a decision rule that gets rewritten after seeing the result is no longer a decision rule (it is now read as: *the rule did not fire*).
+
+**Fact: a single-node Ceph cluster is explicitly supported upstream.** cephadm has a dedicated flag — *"To deploy a Ceph cluster running on a single host, use the `--single-host-defaults` flag when bootstrapping."* It sets three options:
+
+```
+global/osd_crush_chooseleaf_type = 0     # failure domain drops from host to OSD
+global/osd_pool_default_size     = 2
+mgr/mgr_standby_modules          = False
+```
+
+Upstream attaches one caveat in the same breath: *"such clusters are generally not suitable for production."* Both mirroring daemons are unaffected by node count — `rbd-mirror` and `cephfs-mirror` are ordinary daemons, and a 1-node → 1-node replication pair works.
+
+**So the disqualifying criterion did not fire, and both Ceph options had to be beaten on their merits instead.** They were:
+
+- **CephFS mirror** fails decision rule 1 (no way to size a transfer up front), rule 3 (the live remote directory is not a valid DR point mid-sync, §6) and rule 4 (files only). Three rules, none of them about node count.
+- **RBD mirror** passes rules 1, 2 and 3 — it is a genuinely good mechanism — but fails rule 4: it is block-only. Covering ~150 TiB of bulk media files with it would mean either adding CephFS alongside (two mechanisms, two runbooks — exactly what rule 4 exists to prevent) or storing all media inside RBD images, which is an odd shape for a Plex/Nextcloud dataset.
+
+**The verdict survives, on better reasoning than it originally had.** The node-count argument was not merely wrong, it was also weaker than the argument that replaced it: rule 4 is a property of what the mechanisms *are*, whereas node count was a property of the deployment I assumed.
+
+**What is genuinely true about a 1-node destination**, and worth knowing before building one:
+
+- **Redundancy drops to the OSD level.** With `osd_crush_chooseleaf_type = 0` and `size = 2`, both replicas can land on the same host — which is the point — so the cluster survives a disk loss but not a host loss, at 50 % capacity efficiency. ZFS RAIDZ2 on the same box survives two disk losses at ~75 %. On a single node the destination-side economics favour ZFS regardless of the replication question.
+- **Do not mount CephFS with the kernel client on a node that also runs OSDs.** Under memory pressure the kernel client tries to flush to the OSD while the OSD tries to allocate memory, and the node deadlocks — reported since [#1317](https://tracker.ceph.com/issues/1317) (2011) and still tracked in [#3076](https://tracker.ceph.com/issues/3076) and [#12648](https://tracker.ceph.com/issues/12648). Red Hat's guide states it flatly: *"DO NOT mount kernel clients directly on the same node as your Ceph Storage Cluster."* Workarounds: use `ceph-fuse` (userspace memory is pageable, so the system recovers) or mount from a VM. This bites exactly the 1-node CephFS case and not the 3-node one. Note it does **not** affect `cephfs-mirror` itself, which uses libcephfs in userspace.
+- **The operational cost does not scale down with the node count.** One node still means mon + mgr + OSDs + MDS, cephadm containers and ~4 GB RAM per OSD, to run a distributed system on hardware that cannot distribute anything.
+
+*(This section is an addendum; earlier sections are left as published except for the affected table row.)*
+
 ## References
 
 External sources verified 2026-08-13:
@@ -278,6 +308,7 @@ External sources verified 2026-08-13:
 - CephFS: [CephFS Snapshot Mirroring (user)](https://docs.ceph.com/en/latest/cephfs/cephfs-mirroring/), [CephFS Mirroring (dev)](https://docs.ceph.com/en/latest/dev/cephfs-mirroring/), [the source rst on GitHub](https://github.com/ceph/ceph/blob/main/doc/dev/cephfs-mirroring.rst), [PR #37876 — cephfs-mirror: synchronize directory snapshots](https://github.com/ceph/ceph/pull/37876), [Red Hat Ceph Storage 8 — File System mirrors (hardlinks)](https://docs.redhat.com/en/documentation/red_hat_ceph_storage/8/html/file_system_guide/ceph-file-system-mirrors), [IBM Storage Ceph — File System mirrors](https://www.ibm.com/docs/en/storage-ceph/6.1.0?topic=systems-ceph-file-system-mirrors), [croit — CephFS Snapdiff Feature](https://www.croit.io/blog/introducing-the-innovative-cephfs-snapdiff-feature)
 - Ceph releases: [Ceph Releases (index)](https://docs.ceph.com/en/latest/releases/), [v20.2.0 Tentacle](https://ceph.io/en/news/blog/2025/v20-2-0-tentacle-released/), [v20.2.1 Tentacle](https://ceph.io/en/news/blog/2026/v20-2-1-tentacle-released/), [v19.2.4 Squid](https://ceph.io/en/news/blog/2026/v19-2-4-squid-released/)
 - Orchestration: [zrepl — Configuration Overview](https://zrepl.github.io/configuration/overview.html), [zrepl — Transports](https://zrepl.github.io/configuration/transports.html), [sanoid/syncoid — README](https://github.com/jimsalterjrs/sanoid), [sanoid #672 — automatic fallback when resume fails (open)](https://github.com/jimsalterjrs/sanoid/issues/672), [Proxmox — Storage Replication (`pvesr`)](https://pve.proxmox.com/wiki/Storage_Replication), [Proxmox — PVE-zsync](https://pve.proxmox.com/wiki/PVE-zsync)
+- Single-node Ceph (§13): [cephadm — `--single-host-defaults`](https://docs.ceph.com/en/latest/cephadm/install/), [tracker #1317 — deadlock, kclient on an OSD node](https://tracker.ceph.com/issues/1317), [#3076](https://tracker.ceph.com/issues/3076), [#12648](https://tracker.ceph.com/issues/12648), [Red Hat — Mounting and Unmounting Ceph File Systems](https://docs.redhat.com/en/documentation/red_hat_ceph_storage/2/html/ceph_file_system_guide_technology_preview/mounting_and_unmounting_ceph_file_systems)
 - Related context: [ZFS vs Ceph — this repository](../zfs-vs-ceph/README.md) (§12 encryption, §15 reliability profiles and the silent-corruption timelines)
 
 ---
