@@ -1,7 +1,7 @@
 # Incremental replication between two storage clusters: ZFS send/recv vs Ceph mirroring
 
 - **Verdict:** ⭐ **`zfs send -i`** (orchestrated by zrepl *or* syncoid — §12) — valid for the context described below
-- **Facts verified:** 2026-08-13 (OpenZFS master man pages, docs.ceph.com latest, Proxmox wiki, zrepl docs, sanoid/syncoid README + issue tracker, Red Hat/IBM Ceph docs)
+- **Facts verified:** 2026-08-13 (OpenZFS master man pages, docs.ceph.com latest, Proxmox wiki, zrepl docs, sanoid/syncoid README + issue tracker, btrfs-progs docs + btrbk issue tracker, Red Hat/IBM Ceph docs)
 - **Corrections:** §13 (2026-08-13) — the "min. 3 nodes" ratings and the §1 disqualifying criterion were wrong; a single-node Ceph cluster is supported. The verdict survives on different reasoning.
 - **Adversarial verify:** run 2026-08-13 against the verdict. It did **not** overturn the mechanism (§2–§8 held), but it **did overturn the orchestrator pick**: the differentiator originally claimed for zrepl over syncoid rested on sanoid issues #304/#528, which have been closed since 2019/2020. §12 was rewritten to state the orchestration as an open, close call rather than a settled one.
 - **Open tags:** none. The `[VERIFY]` on sparse handling in `cephfs-mirror` was resolved 2026-08-13 out of the source (§5).
@@ -32,42 +32,43 @@ Out of scope: replication to cloud (solved by dedup backup, not replication), sy
 6. **Block-level delta transfer has a real counter-case** (§8): it ships changed *blocks*, not changed *content*. In-place rewrites, recompression, or a database rewriting pages dirty an enormous number of blocks and the increment can be several times larger than rsync's. Marginal for this workload, but an accepted trade-off rather than a non-existent risk.
 7. **A replica you have not scrubbed is not a replica** (§10). Two of the four historical ZFS bugs in the `send` path were silent ([zfs-vs-ceph §15](../zfs-vs-ceph/README.md)) — checksums cannot catch them, because they sit above the layer that computes them.
 8. **Renaming a large directory is where the mechanisms diverge most** (§14). On ZFS it is metadata — a 100 TiB tree renamed inside a dataset moves kilobytes. `cephfs-mirror` has no rename detection: it deletes the old tree on the remote and re-copies the new one in full, which makes it **worse than the rsync baseline**, since rsync at least has `--link-dest` and partial fuzzy matching to fall back on.
+9. **Btrfs is the closest rival and loses on exactly two rows** (§15): no resume for an interrupted transfer, and no way to size one up front. Both are decision rules here, so it is out — but it is the only mechanism that encodes a rename *as* a rename, and the incumbent DR box runs it today. Practical consequence: **that box should be rebuilt on ZFS**, because replication does not cross engines (§8).
 
 ## Comparison at a glance
 
-Symbols: ✅ strength · 🟡 works with caveats / a compromise · ❌ weakness or missing · — not applicable. Rated **for this context** (two sites, asymmetric residential WAN with a data cap, solo admin, bulk media + a handful of VM disks, a DR target that is never written to) — not in general; on a symmetric DC link with generous bandwidth several rows would come out differently. The last column is the engine-neutral baseline the others are measured against.
+Symbols: ✅ strength · 🟡 works with caveats / a compromise · ❌ weakness or missing · — not applicable. Rated **for this context** (two sites, asymmetric residential WAN with a data cap, solo admin, bulk media + a handful of VM disks, a DR target that is never written to) — not in general; on a symmetric DC link with generous bandwidth several rows would come out differently. The first two columns are the two filesystem-level serialisers, the middle two the two Ceph daemons, and the last is the engine-neutral baseline the others are measured against.
 
-| Criterion | ZFS `send`/`recv` | Ceph RBD mirror | CephFS mirror | rsync / rclone |
-|---|---|---|---|---|
-| **▸ How the delta is produced** | | | | |
-| Unit of transfer | ✅ block (`recordsize`/`volblocksize`) | ✅ object / extent | ❌ **the whole changed file** | 🟡 rolling-checksum delta |
-| Finds changes without walking the tree | ✅ birth time in the CoW tree | ✅ object-map + fast-diff | ✅ snapdiff (Reef onwards, §11) | ❌ stat every file |
-| Detection cost scales with | ✅ volume of changes | ✅ object count (from an in-memory map) | 🟡 number of changed files | ❌ **total number of files** |
-| Serialises FS state vs copies via POSIX | ✅ FS state (holes, compression, properties) | ✅ blocks (POSIX not involved) | ❌ POSIX copy → **hardlinks decompose** | ❌ POSIX copy |
-| Rename/move of a large tree (§14) | ✅ metadata only (within a dataset) | ✅ invisible — guest-FS metadata | ❌ **delete + full re-copy** | ❌ delete + re-transfer (`--fuzzy` misses directory renames) |
-| **▸ Atomicity and consistency** (§6) | | | | |
-| Destination is always a valid past state | ✅ transactional `recv` | ✅ delta applies wholly, or rolls back | ❌ live directory is a mix during a sync | ❌ |
-| Consistent point after a mid-transfer crash | ✅ last received snapshot | ✅ last mirror snapshot | 🟡 last **completed** snapshot on the remote | ❌ none |
-| Resume after a link outage | ✅ resume token (`recv -s`) | 🟡 the daemon continues; DIY `export-diff` does not | 🟡 the daemon continues (per file) | 🟡 `--partial` |
-| **▸ Link and budget** | | | | |
-| **Transfer size known in advance** | ✅ `zfs send -nvP` (exact) | ✅ `rbd diff --format json` (sum the extents) | ❌ no | ❌ `--dry-run` gives only a list |
-| Compression on the wire | ✅ `-c` ships blocks compressed as they sit on disk | 🟡 external (ssh `-C`) | 🟡 external | ✅ `-z` |
-| Transfer without a key on the destination | ✅ `send -w` (raw) | ❌ | ❌ | ❌ |
-| Bandwidth limiting | ✅ zrepl / `pv` / `mbuffer` | 🟡 daemon configuration | 🟡 daemon configuration | ✅ `--bwlimit` |
-| **▸ Operations** | | | | |
-| Daemon required | ✅ none (or zrepl) | ❌ `rbd-mirror` | ❌ `cephfs-mirror` | ✅ none |
-| Where the daemon runs / direction | ✅ push or pull | 🟡 **secondary** (pull) | 🟡 **primary** (push) | ✅ either |
-| Bidirectional / failback | 🟡 manual role swap | ✅ promote/demote, two-way | ❌ one-way, **single peer** | 🟡 manual |
-| Min. nodes on the destination | ✅ **1** | 🟡 1 supported, not production-grade (§13) | 🟡 1, plus a kernel-client caveat (§13) | ✅ 1 |
-| **▸ Fit for the workload** | | | | |
-| Large continuously-modified files (VM, DB) | ✅ | ✅ | ❌ transfers the whole file | 🟡 delta yes, but reads the whole file |
-| Millions of small files, few changes | ✅ | — | ✅ | ❌ the walk dominates the transfer |
-| In-place rewrite / recompression (§8) | ❌ ships every dirtied block | ❌ ditto | ✅ ships only changed files | ✅ ships only changed content |
-| Writable / RWX destination | ❌ destination must be `readonly` | ❌ | ✅ (but should not be) | ✅ |
-| Subset of a dataset / different layout | ❌ whole dataset | ❌ whole image | ✅ per directory | ✅ freely |
-| Transfer between different engines | ❌ | ❌ | ❌ | ✅ |
+| Criterion | ZFS `send`/`recv` | Btrfs `send`/`receive` | Ceph RBD mirror | CephFS mirror | rsync / rclone |
+|---|---|---|---|---|---|
+| **▸ How the delta is produced** | | | | | |
+| Unit of transfer | ✅ block (`recordsize`/`volblocksize`) | ✅ extent (`WRITE`/`CLONE`) | ✅ object / extent | ❌ **the whole changed file** | 🟡 rolling-checksum delta |
+| Finds changes without walking the tree | ✅ birth time in the CoW tree | ✅ generation numbers | ✅ object-map + fast-diff | ✅ snapdiff (Reef onwards, §11) | ❌ stat every file |
+| Detection cost scales with | ✅ volume of changes | ✅ volume of changes | ✅ object count (from an in-memory map) | 🟡 number of changed files | ❌ **total number of files** |
+| Serialises FS state vs copies via POSIX | ✅ FS state (holes, compression, properties) | ✅ FS-aware instruction stream | ✅ blocks (POSIX not involved) | ❌ POSIX copy → **hardlinks decompose** | ❌ POSIX copy |
+| Rename/move of a large tree (§14) | ✅ metadata only (within a dataset) | ✅ explicit `RENAME` command | ✅ invisible — guest-FS metadata | ❌ **delete + full re-copy** | ❌ delete + re-transfer (`--fuzzy` misses directory renames) |
+| **▸ Atomicity and consistency** (§6) | | | | | |
+| Destination is always a valid past state | ✅ transactional `recv` | 🟡 prior snapshots untouched; the in-flight subvolume is separate | ✅ delta applies wholly, or rolls back | ❌ live directory is a mix during a sync | ❌ |
+| Consistent point after a mid-transfer crash | ✅ last received snapshot | 🟡 last completed (read-only) subvolume; the partial one is left behind | ✅ last mirror snapshot | 🟡 last **completed** snapshot on the remote | ❌ none |
+| Resume after a link outage | ✅ resume token (`recv -s`) | ❌ **none — restart from zero** | 🟡 the daemon continues; DIY `export-diff` does not | 🟡 the daemon continues (per file) | 🟡 `--partial` |
+| **▸ Link and budget** | | | | | |
+| **Transfer size known in advance** | ✅ `zfs send -nvP` (exact) | ❌ no dry-run option | ✅ `rbd diff --format json` (sum the extents) | ❌ no | ❌ `--dry-run` gives only a list |
+| Compression on the wire | ✅ `-c` ships blocks compressed as they sit on disk | ✅ `--compressed-data` (Linux 6.0+) | 🟡 external (ssh `-C`) | 🟡 external | ✅ `-z` |
+| Transfer without a key on the destination | ✅ `send -w` (raw) | ❌ no native encryption | ❌ | ❌ | ❌ |
+| Bandwidth limiting | ✅ zrepl / `pv` / `mbuffer` | ✅ `pv` / `mbuffer` | 🟡 daemon configuration | 🟡 daemon configuration | ✅ `--bwlimit` |
+| **▸ Operations** | | | | | |
+| Daemon required | ✅ none (or zrepl) | ✅ none (or btrbk) | ❌ `rbd-mirror` | ❌ `cephfs-mirror` | ✅ none |
+| Where the daemon runs / direction | ✅ push or pull | ✅ push or pull | 🟡 **secondary** (pull) | 🟡 **primary** (push) | ✅ either |
+| Bidirectional / failback | 🟡 manual role swap | 🟡 manual role swap | ✅ promote/demote, two-way | ❌ one-way, **single peer** | 🟡 manual |
+| Min. nodes on the destination | ✅ **1** | ✅ **1** | 🟡 1 supported, not production-grade (§13) | 🟡 1, plus a kernel-client caveat (§13) | ✅ 1 |
+| **▸ Fit for the workload** | | | | | |
+| Large continuously-modified files (VM, DB) | ✅ | 🟡 files only — no ZVOL equivalent (§15) | ✅ | ❌ transfers the whole file | 🟡 delta yes, but reads the whole file |
+| Millions of small files, few changes | ✅ | ✅ | — | ✅ | ❌ the walk dominates the transfer |
+| In-place rewrite / recompression (§8) | ❌ ships every dirtied block | ❌ ships every changed extent | ❌ ditto | ✅ ships only changed files | ✅ ships only changed content |
+| Writable / RWX destination | ❌ destination must be `readonly` | ❌ received subvolume is read-only | ❌ | ✅ (but should not be) | ✅ |
+| Subset of a dataset / different layout | ❌ whole dataset | ❌ whole subvolume | ❌ whole image | ✅ per directory | ✅ freely |
+| Transfer between different engines | ❌ | ❌ | ❌ | ❌ | ✅ |
 
-**How to read it.** ZFS wins everywhere the question is "how many bytes will move and what happens when the link drops" — block granularity, an exact estimate up front, a transactional receive and a resume token. RBD is its equal at the block level and beats it on one row (native bidirectional failover with promote/demote), but pays with three nodes on the destination side and a mandatory daemon. CephFS mirror wins only where the others cannot compete at all — a shared writable filesystem and replication per directory rather than per whole dataset — and loses on granularity, atomicity and hardlinks. rsync is the last column not because it is bad, but because it is the only one that does what none of the others can: **change the engine, change the layout, take a subset** — and in one scenario (§8) it beats all of them.
+**How to read it.** Btrfs (§15) is the closest thing to ZFS in the table and the sharpest test of the verdict: same class of mechanism, comparable granularity, and the only column that represents a rename *as* a rename. It loses here on two of the four decision rules — no resume and no size estimate — which is precisely the pair that this context turns on. ZFS wins everywhere the question is "how many bytes will move and what happens when the link drops" — block granularity, an exact estimate up front, a transactional receive and a resume token. RBD is its equal at the block level and beats it on one row (native bidirectional failover with promote/demote), but pays with three nodes on the destination side and a mandatory daemon. CephFS mirror wins only where the others cannot compete at all — a shared writable filesystem and replication per directory rather than per whole dataset — and loses on granularity, atomicity and hardlinks. rsync is the last column not because it is bad, but because it is the only one that does what none of the others can: **change the engine, change the layout, take a subset** — and in one scenario (§8) it beats all of them.
 
 ## 1. Decision rules (2026-08-13)
 
@@ -329,6 +330,27 @@ The caveat is the one that matters for design: **this holds only within one data
 
 **Why the inversion matters.** rsync at least degrades gracefully: `--link-dest` against the previous run, or a fuzzy match, can salvage part of the work, and the failure mode is well known enough that people plan around it. `cephfs-mirror` offers no such lever — the delete-and-recopy is structural, and on a metered link one `mv` can consume a month's budget with no warning and no way to estimate it in advance (§5 already established that it cannot size a transfer up front). For a bulk media library, where reorganising directory trees is a normal thing to do rather than an exceptional one, this is a heavier objection than it first appears.
 
+## 15. Btrfs send/receive (added 2026-08-13)
+
+Btrfs belongs in the table for two reasons. It is the **only other mechanism in the same class as `zfs send`** — a filesystem-state serialisation rather than a file copy — which makes it the control that tests whether the verdict is really about ZFS or merely about "stream-based replication". And in this project it is not hypothetical: the incumbent single-node server runs `mdadm + LUKS + LVM + Btrfs` and, per [zfs-vs-ceph](../zfs-vs-ceph/README.md), is destined to become the DR target at the second site.
+
+**Where it matches ZFS.** The incremental is `btrfs send -p <parent> <subvol>`, with `-c` to name additional clone sources. Change detection uses generation numbers, so like ZFS it never walks the tree and its cost tracks the volume of change. `--compressed-data` *"send[s] data that is compressed on the filesystem directly without decompressing it"* — the counterpart of `zfs send -c` — requiring stream protocol v2 and Linux 6.0 or newer. All snapshots involved must be read-only: *"All snapshots involved in one send command must be read-only, and this status cannot be changed as long as there's a running send operation that uses the snapshot."*
+
+**Where it beats everything else, including ZFS — renames.** The send stream is a command language, and `BTRFS_SEND_C_RENAME` (9) is one of its commands, carrying a source path and a target path. A moved or renamed tree is transmitted as an explicit instruction, not as delete-plus-recopy. ZFS reaches the same outcome for a different reason (a rename dirties only metadata blocks, §14), but Btrfs is the only mechanism here that represents the rename *as such*, which also means it survives moves that cross what would be a dataset boundary in ZFS — precisely the `EXDEV` case that costs ZFS a full re-transfer (§14).
+
+**Where it fails this context, and it is decisive.** Two of the four decision rules from §1 fail outright:
+
+- **Rule 2 — no resume.** There is no resume capability in `btrfs send` or `btrfs receive`, and none is documented. An interrupted transfer restarts from zero. On a residential WAN moving multi-TiB increments, that alone is disqualifying — it is the exact failure mode rule 2 exists to exclude.
+- **Rule 1 — no size estimate.** `btrfs send` has no dry-run option, so there is no way to price a transfer before committing it against a monthly cap. `zfs send -nvP` has no Btrfs counterpart.
+
+Two further problems compound the first. The received subvolume is *"made read-only after the receiving process finishes successfully"*, so an interrupted receive leaves a **writable, partial subvolume behind** — which is not cleaned up automatically and, as the btrbk tracker records, is easy to mistake for a completed one ([btrbk #17](https://github.com/digint/btrbk/issues/17)). Worse, because the next incremental needs the previous *successfully received* snapshot as its parent, one failed transfer can block every subsequent one until someone intervenes ([btrbk #91](https://github.com/digint/btrbk/issues/91), [#196](https://github.com/digint/btrbk/issues/196)). For a solo admin with no on-call, a replication chain that wedges silently and stays wedged is a worse property than a slow one. The manual page also warns that the receiving path is writable while a receive is in progress: *"users who have write access to files or directories in the receiving path can add, remove, or modify files."*
+
+**And it has no block-device story.** Btrfs has no ZVOL equivalent, so VM disks are ordinary files. That fails rule 4 the same way RBD does, from the opposite direction: RBD does blocks but not files, Btrfs does files but not blocks.
+
+**The consequence for the DR site.** Replication does not cross engines (§8), so keeping the incumbent box on Btrfs means the ZFS primary cannot `send` to it at all — the DR link would fall back to rsync, giving up block granularity, atomicity and the size estimate in one step. **If that server is to be the DR target, it should be rebuilt on ZFS rather than kept on Btrfs.** That conclusion was implicit in the original zfs-vs-ceph migration plan; stated here it is explicit, and it is the practical reason this section exists rather than being a footnote.
+
+**What Btrfs does not lose on.** It needs no daemon, runs push or pull, needs exactly one node on the destination, and its extent-level granularity is genuinely comparable to ZFS's. On a reliable LAN link, with a tool like btrbk handling the snapshot and retry policy, Btrfs → Btrfs replication is a reasonable design. It is this context — an unreliable metered WAN, no on-call, and VM disks in the mix — that rules it out, not the mechanism being weak in general.
+
 ## References
 
 External sources verified 2026-08-13:
@@ -338,6 +360,7 @@ External sources verified 2026-08-13:
 - CephFS: [CephFS Snapshot Mirroring (user)](https://docs.ceph.com/en/latest/cephfs/cephfs-mirroring/), [CephFS Mirroring (dev)](https://docs.ceph.com/en/latest/dev/cephfs-mirroring/), [the source rst on GitHub](https://github.com/ceph/ceph/blob/main/doc/dev/cephfs-mirroring.rst), [PR #37876 — cephfs-mirror: synchronize directory snapshots](https://github.com/ceph/ceph/pull/37876), [Red Hat Ceph Storage 8 — File System mirrors (hardlinks)](https://docs.redhat.com/en/documentation/red_hat_ceph_storage/8/html/file_system_guide/ceph-file-system-mirrors), [IBM Storage Ceph — File System mirrors](https://www.ibm.com/docs/en/storage-ceph/6.1.0?topic=systems-ceph-file-system-mirrors), [croit — CephFS Snapdiff Feature](https://www.croit.io/blog/introducing-the-innovative-cephfs-snapdiff-feature)
 - Ceph releases: [Ceph Releases (index)](https://docs.ceph.com/en/latest/releases/), [v20.2.0 Tentacle](https://ceph.io/en/news/blog/2025/v20-2-0-tentacle-released/), [v20.2.1 Tentacle](https://ceph.io/en/news/blog/2026/v20-2-1-tentacle-released/), [v19.2.4 Squid](https://ceph.io/en/news/blog/2026/v19-2-4-squid-released/)
 - Orchestration: [zrepl — Configuration Overview](https://zrepl.github.io/configuration/overview.html), [zrepl — Transports](https://zrepl.github.io/configuration/transports.html), [sanoid/syncoid — README](https://github.com/jimsalterjrs/sanoid), [sanoid #672 — automatic fallback when resume fails (open)](https://github.com/jimsalterjrs/sanoid/issues/672), [Proxmox — Storage Replication (`pvesr`)](https://pve.proxmox.com/wiki/Storage_Replication), [Proxmox — PVE-zsync](https://pve.proxmox.com/wiki/PVE-zsync)
+- Btrfs (§15): [btrfs-send(8)](https://btrfs.readthedocs.io/en/latest/btrfs-send.html), [btrfs-receive(8)](https://btrfs.readthedocs.io/en/latest/btrfs-receive.html), [send stream format — `BTRFS_SEND_C_RENAME`](https://btrfs.readthedocs.io/en/latest/dev/dev-send-stream.html), [btrbk #17 — partial subvolumes not deleted on error](https://github.com/digint/btrbk/issues/17), [#91](https://github.com/digint/btrbk/issues/91), [#196](https://github.com/digint/btrbk/issues/196)
 - Renames (§14): [`PeerReplayer.cc` — `propagate_deleted_entries()` / `cleanup_remote_dir()`](https://github.com/ceph/ceph/blob/main/src/tools/cephfs_mirror/PeerReplayer.cc), [rsync 3.4.4 manual — `--fuzzy`](https://download.samba.org/pub/rsync/rsync.1)
 - Sparse handling (§5): [`PeerReplayer.cc` — `copy_to_remote()`](https://github.com/ceph/ceph/blob/main/src/tools/cephfs_mirror/PeerReplayer.cc), [CephFS — Differences from POSIX](https://docs.ceph.com/en/latest/cephfs/posix/)
 - Single-node Ceph (§13): [cephadm — `--single-host-defaults`](https://docs.ceph.com/en/latest/cephadm/install/), [Ceph — Pools (`size`/`min_size` guidance)](https://docs.ceph.com/en/latest/rados/operations/pools/), [Ceph — Monitor Config Reference](https://docs.ceph.com/en/latest/rados/configuration/mon-config-ref/), [tracker #1317 — deadlock, kclient on an OSD node](https://tracker.ceph.com/issues/1317), [#3076](https://tracker.ceph.com/issues/3076), [#12648](https://tracker.ceph.com/issues/12648), [Red Hat — Mounting and Unmounting Ceph File Systems](https://docs.redhat.com/en/documentation/red_hat_ceph_storage/2/html/ceph_file_system_guide_technology_preview/mounting_and_unmounting_ceph_file_systems)

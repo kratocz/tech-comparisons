@@ -1,7 +1,7 @@
 # Inkrementální replikace mezi dvěma storage clustery: ZFS send/recv vs Ceph mirroring
 
 - **Verdikt:** ⭐ **`zfs send -i`** (orchestrace zreplem *nebo* syncoidem — §12) — platí pro kontext popsaný níže
-- **Fakta ověřena:** 2026-08-13 (OpenZFS man pages master, docs.ceph.com latest, Proxmox wiki, zrepl docs, README a issue tracker sanoid/syncoid, Red Hat/IBM Ceph docs)
+- **Fakta ověřena:** 2026-08-13 (OpenZFS man pages master, docs.ceph.com latest, Proxmox wiki, zrepl docs, README a issue tracker sanoid/syncoid, dokumentace btrfs-progs a issue tracker btrbk, Red Hat/IBM Ceph docs)
 - **Opravy:** §13 (2026-08-13) — hodnocení „min. 3 uzly" a vyřazující kritérium v §1 byly chybné; jednouzlový Ceph cluster je podporován. Verdikt přežil, ale na jiné argumentaci.
 - **Adversariální ověření:** provedeno 2026-08-13 proti verdiktu. Mechanismus **nevyvrátilo** (§2–§8 obstály), ale **vyvrátilo volbu orchestrace**: rozlišovací argument pro zrepl proti syncoidu stál na issues sanoid #304/#528, které jsou zavřené od 2019/2020. §12 byla přepsána tak, aby orchestraci uváděla jako otevřené, těsné rozhodnutí, ne jako uzavřené.
 - **Otevřené tagy:** žádné. `[OVĚŘIT]` u sparse oblastí v `cephfs-mirror` byl 2026-08-13 vyřešen ze zdrojového kódu (§5).
@@ -32,42 +32,43 @@ Mimo rozsah: replikace do cloudu (řeší se dedup zálohou, ne replikací), syn
 6. **Blokový delta přenos má reálný protipřípad** (§8): posílá změněné *bloky*, ne změněný *obsah*. Rewrite in-place, rekomprese nebo databáze přepisující stránky ušpiní obrovské množství bloků a inkrement může být násobně větší než u rsyncu. Pro tenhle workload je to okrajové, ale je to přijatý kompromis, ne neexistující riziko.
 7. **Replika bez scrubu a test restore není replika** (§10). Dva ze čtyř historických ZFS bugů v `send` cestě byly tiché ([zfs-vs-ceph §15](../zfs-vs-ceph/README.cs.md)) — checksum je nechytí, protože sedí nad ním.
 8. **Přejmenování velkého adresáře je místo, kde se mechanismy rozcházejí nejvíc** (§14). U ZFS jsou to metadata — 100TiB strom přejmenovaný uvnitř datasetu přenese kilobajty. `cephfs-mirror` detekci přejmenování nemá: starý strom na cíli smaže a nový překopíruje celý, čímž je **horší než rsyncová základna**, protože rsync má aspoň `--link-dest` a částečné fuzzy párování, o co se opřít.
+9. **Btrfs je nejbližší konkurent a prohrává přesně na dvou řádcích** (§15): nemá resume přerušeného přenosu a neumí ho předem ocenit. Obojí je tu rozhodovací pravidlo, takže vypadává — ale je to jediný mechanismus, který kóduje přejmenování **jako** přejmenování, a stávající DR bedna na něm dnes běží. Praktický důsledek: **ta bedna by měla být přestavěna na ZFS**, protože replikace nepřechází mezi enginy (§8).
 
 ## Srovnání v přehledu
 
-Symboly: ✅ silná stránka · 🟡 funguje s výhradami / kompromis · ❌ slabina nebo chybí · — nedává smysl. Hodnoceno **pro tento kontext** (dvě lokality, asymetrická rezidenční WAN se stropem na data, sólo admin, bulk média + hrst VM disků, DR cíl bez zápisu) — ne obecně; na symetrické DC lince s tučnou kapacitou by řada řádků dopadla jinak. Poslední sloupec je engine-neutrální základna, proti které se ostatní měří.
+Symboly: ✅ silná stránka · 🟡 funguje s výhradami / kompromis · ❌ slabina nebo chybí · — nedává smysl. Hodnoceno **pro tento kontext** (dvě lokality, asymetrická rezidenční WAN se stropem na data, sólo admin, bulk média + hrst VM disků, DR cíl bez zápisu) — ne obecně; na symetrické DC lince s tučnou kapacitou by řada řádků dopadla jinak. První dva sloupce jsou dva serializátory na úrovni filesystému, prostřední dva jsou dva Ceph démoni a poslední je engine-neutrální základna, proti které se ostatní měří.
 
-| Kritérium | ZFS `send`/`recv` | Ceph RBD mirror | CephFS mirror | rsync / rclone |
-|---|---|---|---|---|
-| **▸ Jak vzniká delta** | | | | |
-| Jednotka přenosu | ✅ blok (`recordsize`/`volblocksize`) | ✅ objekt / extent | ❌ **celý změněný soubor** | 🟡 rolling-checksum delta |
-| Nalezení změn bez procházení stromu | ✅ birth time v CoW stromu | ✅ object-map + fast-diff | ✅ snapdiff (od Reefu, §11) | ❌ stat každého souboru |
-| Cena detekce roste s | ✅ objemem změn | ✅ počtem objektů (z in-memory mapy) | 🟡 počtem změněných souborů | ❌ **počtem souborů celkem** |
-| Serializace stavu FS vs kopie přes POSIX | ✅ stav FS (díry, komprese, properties) | ✅ bloky (POSIX se neúčastní) | ❌ POSIX kopie → **hardlinky se rozpadnou** | ❌ POSIX kopie |
-| Přejmenování/přesun velkého stromu (§14) | ✅ jen metadata (uvnitř datasetu) | ✅ neviditelné — metadata hostovaného FS | ❌ **smazání + plná znovukopie** | ❌ smazání + znovupřenos (`--fuzzy` na adresáře nestačí) |
-| **▸ Atomicita a konzistence** (§6) | | | | |
-| Cíl je vždy platný minulý stav | ✅ transakční `recv` | ✅ delta se aplikuje celá, nebo rollback | ❌ živý adresář je během syncu směs | ❌ |
-| Konzistentní bod po pádu v půlce | ✅ poslední přijatý snapshot | ✅ poslední mirror-snapshot | 🟡 poslední **dokončený** snapshot na cíli | ❌ žádný |
-| Resume po přerušení linky | ✅ resume token (`recv -s`) | 🟡 démon pokračuje sám; DIY `export-diff` ne | 🟡 démon pokračuje sám (po souborech) | 🟡 `--partial` |
-| **▸ Linka a rozpočet** | | | | |
-| **Odhad objemu přenosu předem** | ✅ `zfs send -nvP` (přesně) | ✅ `rbd diff --format json` (součet extentů) | ❌ není | ❌ `--dry-run` dá jen seznam |
-| Komprese na drátě | ✅ `-c` posílá bloky komprimované z disku | 🟡 externí (ssh `-C`) | 🟡 externí | ✅ `-z` |
-| Přenos bez klíče na cílové straně | ✅ `send -w` (raw) | ❌ | ❌ | ❌ |
-| Omezení šířky pásma | ✅ zrepl / `pv` / `mbuffer` | 🟡 konfigurace démona | 🟡 konfigurace démona | ✅ `--bwlimit` |
-| **▸ Provoz** | | | | |
-| Nutný démon | ✅ žádný (nebo zrepl) | ❌ `rbd-mirror` | ❌ `cephfs-mirror` | ✅ žádný |
-| Kde démon běží / směr | ✅ push i pull | 🟡 **sekundár** (pull) | 🟡 **primár** (push) | ✅ oboje |
-| Obousměrně / failback | 🟡 ruční prohození rolí | ✅ promote/demote, two-way | ❌ jednosměrně, **jediný peer** | 🟡 ruční |
-| Min. počet uzlů na cíli | ✅ **1** | 🟡 1 podporován, ne pro produkci (§13) | 🟡 1, navíc caveat kernel klienta (§13) | ✅ 1 |
-| **▸ Vhodnost pro workload** | | | | |
-| Velké průběžně měněné soubory (VM, DB) | ✅ | ✅ | ❌ přenese celý soubor | 🟡 delta ano, ale čte celý soubor |
-| Miliony malých souborů, málo změn | ✅ | — | ✅ | ❌ walk dominuje nad přenosem |
-| Rewrite in-place / rekomprese (§8) | ❌ pošle všechny ušpiněné bloky | ❌ dtto | ✅ pošle jen změněné soubory | ✅ pošle jen změněný obsah |
-| Zapisovatelný / RWX cíl | ❌ cíl musí být `readonly` | ❌ | ✅ (ale nemá se) | ✅ |
-| Podmnožina datasetu / jiný layout na cíli | ❌ celý dataset | ❌ celý image | ✅ per adresář | ✅ libovolně |
-| Přenos mezi různými enginy | ❌ | ❌ | ❌ | ✅ |
+| Kritérium | ZFS `send`/`recv` | Btrfs `send`/`receive` | Ceph RBD mirror | CephFS mirror | rsync / rclone |
+|---|---|---|---|---|---|
+| **▸ Jak vzniká delta** | | | | | |
+| Jednotka přenosu | ✅ blok (`recordsize`/`volblocksize`) | ✅ extent (`WRITE`/`CLONE`) | ✅ objekt / extent | ❌ **celý změněný soubor** | 🟡 rolling-checksum delta |
+| Nalezení změn bez procházení stromu | ✅ birth time v CoW stromu | ✅ generation numbers | ✅ object-map + fast-diff | ✅ snapdiff (od Reefu, §11) | ❌ stat každého souboru |
+| Cena detekce roste s | ✅ objemem změn | ✅ objemem změn | ✅ počtem objektů (z in-memory mapy) | 🟡 počtem změněných souborů | ❌ **počtem souborů celkem** |
+| Serializace stavu FS vs kopie přes POSIX | ✅ stav FS (díry, komprese, properties) | ✅ instrukční stream vědomý si FS | ✅ bloky (POSIX se neúčastní) | ❌ POSIX kopie → **hardlinky se rozpadnou** | ❌ POSIX kopie |
+| Přejmenování/přesun velkého stromu (§14) | ✅ jen metadata (uvnitř datasetu) | ✅ explicitní příkaz `RENAME` | ✅ neviditelné — metadata hostovaného FS | ❌ **smazání + plná znovukopie** | ❌ smazání + znovupřenos (`--fuzzy` na adresáře nestačí) |
+| **▸ Atomicita a konzistence** (§6) | | | | | |
+| Cíl je vždy platný minulý stav | ✅ transakční `recv` | 🟡 starší snapshoty netknuté; rozpracovaný subvolume je zvlášť | ✅ delta se aplikuje celá, nebo rollback | ❌ živý adresář je během syncu směs | ❌ |
+| Konzistentní bod po pádu v půlce | ✅ poslední přijatý snapshot | 🟡 poslední dokončený (read-only) subvolume; ten částečný zůstane ležet | ✅ poslední mirror-snapshot | 🟡 poslední **dokončený** snapshot na cíli | ❌ žádný |
+| Resume po přerušení linky | ✅ resume token (`recv -s`) | ❌ **žádné — od nuly** | 🟡 démon pokračuje sám; DIY `export-diff` ne | 🟡 démon pokračuje sám (po souborech) | 🟡 `--partial` |
+| **▸ Linka a rozpočet** | | | | | |
+| **Odhad objemu přenosu předem** | ✅ `zfs send -nvP` (přesně) | ❌ dry-run neexistuje | ✅ `rbd diff --format json` (součet extentů) | ❌ není | ❌ `--dry-run` dá jen seznam |
+| Komprese na drátě | ✅ `-c` posílá bloky komprimované z disku | ✅ `--compressed-data` (Linux 6.0+) | 🟡 externí (ssh `-C`) | 🟡 externí | ✅ `-z` |
+| Přenos bez klíče na cílové straně | ✅ `send -w` (raw) | ❌ nemá nativní šifrování | ❌ | ❌ | ❌ |
+| Omezení šířky pásma | ✅ zrepl / `pv` / `mbuffer` | ✅ `pv` / `mbuffer` | 🟡 konfigurace démona | 🟡 konfigurace démona | ✅ `--bwlimit` |
+| **▸ Provoz** | | | | | |
+| Nutný démon | ✅ žádný (nebo zrepl) | ✅ žádný (nebo btrbk) | ❌ `rbd-mirror` | ❌ `cephfs-mirror` | ✅ žádný |
+| Kde démon běží / směr | ✅ push i pull | ✅ push i pull | 🟡 **sekundár** (pull) | 🟡 **primár** (push) | ✅ oboje |
+| Obousměrně / failback | 🟡 ruční prohození rolí | 🟡 ruční prohození rolí | ✅ promote/demote, two-way | ❌ jednosměrně, **jediný peer** | 🟡 ruční |
+| Min. počet uzlů na cíli | ✅ **1** | ✅ **1** | 🟡 1 podporován, ne pro produkci (§13) | 🟡 1, navíc caveat kernel klienta (§13) | ✅ 1 |
+| **▸ Vhodnost pro workload** | | | | | |
+| Velké průběžně měněné soubory (VM, DB) | ✅ | 🟡 jen soubory — nemá ekvivalent ZVOL (§15) | ✅ | ❌ přenese celý soubor | 🟡 delta ano, ale čte celý soubor |
+| Miliony malých souborů, málo změn | ✅ | ✅ | — | ✅ | ❌ walk dominuje nad přenosem |
+| Rewrite in-place / rekomprese (§8) | ❌ pošle všechny ušpiněné bloky | ❌ pošle každý změněný extent | ❌ dtto | ✅ pošle jen změněné soubory | ✅ pošle jen změněný obsah |
+| Zapisovatelný / RWX cíl | ❌ cíl musí být `readonly` | ❌ přijatý subvolume je read-only | ❌ | ✅ (ale nemá se) | ✅ |
+| Podmnožina datasetu / jiný layout na cíli | ❌ celý dataset | ❌ celý subvolume | ❌ celý image | ✅ per adresář | ✅ libovolně |
+| Přenos mezi různými enginy | ❌ | ❌ | ❌ | ❌ | ✅ |
 
-**Jak to číst.** ZFS vyhrává všude, kde se ptáme „kolik dat poteče a co se stane, když spadne linka" — bloková granularita, přesný odhad předem, transakční příjem a resume token. RBD je jeho rovnocenný protějšek na blokové úrovni a v jedné věci ho poráží (nativní obousměrný failover s promote/demote), platí za to ale třemi uzly na cílové straně a povinným démonem. CephFS mirror vyhrává jen tam, kde ostatní nemohou — sdílený zapisovatelný filesystém a replikace po adresářích místo po celých datasetech — a prohrává na granularitě, atomicitě i na hardlincích. rsync je poslední sloupec ne proto, že by byl špatný, ale proto, že je jediný, který zvládne to, co ostatní neumí vůbec: **změnu enginu, změnu layoutu a podmnožinu** — a v jednom scénáři (§8) porazí všechny ostatní.
+**Jak to číst.** Btrfs (§15) je v tabulce nejblíž ZFS a je nejostřejší zkouškou verdiktu: stejná třída mechanismu, srovnatelná granularita a jediný sloupec, který reprezentuje přejmenování **jako** přejmenování. Prohrává tu na dvou ze čtyř rozhodovacích pravidel — chybí resume a chybí odhad objemu —, což je přesně ta dvojice, na které tenhle kontext stojí. ZFS vyhrává všude, kde se ptáme „kolik dat poteče a co se stane, když spadne linka" — bloková granularita, přesný odhad předem, transakční příjem a resume token. RBD je jeho rovnocenný protějšek na blokové úrovni a v jedné věci ho poráží (nativní obousměrný failover s promote/demote), platí za to ale třemi uzly na cílové straně a povinným démonem. CephFS mirror vyhrává jen tam, kde ostatní nemohou — sdílený zapisovatelný filesystém a replikace po adresářích místo po celých datasetech — a prohrává na granularitě, atomicitě i na hardlincích. rsync je poslední sloupec ne proto, že by byl špatný, ale proto, že je jediný, který zvládne to, co ostatní neumí vůbec: **změnu enginu, změnu layoutu a podmnožinu** — a v jednom scénáři (§8) porazí všechny ostatní.
 
 ## 1. Rozhodovací pravidla (2026-08-13)
 
@@ -329,6 +330,27 @@ Výhrada je přesně ta, na které záleží při návrhu: **platí to jen uvnit
 
 **Proč na té inverzi záleží.** rsync aspoň degraduje elegantně: `--link-dest` proti předchozímu běhu nebo fuzzy shoda dokážou část práce zachránit a ten failure mode je natolik známý, že se s ním plánuje. `cephfs-mirror` žádnou takovou páku nenabízí — smazat a překopírovat je tam strukturální, a na měřené lince může jediné `mv` spolykat měsíční rozpočet bez varování a bez možnosti to předem odhadnout (§5 už doložila, že objem přenosu dopředu zjistit neumí). U knihovny médií, kde je reorganizace adresářových stromů běžná věc a ne výjimečná, je to těžší námitka, než na první pohled vypadá.
 
+## 15. Btrfs send/receive (doplněno 2026-08-13)
+
+Btrfs do tabulky patří ze dvou důvodů. Je to **jediný další mechanismus ve stejné třídě jako `zfs send`** — serializace stavu filesystému, ne kopie souborů —, takže slouží jako kontrola, jestli je verdikt doopravdy o ZFS, nebo jen o „streamové replikaci". A v tomhle projektu není hypotetický: stávající jednouzlový server běží na `mdadm + LUKS + LVM + Btrfs` a podle [zfs-vs-ceph](../zfs-vs-ceph/README.cs.md) se má stát DR cílem v druhé lokalitě.
+
+**Kde se ZFS vyrovná.** Inkrement je `btrfs send -p <parent> <subvol>`, s `-c` pro další clone zdroje. Detekce změn stojí na generation numbers, takže stejně jako ZFS nikdy neprochází strom a cena sleduje objem změn. `--compressed-data` *"send[s] data that is compressed on the filesystem directly without decompressing it"* — protějšek `zfs send -c` — vyžaduje protokol streamu v2 a Linux 6.0 nebo novější. Všechny zúčastněné snapshoty musí být read-only: *"All snapshots involved in one send command must be read-only, and this status cannot be changed as long as there's a running send operation that uses the snapshot."*
+
+**Kde poráží všechny ostatní včetně ZFS — přejmenování.** Send stream je příkazový jazyk a `BTRFS_SEND_C_RENAME` (9) je jedním z jeho příkazů, nesoucím zdrojovou a cílovou cestu. Přesunutý nebo přejmenovaný strom se přenáší jako explicitní instrukce, ne jako smazání a znovukopie. ZFS dojde ke stejnému výsledku jinou cestou (přejmenování ušpiní jen metadatové bloky, §14), ale Btrfs je tu jediný mechanismus, který přejmenování reprezentuje **jako takové** — což mimo jiné znamená, že přežije i přesuny přes hranici, která by v ZFS byla hranicí datasetu, tedy přesně ten `EXDEV` případ, který ZFS stojí plný přenos (§14).
+
+**Kde v tomhle kontextu selhává, a je to rozhodující.** Dvě ze čtyř rozhodovacích pravidel z §1 padají naplno:
+
+- **Pravidlo 2 — žádné resume.** `btrfs send` ani `btrfs receive` resume neumí a nikde není dokumentované. Přerušený přenos začíná od nuly. Na rezidenční WAN s inkrementy v jednotkách TiB je to samo o sobě diskvalifikace — je to přesně ten failure mode, kvůli kterému pravidlo 2 existuje.
+- **Pravidlo 1 — žádný odhad objemu.** `btrfs send` nemá dry-run, takže neexistuje způsob, jak přenos ocenit dřív, než se odečte z měsíčního stropu. `zfs send -nvP` protějšek v Btrfs nemá.
+
+To první zhoršují dva navazující problémy. Přijatý subvolume se *"made read-only after the receiving process finishes successfully"*, takže přerušený příjem nechá ležet **zapisovatelný, částečný subvolume** — automaticky se neuklidí a podle trackeru btrbk se snadno splete s dokončeným ([btrbk #17](https://github.com/digint/btrbk/issues/17)). Hůř: protože další inkrement potřebuje jako rodiče předchozí **úspěšně přijatý** snapshot, jediný selhaný přenos může zablokovat všechny následující, dokud někdo nezasáhne ([btrbk #91](https://github.com/digint/btrbk/issues/91), [#196](https://github.com/digint/btrbk/issues/196)). U sólo admina bez on-callu je replikační řetěz, který se tiše zasekne a zaseknutý zůstane, horší vlastnost než pomalost. Manuálová stránka navíc varuje, že cílová cesta je během příjmu zapisovatelná: *"users who have write access to files or directories in the receiving path can add, remove, or modify files."*
+
+**A nemá odpověď na bloková zařízení.** Btrfs nemá ekvivalent ZVOLu, takže disky VM jsou obyčejné soubory. Padá tím na pravidle 4 stejně jako RBD, jen z opačné strany: RBD umí bloky a ne soubory, Btrfs soubory a ne bloky.
+
+**Důsledek pro DR lokalitu.** Replikace nepřechází mezi enginy (§8), takže ponechat stávající bednu na Btrfs znamená, že na ni ZFS primár nemůže `send`ovat vůbec — DR linka by spadla na rsync a jedním krokem odevzdala blokovou granularitu, atomicitu i odhad objemu. **Pokud má být ten server DR cílem, měl by být přestavěn na ZFS, ne ponechán na Btrfs.** V původním migračním plánu v zfs-vs-ceph to bylo implicitní; tady je to řečeno nahlas a je to praktický důvod, proč tahle sekce existuje místo poznámky pod čarou.
+
+**V čem Btrfs neprohrává.** Nepotřebuje démona, umí push i pull, vystačí si s jedním uzlem na cíli a jeho extentová granularita je se ZFS srovnatelná. Na spolehlivé LAN lince, s nástrojem typu btrbk řešícím snapshoty a retry politiku, je replikace Btrfs → Btrfs rozumný návrh. Vylučuje ho tenhle kontext — nespolehlivá měřená WAN, žádný on-call a disky VM ve hře —, ne slabost mechanismu obecně.
+
 ## Reference
 
 Externí zdroje ověřené 2026-08-13:
@@ -338,6 +360,7 @@ Externí zdroje ověřené 2026-08-13:
 - CephFS: [CephFS Snapshot Mirroring (user)](https://docs.ceph.com/en/latest/cephfs/cephfs-mirroring/), [CephFS Mirroring (dev)](https://docs.ceph.com/en/latest/dev/cephfs-mirroring/), [zdrojový rst na GitHubu](https://github.com/ceph/ceph/blob/main/doc/dev/cephfs-mirroring.rst), [PR #37876 — cephfs-mirror: synchronize directory snapshots](https://github.com/ceph/ceph/pull/37876), [Red Hat Ceph Storage 8 — File System mirrors (hardlinky)](https://docs.redhat.com/en/documentation/red_hat_ceph_storage/8/html/file_system_guide/ceph-file-system-mirrors), [IBM Storage Ceph — File System mirrors](https://www.ibm.com/docs/en/storage-ceph/6.1.0?topic=systems-ceph-file-system-mirrors), [croit — CephFS Snapdiff Feature](https://www.croit.io/blog/introducing-the-innovative-cephfs-snapdiff-feature)
 - Vydání Ceph: [Ceph Releases (index)](https://docs.ceph.com/en/latest/releases/), [v20.2.0 Tentacle](https://ceph.io/en/news/blog/2025/v20-2-0-tentacle-released/), [v20.2.1 Tentacle](https://ceph.io/en/news/blog/2026/v20-2-1-tentacle-released/), [v19.2.4 Squid](https://ceph.io/en/news/blog/2026/v19-2-4-squid-released/)
 - Orchestrace: [zrepl — Configuration Overview](https://zrepl.github.io/configuration/overview.html), [zrepl — Transports](https://zrepl.github.io/configuration/transports.html), [sanoid/syncoid — README](https://github.com/jimsalterjrs/sanoid), [sanoid #672 — automatický fallback při selhání resume (otevřené)](https://github.com/jimsalterjrs/sanoid/issues/672), [Proxmox — Storage Replication (`pvesr`)](https://pve.proxmox.com/wiki/Storage_Replication), [Proxmox — PVE-zsync](https://pve.proxmox.com/wiki/PVE-zsync)
+- Btrfs (§15): [btrfs-send(8)](https://btrfs.readthedocs.io/en/latest/btrfs-send.html), [btrfs-receive(8)](https://btrfs.readthedocs.io/en/latest/btrfs-receive.html), [formát send streamu — `BTRFS_SEND_C_RENAME`](https://btrfs.readthedocs.io/en/latest/dev/dev-send-stream.html), [btrbk #17 — částečné subvolume se při chybě nemažou](https://github.com/digint/btrbk/issues/17), [#91](https://github.com/digint/btrbk/issues/91), [#196](https://github.com/digint/btrbk/issues/196)
 - Přejmenování (§14): [`PeerReplayer.cc` — `propagate_deleted_entries()` / `cleanup_remote_dir()`](https://github.com/ceph/ceph/blob/main/src/tools/cephfs_mirror/PeerReplayer.cc), [manuál rsync 3.4.4 — `--fuzzy`](https://download.samba.org/pub/rsync/rsync.1)
 - Sparse oblasti (§5): [`PeerReplayer.cc` — `copy_to_remote()`](https://github.com/ceph/ceph/blob/main/src/tools/cephfs_mirror/PeerReplayer.cc), [CephFS — Differences from POSIX](https://docs.ceph.com/en/latest/cephfs/posix/)
 - Jednouzlový Ceph (§13): [cephadm — `--single-host-defaults`](https://docs.ceph.com/en/latest/cephadm/install/), [Ceph — Pools (doporučení `size`/`min_size`)](https://docs.ceph.com/en/latest/rados/operations/pools/), [Ceph — Monitor Config Reference](https://docs.ceph.com/en/latest/rados/configuration/mon-config-ref/), [tracker #1317 — deadlock, kernel klient na uzlu s OSD](https://tracker.ceph.com/issues/1317), [#3076](https://tracker.ceph.com/issues/3076), [#12648](https://tracker.ceph.com/issues/12648), [Red Hat — Mounting and Unmounting Ceph File Systems](https://docs.redhat.com/en/documentation/red_hat_ceph_storage/2/html/ceph_file_system_guide_technology_preview/mounting_and_unmounting_ceph_file_systems)
