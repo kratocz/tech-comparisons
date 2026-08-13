@@ -42,7 +42,7 @@ Symbols: ✅ strength · 🟡 works with caveats / a compromise · ❌ weakness 
 | Criterion | ZFS `send`/`recv` | Ceph RBD mirror | CephFS mirror | Btrfs `send`/`receive` | rsync / rclone | Proxmox Backup Server |
 |---|---|---|---|---|---|---|
 | **▸ How the delta is produced** | | | | | | |
-| Unit of transfer | ✅ block (`recordsize`/`volblocksize`) | ✅ object / extent | ❌ **the whole changed file** | ✅ extent (`WRITE`/`CLONE`) | 🟡 rolling-checksum delta | ✅ chunk (4 MiB fixed / rolling-hash dynamic) |
+| Unit of transfer | ✅ block (`recordsize` / `volblocksize`) | ✅ object / extent | ❌ **the whole changed file** | ✅ extent (`WRITE`/`CLONE`) | 🟡 rolling-checksum delta | ✅ chunk (4 MiB fixed / rolling-hash dynamic) |
 | Finds changes without walking the tree | ✅ birth time in the CoW tree | ✅ object-map + fast-diff | ✅ snapdiff (Reef onwards, §11) | ✅ generation numbers | ❌ stat every file | 🟡 VM: dirty bitmap · files: metadata walk |
 | Detection cost scales with | ✅ volume of changes | ✅ object count (from an in-memory map) | 🟡 number of changed files | ✅ volume of changes | ❌ **total number of files** | ❌ **data read locally** (metadata mode: file count) |
 | Serialises FS state vs copies via POSIX | ✅ FS state (holes, compression, properties) | ✅ blocks (POSIX not involved) | ❌ POSIX copy → **hardlinks decompose** | ✅ FS-aware instruction stream | ❌ POSIX copy | ❌ POSIX read → content-addressed chunks |

@@ -42,7 +42,7 @@ Symboly: ✅ silná stránka · 🟡 funguje s výhradami / kompromis · ❌ sla
 | Kritérium | ZFS `send`/`recv` | Ceph RBD mirror | CephFS mirror | Btrfs `send`/`receive` | rsync / rclone | Proxmox Backup Server |
 |---|---|---|---|---|---|---|
 | **▸ Jak vzniká delta** | | | | | | |
-| Jednotka přenosu | ✅ blok (`recordsize`/`volblocksize`) | ✅ objekt / extent | ❌ **celý změněný soubor** | ✅ extent (`WRITE`/`CLONE`) | 🟡 rolling-checksum delta | ✅ chunk (4 MiB fixní / dynamický rolling-hash) |
+| Jednotka přenosu | ✅ blok (`recordsize` / `volblocksize`) | ✅ objekt / extent | ❌ **celý změněný soubor** | ✅ extent (`WRITE`/`CLONE`) | 🟡 rolling-checksum delta | ✅ chunk (4 MiB fixní / dynamický rolling-hash) |
 | Nalezení změn bez procházení stromu | ✅ birth time v CoW stromu | ✅ object-map + fast-diff | ✅ snapdiff (od Reefu, §11) | ✅ generation numbers | ❌ stat každého souboru | 🟡 VM: dirty bitmap · soubory: průchod metadat |
 | Cena detekce roste s | ✅ objemem změn | ✅ počtem objektů (z in-memory mapy) | 🟡 počtem změněných souborů | ✅ objemem změn | ❌ **počtem souborů celkem** | ❌ **objemem čtených dat lokálně** (metadata mód: počtem souborů) |
 | Serializace stavu FS vs kopie přes POSIX | ✅ stav FS (díry, komprese, properties) | ✅ bloky (POSIX se neúčastní) | ❌ POSIX kopie → **hardlinky se rozpadnou** | ✅ instrukční stream vědomý si FS | ❌ POSIX kopie | ❌ POSIX čtení → obsahově adresované chunky |
