@@ -4,7 +4,7 @@
 - **Fakta ověřena:** 2026-08-13 (OpenZFS man pages master, docs.ceph.com latest, Proxmox wiki, zrepl docs, README a issue tracker sanoid/syncoid, Red Hat/IBM Ceph docs)
 - **Opravy:** §13 (2026-08-13) — hodnocení „min. 3 uzly" a vyřazující kritérium v §1 byly chybné; jednouzlový Ceph cluster je podporován. Verdikt přežil, ale na jiné argumentaci.
 - **Adversariální ověření:** provedeno 2026-08-13 proti verdiktu. Mechanismus **nevyvrátilo** (§2–§8 obstály), ale **vyvrátilo volbu orchestrace**: rozlišovací argument pro zrepl proti syncoidu stál na issues sanoid #304/#528, které jsou zavřené od 2019/2020. §12 byla přepsána tak, aby orchestraci uváděla jako otevřené, těsné rozhodnutí, ne jako uzavřené.
-- **Otevřené tagy:** `[OVĚŘIT]` — zachování sparse oblastí u `cephfs-mirror` (§5)
+- **Otevřené tagy:** žádné. `[OVĚŘIT]` u sparse oblastí v `cephfs-mirror` byl 2026-08-13 vyřešen ze zdrojového kódu (§5).
 - **Poznámka k procesu:** rozhodovací pravidla (§1) byla sepsána 2026-08-13 **po** sběru mechanismových faktů §2–§7, ale **před** volbou orchestrace a verdiktu. Nejde tedy o plnou pre-registraci ve smyslu `AGENTS.md`; uvádím to, aby pravidla nevypadala silněji, než jsou.
 - **Jazyk:** 🇨🇿 čeština (originál) · 🇬🇧 [English version](README.md)
 - **Autor:** Petr Kratochvíl — [krato.cz](https://krato.cz)
@@ -155,7 +155,11 @@ Tím ale výhody končí, protože **jednotkou přenosu zůstává soubor**: *"T
 
 Druhý následek toho, že se kopíruje **přes POSIX API** místo serializace stavu filesystému: **hardlinky se nepřenášejí jako hardlinky.** Red Hat i IBM to dokumentují shodně — *"Synchronizing hard links is not supported; hard linked files get synchronized as regular files."* Tři hardlinky na jeden 10GB soubor zaberou na zdroji 10 GB a na cíli 30 GB, a přenesou se pokaždé znovu. Mirrorují se navíc jen regular files, adresáře a symlinky; ostatní typy se ignorují. `zfs send` tuhle třídu problémů mít nemůže, protože neposílá soubory, ale bloky a metadata.
 
-`[OVĚŘIT]` Zda bulk copy zachovává **sparse** oblasti, jsem v dokumentaci nenašel. U řídkých souborů je to rozdíl mezi „přenese se pár GB" a „přenese se nominální velikost".
+**Sparse oblasti se nezachovávají — řídký soubor se přenese v nominální velikosti.** Dokumentace to neříká tak ani tak, takže odpověď je vyčtená ze zdrojáku (vyřešeno 2026-08-13). `PeerReplayer::copy_to_remote()` prochází soubor přes `ceph_preadv`/`ceph_pwritev` od offsetu 0 do konce po pevných iovec dávkách a nikde ve smyčce není krok `SEEK_HOLE`/`SEEK_DATA`; jediné volání týkající se velikosti je `ceph_ftruncate(m_remote_mount, r_fd, stx.stx_size)`. Díry se tedy přečtou jako nuly a jako nuly se na cíl zapíší.
+
+Není to opomenutí démona a samo v něm ani opravit nejde: **CephFS alokaci vůbec nesleduje.** Jeho vlastní stránka o odchylkách od POSIXu říká *"Because CephFS does not explicitly track which parts of a file are allocated/written, the st_blocks field is always populated by the file size divided by the block size"* a *"Sparse files propagate incorrectly to the stat(2) st_blocks field."* Smyčka přeskakující díry nemá koho se zeptat.
+
+Praktický důsledek: 1TiB řídký obraz s 1 GiB skutečných dat pošle po lince ~1 TiB — a protože granularita je po souborech, pošle ho celý znovu pokaždé, když se v něm cokoliv změní. Řídké obrazy VM a CephFS mirroring k sobě nepatří, a to ze dvou nezávislých důvodů naráz. `zfs send` se to netýká: díra je nepřítomný blok ve stromu, takže není co serializovat.
 
 Další doložená omezení: **jediný peer**, **jednosměrně** (failback je ruční) a snap-schedule na vzdáleném FS pro mirrorované adresáře rozbije metadata (*"will cause … errors like `invalid metadata`"*).
 
@@ -282,7 +286,15 @@ global/osd_pool_default_size     = 2
 mgr/mgr_standby_modules          = False
 ```
 
-Upstream k tomu jedním dechem dodává výhradu: *"such clusters are generally not suitable for production."* Oba mirroring démoni jsou na počtu uzlů nezávislí — `rbd-mirror` i `cephfs-mirror` jsou obyčejné démony a replikační dvojice 1 uzel → 1 uzel funguje.
+Upstream k tomu jedním dechem dodává výhradu: *"such clusters are generally not suitable for production."* Ta věta není podpůrné odmítnutí odpovědnosti ani varování před nezralostí kódu — **důvodem je sám ten přepínač**, protože každá ze tří voleb, které nastaví, odevzdává něco, kvůli čemu Ceph existuje:
+
+- `osd_crush_chooseleaf_type = 0` přesouvá failure domain z hostu na OSD, takže obě repliky mohou přistát na témže stroji. Cluster přestává přežívat ztrátu hostu — což je jediná vlastnost, kterou se Ceph liší od lokálního úložiště.
+- `osd_pool_default_size = 2` půlí default. Vlastní dokumentace poolů to říká natvrdo: *"setting `size` to `2` or `min_size` to `1` in production risks data loss and should only be done in certain emergency situations, and then only temporarily."* Default je 3.
+- Jeden host znamená také **jeden monitor**, a *"a single Monitor is a single-point-of-failure"*; produkční doporučení jsou aspoň tři v kvóru. `mgr_standby_modules = False` obdobně ruší záložního managera.
+
+„Ne pro produkci" tedy znamená: na jednom uzlu si Ceph nechává celý svůj provozní náklad a vzdává se odolnosti proti ztrátě hostu, kvóra monitorů i samoopravy napříč stroji. Podporované to je a běží to — jen to nedělá práci, kvůli které vzniklo. Pro DR cíl je to obhajitelný kompromis jen tehdy, když Ceph na druhé straně ospravedlňuje něco jiného.
+
+Oba mirroring démoni jsou na počtu uzlů nezávislí — `rbd-mirror` i `cephfs-mirror` jsou obyčejné démony a replikační dvojice 1 uzel → 1 uzel funguje.
 
 **Vyřazující kritérium tedy nezabralo a obě Ceph varianty bylo nutné porazit na jejich vlastních kvalitách.** Poraženy byly:
 
@@ -308,7 +320,8 @@ Externí zdroje ověřené 2026-08-13:
 - CephFS: [CephFS Snapshot Mirroring (user)](https://docs.ceph.com/en/latest/cephfs/cephfs-mirroring/), [CephFS Mirroring (dev)](https://docs.ceph.com/en/latest/dev/cephfs-mirroring/), [zdrojový rst na GitHubu](https://github.com/ceph/ceph/blob/main/doc/dev/cephfs-mirroring.rst), [PR #37876 — cephfs-mirror: synchronize directory snapshots](https://github.com/ceph/ceph/pull/37876), [Red Hat Ceph Storage 8 — File System mirrors (hardlinky)](https://docs.redhat.com/en/documentation/red_hat_ceph_storage/8/html/file_system_guide/ceph-file-system-mirrors), [IBM Storage Ceph — File System mirrors](https://www.ibm.com/docs/en/storage-ceph/6.1.0?topic=systems-ceph-file-system-mirrors), [croit — CephFS Snapdiff Feature](https://www.croit.io/blog/introducing-the-innovative-cephfs-snapdiff-feature)
 - Vydání Ceph: [Ceph Releases (index)](https://docs.ceph.com/en/latest/releases/), [v20.2.0 Tentacle](https://ceph.io/en/news/blog/2025/v20-2-0-tentacle-released/), [v20.2.1 Tentacle](https://ceph.io/en/news/blog/2026/v20-2-1-tentacle-released/), [v19.2.4 Squid](https://ceph.io/en/news/blog/2026/v19-2-4-squid-released/)
 - Orchestrace: [zrepl — Configuration Overview](https://zrepl.github.io/configuration/overview.html), [zrepl — Transports](https://zrepl.github.io/configuration/transports.html), [sanoid/syncoid — README](https://github.com/jimsalterjrs/sanoid), [sanoid #672 — automatický fallback při selhání resume (otevřené)](https://github.com/jimsalterjrs/sanoid/issues/672), [Proxmox — Storage Replication (`pvesr`)](https://pve.proxmox.com/wiki/Storage_Replication), [Proxmox — PVE-zsync](https://pve.proxmox.com/wiki/PVE-zsync)
-- Jednouzlový Ceph (§13): [cephadm — `--single-host-defaults`](https://docs.ceph.com/en/latest/cephadm/install/), [tracker #1317 — deadlock, kernel klient na uzlu s OSD](https://tracker.ceph.com/issues/1317), [#3076](https://tracker.ceph.com/issues/3076), [#12648](https://tracker.ceph.com/issues/12648), [Red Hat — Mounting and Unmounting Ceph File Systems](https://docs.redhat.com/en/documentation/red_hat_ceph_storage/2/html/ceph_file_system_guide_technology_preview/mounting_and_unmounting_ceph_file_systems)
+- Sparse oblasti (§5): [`PeerReplayer.cc` — `copy_to_remote()`](https://github.com/ceph/ceph/blob/main/src/tools/cephfs_mirror/PeerReplayer.cc), [CephFS — Differences from POSIX](https://docs.ceph.com/en/latest/cephfs/posix/)
+- Jednouzlový Ceph (§13): [cephadm — `--single-host-defaults`](https://docs.ceph.com/en/latest/cephadm/install/), [Ceph — Pools (doporučení `size`/`min_size`)](https://docs.ceph.com/en/latest/rados/operations/pools/), [Ceph — Monitor Config Reference](https://docs.ceph.com/en/latest/rados/configuration/mon-config-ref/), [tracker #1317 — deadlock, kernel klient na uzlu s OSD](https://tracker.ceph.com/issues/1317), [#3076](https://tracker.ceph.com/issues/3076), [#12648](https://tracker.ceph.com/issues/12648), [Red Hat — Mounting and Unmounting Ceph File Systems](https://docs.redhat.com/en/documentation/red_hat_ceph_storage/2/html/ceph_file_system_guide_technology_preview/mounting_and_unmounting_ceph_file_systems)
 - Navazující kontext: [ZFS vs Ceph — tento repozitář](../zfs-vs-ceph/README.cs.md) (§12 šifrování, §15 spolehlivostní profily a timelines tichých korupčních bugů)
 
 ---

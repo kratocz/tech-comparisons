@@ -4,7 +4,7 @@
 - **Facts verified:** 2026-08-13 (OpenZFS master man pages, docs.ceph.com latest, Proxmox wiki, zrepl docs, sanoid/syncoid README + issue tracker, Red Hat/IBM Ceph docs)
 - **Corrections:** §13 (2026-08-13) — the "min. 3 nodes" ratings and the §1 disqualifying criterion were wrong; a single-node Ceph cluster is supported. The verdict survives on different reasoning.
 - **Adversarial verify:** run 2026-08-13 against the verdict. It did **not** overturn the mechanism (§2–§8 held), but it **did overturn the orchestrator pick**: the differentiator originally claimed for zrepl over syncoid rested on sanoid issues #304/#528, which have been closed since 2019/2020. §12 was rewritten to state the orchestration as an open, close call rather than a settled one.
-- **Open tags:** `[VERIFY]` — whether `cephfs-mirror` preserves sparse regions (§5)
+- **Open tags:** none. The `[VERIFY]` on sparse handling in `cephfs-mirror` was resolved 2026-08-13 out of the source (§5).
 - **Process note:** the decision rules (§1) were written on 2026-08-13 **after** the mechanism research in §2–§7 but **before** choosing the orchestration and the verdict. This is therefore not full pre-registration in the sense of `AGENTS.md`; stated here so the rules do not read as stronger than they are.
 - **Language:** 🇬🇧 English (canonical) · 🇨🇿 [Čeština — original](README.cs.md)
 - **Author:** Petr Kratochvíl — [krato.cz](https://krato.cz)
@@ -155,7 +155,11 @@ That is where the advantages end, because **the unit of transfer remains the fil
 
 The second consequence of copying **through the POSIX API** instead of serialising filesystem state: **hardlinks are not transferred as hardlinks.** Red Hat and IBM document it identically — *"Synchronizing hard links is not supported; hard linked files get synchronized as regular files."* Three hardlinks to one 10 GB file occupy 10 GB on the source and 30 GB on the destination, and are re-transferred every time. Only regular files, directories and symlinks are mirrored at all; other types are ignored. `zfs send` cannot have this class of problem, because it ships blocks and metadata, not files.
 
-`[VERIFY]` Whether the bulk copy preserves **sparse** regions is not stated in the documentation I could find. For sparse files that is the difference between "a few GB move" and "the nominal size moves".
+**Sparse regions are not preserved — a sparse file transfers at its nominal size.** The documentation does not state this either way, so it was read out of the source (resolved 2026-08-13). `PeerReplayer::copy_to_remote()` walks the file with `ceph_preadv`/`ceph_pwritev` from offset 0 to the end in fixed iovec batches, with no `SEEK_HOLE`/`SEEK_DATA` step anywhere in the loop; the only size-related call is `ceph_ftruncate(m_remote_mount, r_fd, stx.stx_size)`. Holes are therefore read back as zeros and written to the remote as zeros.
+
+This is not an oversight in the daemon, and it could not be fixed there alone: **CephFS does not track allocation at all.** Its own POSIX-differences page says *"Because CephFS does not explicitly track which parts of a file are allocated/written, the st_blocks field is always populated by the file size divided by the block size"* and *"Sparse files propagate incorrectly to the stat(2) st_blocks field."* There is nothing for a hole-skipping copy loop to query.
+
+Practical consequence: a 1 TiB sparse image holding 1 GiB of real data moves ~1 TiB across the link — and, because granularity is per file, it moves again in full every time any part of it changes. Sparse VM images and CephFS mirroring do not belong together, for two independent reasons at once. `zfs send` is untouched by this: a hole is an absent block in the tree, so there is nothing to serialise.
 
 Further documented limits: a **single peer**, **one-way** only (failback is manual), and a snap-schedule on the remote filesystem for mirrored directories breaks metadata (*"will cause … errors like `invalid metadata`"*).
 
@@ -282,7 +286,15 @@ global/osd_pool_default_size     = 2
 mgr/mgr_standby_modules          = False
 ```
 
-Upstream attaches one caveat in the same breath: *"such clusters are generally not suitable for production."* Both mirroring daemons are unaffected by node count — `rbd-mirror` and `cephfs-mirror` are ordinary daemons, and a 1-node → 1-node replication pair works.
+Upstream attaches one caveat in the same breath: *"such clusters are generally not suitable for production."* That sentence is not a support disclaimer or a code-maturity warning — **the flag itself is the reason**, because each of the three options it sets trades away something Ceph exists to provide:
+
+- `osd_crush_chooseleaf_type = 0` moves the failure domain from host to OSD, so both replicas may land on the same machine. The cluster no longer survives host loss — which is the single property that distinguishes Ceph from local storage.
+- `osd_pool_default_size = 2` halves the default. Ceph's own pool documentation is blunt: *"setting `size` to `2` or `min_size` to `1` in production risks data loss and should only be done in certain emergency situations, and then only temporarily."* The default is 3.
+- One host also means **one monitor**, and *"a single Monitor is a single-point-of-failure"*; production guidance is at least three in quorum. `mgr_standby_modules = False` similarly drops the standby manager.
+
+So "not for production" means: on one node Ceph keeps all of its operational cost while giving up host-failure tolerance, monitor quorum and cross-host self-healing. It is supported and it runs — it just is not doing the job it exists to do. For a DR target that is a defensible trade only if something else on the far side justifies Ceph.
+
+Both mirroring daemons are unaffected by node count — `rbd-mirror` and `cephfs-mirror` are ordinary daemons, and a 1-node → 1-node replication pair works.
 
 **So the disqualifying criterion did not fire, and both Ceph options had to be beaten on their merits instead.** They were:
 
@@ -308,7 +320,8 @@ External sources verified 2026-08-13:
 - CephFS: [CephFS Snapshot Mirroring (user)](https://docs.ceph.com/en/latest/cephfs/cephfs-mirroring/), [CephFS Mirroring (dev)](https://docs.ceph.com/en/latest/dev/cephfs-mirroring/), [the source rst on GitHub](https://github.com/ceph/ceph/blob/main/doc/dev/cephfs-mirroring.rst), [PR #37876 — cephfs-mirror: synchronize directory snapshots](https://github.com/ceph/ceph/pull/37876), [Red Hat Ceph Storage 8 — File System mirrors (hardlinks)](https://docs.redhat.com/en/documentation/red_hat_ceph_storage/8/html/file_system_guide/ceph-file-system-mirrors), [IBM Storage Ceph — File System mirrors](https://www.ibm.com/docs/en/storage-ceph/6.1.0?topic=systems-ceph-file-system-mirrors), [croit — CephFS Snapdiff Feature](https://www.croit.io/blog/introducing-the-innovative-cephfs-snapdiff-feature)
 - Ceph releases: [Ceph Releases (index)](https://docs.ceph.com/en/latest/releases/), [v20.2.0 Tentacle](https://ceph.io/en/news/blog/2025/v20-2-0-tentacle-released/), [v20.2.1 Tentacle](https://ceph.io/en/news/blog/2026/v20-2-1-tentacle-released/), [v19.2.4 Squid](https://ceph.io/en/news/blog/2026/v19-2-4-squid-released/)
 - Orchestration: [zrepl — Configuration Overview](https://zrepl.github.io/configuration/overview.html), [zrepl — Transports](https://zrepl.github.io/configuration/transports.html), [sanoid/syncoid — README](https://github.com/jimsalterjrs/sanoid), [sanoid #672 — automatic fallback when resume fails (open)](https://github.com/jimsalterjrs/sanoid/issues/672), [Proxmox — Storage Replication (`pvesr`)](https://pve.proxmox.com/wiki/Storage_Replication), [Proxmox — PVE-zsync](https://pve.proxmox.com/wiki/PVE-zsync)
-- Single-node Ceph (§13): [cephadm — `--single-host-defaults`](https://docs.ceph.com/en/latest/cephadm/install/), [tracker #1317 — deadlock, kclient on an OSD node](https://tracker.ceph.com/issues/1317), [#3076](https://tracker.ceph.com/issues/3076), [#12648](https://tracker.ceph.com/issues/12648), [Red Hat — Mounting and Unmounting Ceph File Systems](https://docs.redhat.com/en/documentation/red_hat_ceph_storage/2/html/ceph_file_system_guide_technology_preview/mounting_and_unmounting_ceph_file_systems)
+- Sparse handling (§5): [`PeerReplayer.cc` — `copy_to_remote()`](https://github.com/ceph/ceph/blob/main/src/tools/cephfs_mirror/PeerReplayer.cc), [CephFS — Differences from POSIX](https://docs.ceph.com/en/latest/cephfs/posix/)
+- Single-node Ceph (§13): [cephadm — `--single-host-defaults`](https://docs.ceph.com/en/latest/cephadm/install/), [Ceph — Pools (`size`/`min_size` guidance)](https://docs.ceph.com/en/latest/rados/operations/pools/), [Ceph — Monitor Config Reference](https://docs.ceph.com/en/latest/rados/configuration/mon-config-ref/), [tracker #1317 — deadlock, kclient on an OSD node](https://tracker.ceph.com/issues/1317), [#3076](https://tracker.ceph.com/issues/3076), [#12648](https://tracker.ceph.com/issues/12648), [Red Hat — Mounting and Unmounting Ceph File Systems](https://docs.redhat.com/en/documentation/red_hat_ceph_storage/2/html/ceph_file_system_guide_technology_preview/mounting_and_unmounting_ceph_file_systems)
 - Related context: [ZFS vs Ceph — this repository](../zfs-vs-ceph/README.md) (§12 encryption, §15 reliability profiles and the silent-corruption timelines)
 
 ---
