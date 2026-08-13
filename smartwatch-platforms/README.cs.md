@@ -23,7 +23,7 @@
 
 ## 1. Kontext: jaké rozhodnutí se tu doopravdy dělá
 
-Tohle není „které hodinky jsou nejlepší". Nákup hodinek je odložený (měsíce až roky) — teď se volí **směr platformy**, protože je vstupem bezprostředního rozhodnutí o telefonu:
+Tohle není „které hodinky jsou nejlepší“. Nákup hodinek je odložený (měsíce až roky) — teď se volí **směr platformy**, protože je vstupem bezprostředního rozhodnutí o telefonu:
 
 - **Bezprostřední rozhodnutí (~do září 2026):** koupit repasovaný **iPhone 15 Pro, 16 Pro, nebo zatím žádný**.
 - **Současný stav:** dva telefony — **Motorola (Android)** a **iPhone 12 mini**. Nejde tedy o vstup do Apple ekosystému, ale o to, zda a jak hluboko v něm pokračovat; Android zůstává souběžně k dispozici.

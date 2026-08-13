@@ -7,10 +7,10 @@
 
 ## Kontext: pro jaký profil se rozhodovalo
 
-Tohle není obecné srovnání „co je lepší". Je to reálná rozhodovací analýza z konkrétního projektu — verdikt si nárokuje platnost jen pro tenhle profil a s jiným profilem může klidně vyjít opačně:
+Tohle není obecné srovnání „co je lepší“. Je to reálná rozhodovací analýza z konkrétního projektu — verdikt si nárokuje platnost jen pro tenhle profil a s jiným profilem může klidně vyjít opačně:
 
 - **Osobní cluster, fázovaný start:** začíná se **1 uzlem**, časem růst na 2–3 uzly ve **2 lokalitách** (běžné byty, mezi nimi rezidenční WAN).
-- **Solo admin bez on-call** — provoz musí zvládnout jeden člověk, i „ve 3 ráno".
+- **Solo admin bez on-call** — provoz musí zvládnout jeden člověk, i „ve 3 ráno“.
 - **Cost-conscious rok 2026:** DDR4 ECC v doběhu výroby (ceny rostou), HDD trh vyprodaný — každý GB RAM a každý disk navíc bolí.
 - **Workload:** bulk média/foto/dokumenty (cíl ~150 TiB) + hrstka VM a služeb (Plex, Nextcloud, monitoring typu Zabbix/Grafana/Loki); zvažovaný Kubernetes.
 - **Výchozí stav:** stávající single-node server `mdadm RAID6 + dm-crypt/LUKS + LVM + Btrfs` (třetí sloupec srovnávací tabulky). Z něj se migruje; po migraci poslouží jako geo DR cíl ve druhé lokalitě. Doplněk: cloudové úložiště s tvrdým měsíčním transfer stropem.
@@ -18,8 +18,8 @@ Tohle není obecné srovnání „co je lepší". Je to reálná rozhodovací an
 
 ## Shrnutí (TL;DR)
 
-1. ⭐ **Doporučení: ZFS na Proxmox VE, ne Ceph** — pro profil „1–3 uzly, solo admin, cost-conscious, bulk + pár služeb, fázování" vyhrává ZFS téměř ve všem, co reálně pálí: **dává plnou hodnotu už od 1 uzlu** (Ceph je na 1 uzlu anti-pattern), **řádově méně RAM** (přímá úspora v DDR4 krizi), jednodušší provoz, čisté DR přes `send`/`recv`, lepší kapacitní efektivita na malé škále (RAIDZ2 75 % vs Ceph `size=3` 33 %).
-2. **Čtyři z mých šesti původních výhrad ke ZFS se rozpustily** (§2): mixed-size (→ nový vdev), „pomalost" (→ SMR + plný pool, ne ZFS samo), shrink (→ platí jen pro **pool**, ne pro **ZVOL**), tichá korupce (→ ZFS to řeší nativně; stávající mdadm+Btrfs stack by to dohnal jen vrstvou `dm-integrity`). **Dvě potvrzené trvají** (§2.5): procházení snapshotů = mount každého zvlášť (design nezměněn) a panic bug snapshot automountu — upstream fix až 12/2025 (PR #17943), v LTS řadě 2.3.x k 8/2026 chybí. Mitigace jsou jednoduché (`snapdir=hidden` je default, `zfs diff`/clone), ale je to nejslabší kus ZFS na Linuxu.
+1. ⭐ **Doporučení: ZFS na Proxmox VE, ne Ceph** — pro profil „1–3 uzly, solo admin, cost-conscious, bulk + pár služeb, fázování“ vyhrává ZFS téměř ve všem, co reálně pálí: **dává plnou hodnotu už od 1 uzlu** (Ceph je na 1 uzlu anti-pattern), **řádově méně RAM** (přímá úspora v DDR4 krizi), jednodušší provoz, čisté DR přes `send`/`recv`, lepší kapacitní efektivita na malé škále (RAIDZ2 75 % vs Ceph `size=3` 33 %).
+2. **Čtyři z mých šesti původních výhrad ke ZFS se rozpustily** (§2): mixed-size (→ nový vdev), „pomalost“ (→ SMR + plný pool, ne ZFS samo), shrink (→ platí jen pro **pool**, ne pro **ZVOL**), tichá korupce (→ ZFS to řeší nativně; stávající mdadm+Btrfs stack by to dohnal jen vrstvou `dm-integrity`). **Dvě potvrzené trvají** (§2.5): procházení snapshotů = mount každého zvlášť (design nezměněn) a panic bug snapshot automountu — upstream fix až 12/2025 (PR #17943), v LTS řadě 2.3.x k 8/2026 chybí. Mitigace jsou jednoduché (`snapdir=hidden` je default, `zfs diff`/clone), ale je to nejslabší kus ZFS na Linuxu.
 3. **HA nezávisí na volbě engine, ale na počtu uzlů** (§4). Na 1 uzlu není HA s ničím (ani s Ceph). ZFS HA řeší **Proxmox ZFS replikace + HA manager + arbitr** (orchestrovaný failover, RPO ~1 min) — pro daný use-case dostatečné. Přes WAN neexistuje real-time HA s žádným enginem.
 4. **Ceph si drží reálnou výhodu jen ve třech věcech** (§7, §9): distribuované/shared storage (živá migrace VM, **K8s RWX PV**), nativní **S3/RGW** a automatický self-heal přes uzly. **Oba relevantní body prověřeny (§14) a ani jeden Ceph nevyžaduje** — monitoring HA (Zabbix/Grafana/Loki) se řeší app-level + RWO, Kopia zálohy S3 nepotřebují → **volba padla na ZFS**.
 5. **Migrační past ZFS→Ceph je reálná, ale volitelná** (§10): existuje jen tehdy, když je cílem Ceph. Zůstat u ZFS celou cestu (1 uzel → +2 uzly + replikace) past ruší — uzel 1 se nikdy nemaže.
@@ -76,7 +76,7 @@ Symboly: ✅ silná stránka · 🟡 jde s výhradou / kompromis · ❌ slabina 
 
 ### Co z toho plyne
 
-- **ZFS vede** v nasazení, nákladech, jednoduchosti, kapacitě, fázování a DR — ve všem, co v pozici „solo, cost-conscious, fázovaný start" pálí nejvíc.
+- **ZFS vede** v nasazení, nákladech, jednoduchosti, kapacitě, fázování a DR — ve všem, co v pozici „solo, cost-conscious, fázovaný start“ pálí nejvíc.
 - **Vyrovnané** je to v podstatném: ochrana dat proti korupci, VM failover, šifrování, blokové zařízení.
 - **Ceph vede** v distribuovaném PV (K8s RWX), nativním S3, RPO 0, auto-recovery přes uzly a škálování.
 - **Výchozí řešení** (poslední sloupec) má tři slabiny, kvůli kterým se migruje: **neopravuje tichou korupci** (jen ji detekuje přes Btrfs), **nemá HA** a jsou to **čtyři vrstvy**. ZFS všechny tři řeší v jedné vrstvě.
@@ -91,29 +91,29 @@ Z Ceph výher se tohoto projektu reálně týkají jen **dvě — K8s RWX PV a n
 
 Spouštěč byl nápad **postavit zatím jen 1 uzel** a škálovat časem (ceny RAM a HDD v roce 2026 vysoké, DDR4 ECC EOL). To odhalilo zásadní konflikt:
 
-- **„1-node Ceph cluster" je protimluv.** Ceph dává hodnotu z distribuce a self-healu *přes uzly*; na jednom uzlu (`size=1`) platíš celou jeho komplexitu (MON/MGR/OSD, RAM ~4 GB/OSD, ladění) a nedostaneš nic, co by ZFS nedalo jednodušeji — vlastnosti, kvůli kterým Ceph existuje, na jednom uzlu mizí.
+- **„1-node Ceph cluster“ je protimluv.** Ceph dává hodnotu z distribuce a self-healu *přes uzly*; na jednom uzlu (`size=1`) platíš celou jeho komplexitu (MON/MGR/OSD, RAM ~4 GB/OSD, ladění) a nedostaneš nic, co by ZFS nedalo jednodušeji — vlastnosti, kvůli kterým Ceph existuje, na jednom uzlu mizí.
 - Naopak **ZFS je od návrhu single-node** a škáluje replikací → sedí na fázování 1 → 2 → 3 uzly bez mezikroku.
 
-Tím se otázka „jak dělat Ceph fázovaně" změnila na **„potřebuješ vůbec Ceph, nebo je to over-engineering pro tvůj kontext?"**
+Tím se otázka „jak dělat Ceph fázovaně“ změnila na **„potřebuješ vůbec Ceph, nebo je to over-engineering pro tvůj kontext?“**
 
 ## 2. Moje původní výhrady ke ZFS a jak dopadly
 
 | # | Výhrada | Verdikt | Řešení |
 |---|---------|---------|--------|
 | 1 | ZFS vyžaduje stejně velké disky (jinak plýtvá) | 🟡 platí **uvnitř vdev**, ne napříč poolem | Růst uvnitř generace = stejná velikost; generační skok (větší disky) = **nový vdev**. RAIDZ Expansion (OpenZFS 2.3, 2025) přidá disk po jednom. |
-| 2 | ZFS byl vždy „velmi pomalý" | ❌ není vlastnost ZFS | Můj dřívější test běžel na **SMR disku s téměř plným poolem** = worst case (viz §2.2). Bulk workload na CMR + dost RAM je rychlý. |
+| 2 | ZFS byl vždy „velmi pomalý“ | ❌ není vlastnost ZFS | Můj dřívější test běžel na **SMR disku s téměř plným poolem** = worst case (viz §2.2). Bulk workload na CMR + dost RAM je rychlý. |
 | 3 | ZFS neumí shrink (jen expand) | 🟡 platí pro **pool/RAIDZ vdev**, **ne pro ZVOL** | Shrink RAIDZ vdev nejde; shrink **ZVOL** (blokové zařízení) jde (§6). Dvě různé operace! |
 | 4 | (výchozí server) tichá korupce se detekuje, ale neopraví | ✅ reálná díra | `dm-integrity` (stávající stack) nebo ZFS nativně (§3). |
-| 5 | Procházení snapshotů = mount každého zvlášť (tehdy „hodně přimountovaných zařízení") | ✅ **platí dodnes** | Design nezměněn: `.zfs/snapshot/<x>` = automount, N snapshotů = N mountů; novinka je jen auto-odpojení po 5 min (`zfs_expire_snapshot`). Obcházet přes `zfs diff`/`clone`/`send` (§2.5). |
+| 5 | Procházení snapshotů = mount každého zvlášť (tehdy „hodně přimountovaných zařízení“) | ✅ **platí dodnes** | Design nezměněn: `.zfs/snapshot/<x>` = automount, N snapshotů = N mountů; novinka je jen auto-odpojení po 5 min (`zfs_expire_snapshot`). Obcházet přes `zfs diff`/`clone`/`send` (§2.5). |
 | 6 | Kernel panic při mountu mnoha snapshotů | ✅ **reálné; upstream fix až 12/2025** | Dlouhá historie (#13131, #13327), poslední inkarnace #17659 (i na Proxmoxu); oprava PR #17943 v master, v LTS 2.3.x k 8/2026 chybí → mitigace v §2.5. |
 
 ### 2.1 Mixed-size disky
 
 - **Uvnitř RAIDZ vdev:** smallest disk wins, větší se ořízne → plýtvání. Pravda.
-- **Napříč poolem:** pool = sada vdevů; `vdev1 = 5× 30 TB` + později `vdev2 = 5× 60 TB` je v pořádku. „Za pár let větší disky" se řeší novým vdev.
-- **RAIDZ Expansion (2.3, led. 2025):** přidání jednoho disku do existujícího RAIDZ vdev online. Caveat: stará data drží **starý data:parity poměr**, dokud nejsou přepsána (kapacita roste inkrementálně); nemění RAID level ani ashift. Přesně pokrývá plán „růst 1+2 → 2+2 → 3+2" (= RAIDZ2 s rostoucím počtem datových jednotek).
+- **Napříč poolem:** pool = sada vdevů; `vdev1 = 5× 30 TB` + později `vdev2 = 5× 60 TB` je v pořádku. „Za pár let větší disky“ se řeší novým vdev.
+- **RAIDZ Expansion (2.3, led. 2025):** přidání jednoho disku do existujícího RAIDZ vdev online. Caveat: stará data drží **starý data:parity poměr**, dokud nejsou přepsána (kapacita roste inkrementálně); nemění RAID level ani ashift. Přesně pokrývá plán „růst 1+2 → 2+2 → 3+2“ (= RAIDZ2 s rostoucím počtem datových jednotek).
 
-**Kapacitní cena inkrementálního růstu (příklad).** Pokud disky přidáváš po jednom vždy při ~80 % zaplnění, drží každá „vrstva" dat parity poměr z doby zápisu — a plnou efektivitu cílové šířky nedostaneš, dokud data nepřepíšeš. Modelový růst RAIDZ2 ze 4 na 7 disků po 32 TB (80 % fill = 80 % raw, přidání při dosažení):
+**Kapacitní cena inkrementálního růstu (příklad).** Pokud disky přidáváš po jednom vždy při ~80 % zaplnění, drží každá „vrstva“ dat parity poměr z doby zápisu — a plnou efektivitu cílové šířky nedostaneš, dokud data nepřepíšeš. Modelový růst RAIDZ2 ze 4 na 7 disků po 32 TB (80 % fill = 80 % raw, přidání při dosažení):
 
 | Fáze | Disků | Poměr | Přidáno dat | Raw obsazeno |
 |---|---|---|---|---|
@@ -133,10 +133,10 @@ Srovnání při 7 discích a 80 % fill (224 TB raw):
 
 Caveatem přijdeš o **~26 TB (~20 %)** proti čistému poli, ale proti Ceph `size=3` pořád vedeš o **~42 TB** — caveat náskok ZFS zmenší, neruší. Ztráta **není trvalá**: jeden `zfs send -R` (rewrite) sjednotí vše na 5:2 → ~128 TB, a při tom defragmentuje i zachová snapshoty. Velký podíl ztráty jde za **startem na 4 discích** (2:2 = 50 %, nejhorší poměr); start na 6+ discích ji zhruba půlí. Čísla jsou teoretická (bez ZFS padding/metadata overheadu ~pár %), poměry drží.
 
-### 2.2 „Pomalost" — příčiny
+### 2.2 „Pomalost“ — příčiny
 
-- **SMR disky** (shingled): resilver benchmark **CMR 14,5 h vs SMR 9,5 dne (16×)**; random I/O SMR je „utterly terrible", CoW walk resilveru to zhoršuje. SMR do RAID/NAS nepatří — potopí i Btrfs a Ceph.
-- **Plný pool** (CoW): nad ~80 % fillu roste fragmentace (ZFS nemá defragmentaci — „block pointer rewrite" je nedodaný od 2015), výkon velkých bloků padá.
+- **SMR disky** (shingled): resilver benchmark **CMR 14,5 h vs SMR 9,5 dne (16×)**; random I/O SMR je „utterly terrible“, CoW walk resilveru to zhoršuje. SMR do RAID/NAS nepatří — potopí i Btrfs a Ceph.
+- **Plný pool** (CoW): nad ~80 % fillu roste fragmentace (ZFS nemá defragmentaci — „block pointer rewrite“ je nedodaný od 2015), výkon velkých bloků padá.
 - **RAIDZ = IOPS jednoho disku** pro random workload (1 vdev). Pro sekvenční bulk (média, foto, backup) je rychlé.
 - **Mitigace:** CMR disky, dost RAM pro ARC, SLOG pro sync writes, pool < 80 %, a **separátní SSD/NVMe pool pro VM** (random) oddělený od HDD bulk poolu.
 
@@ -156,7 +156,7 @@ Obě moje historické zkušenosti (výhrady 5 a 6) se potvrdily — první jako 
 
 **Panic bug (ověřeno 2026-08-01):**
 
-- Historie: [#13131](https://github.com/openzfs/zfs/issues/13131) „Kernel Panic and DoS on massive amounts of snapshot mount/umount" (2022, OpenZFS 2.1.2, repro Samba + hodně snapshotů), [#13327](https://github.com/openzfs/zfs/issues/13327) (procesy zaseklé v kernelu, rostoucí load).
+- Historie: [#13131](https://github.com/openzfs/zfs/issues/13131) „Kernel Panic and DoS on massive amounts of snapshot mount/umount“ (2022, OpenZFS 2.1.2, repro Samba + hodně snapshotů), [#13327](https://github.com/openzfs/zfs/issues/13327) (procesy zaseklé v kernelu, rostoucí load).
 - Poslední inkarnace: [#17659](https://github.com/openzfs/zfs/issues/17659) (8/2025) — `VERIFY(avl_find(...)) failed / PANIC at avl.c:625:avl_add()` v `zfsctl_snapshot_mount` ← `zpl_snapdir_automount`; Debian 13 / OpenZFS 2.3.2, v threadu hlášeno i na **Proxmox VE 9 (OpenZFS 2.3.4)** se `snapdir=visible` a ~57 snapshoty — panic spouštěl jakýkoli `ls`/`find`/`stat` nad `.zfs/snapshot`. Spouštěč: souběžný automount téhož snapshotu (typicky dva mount namespacy — systemd unit, kontejner). Technicky nejde o klasický kernel panic, ale `spl_panic`/VERIFY assert — vlákno usne navždy, vše další nad ZFS uvízne v D stavu, stroj postupně umře, pomůže jen tvrdý reboot.
 - **Oprava:** [PR #17943](https://github.com/openzfs/zfs/pull/17943) (per-entry mutex) — **merged do master 8. 12. 2025**. Podle changelogů se ale do LTS řady 2.3.x (ověřeno 2.3.6–2.3.8) k 8/2026 nedostala → na distribucích s 2.3.x (vč. Proxmox VE 9) mitigace stále platí.
 - Příbuzné: [#18073](https://github.com/openzfs/zfs/issues/18073) (12/2025) — deadlock souběžného `zfs recv` × `du` nad `.zfs/snapshot` přijímaného FS (`z_teardown_lock`); oprava #18415 vyšla v releasech 5/2026. Relevantní pro DR přes `send`/`recv`: na přijímací straně nebrouzdat `.zfs` během replikačních oken.
@@ -168,16 +168,16 @@ Obě moje historické zkušenosti (výhrady 5 a 6) se potvrdily — první jako 
 3. Žádné mount namespacy nad `.zfs` (kontejnery, systemd `BindReadOnlyPaths`, chroot) — přesný trigger #17659.
 4. Na přijímací straně replikace nebrouzdat `.zfs` během příjmu (#18073).
 
-**Srovnání s alternativami:** Btrfs snapshot = subvolume uvnitř už připojeného FS, žádné mounty (caveat: každý subvolume má vlastní `st_dev` → `find -xdev`/`du -x`/`rsync -x`/`tar --one-file-system` se na hranici zastaví). CephFS = `.snap` adresář v každém adresáři, bez mountů, rekurzivní — nejelegantnější; RBD naopak nejhorší (snap → map/clone → mount ručně, crash-consistency bez `fsfreeze`). **Pro workflow „grep přes celou historii snapshotů" je ZFS z trojice nejtěžkopádnější a historicky nejrizikovější** — jde to, ale jen disciplinovaně.
+**Srovnání s alternativami:** Btrfs snapshot = subvolume uvnitř už připojeného FS, žádné mounty (caveat: každý subvolume má vlastní `st_dev` → `find -xdev`/`du -x`/`rsync -x`/`tar --one-file-system` se na hranici zastaví). CephFS = `.snap` adresář v každém adresáři, bez mountů, rekurzivní — nejelegantnější; RBD naopak nejhorší (snap → map/clone → mount ručně, crash-consistency bez `fsfreeze`). **Pro workflow „grep přes celou historii snapshotů“ je ZFS z trojice nejtěžkopádnější a historicky nejrizikovější** — jde to, ale jen disciplinovaně.
 
 **Dopad na verdikt:** jádra use-case (bulk zápisy/čtení, `send`/`recv` DR, Proxmox replikace, PBS zálohy) se automount vrstvy nedotýkají a mitigace jsou triviální — samo o sobě to verdikt nepřeklápí. Je to ale první potvrzený bod, kde CephFS i výchozí Btrfs stack ZFS reálně porážejí — do rozhodnutí (§14) vstupuje jako vědomě nesené riziko s mitigacemi výše.
 
-### 2.6 OpenZFS na Linuxu vs „původní ZFS" — parita a integrační rozdíly (doplněno 2026-08-01)
+### 2.6 OpenZFS na Linuxu vs „původní ZFS“ — parita a integrační rozdíly (doplněno 2026-08-01)
 
 Feature parita je dnes plná — od sloučení kódových bází (OpenZFS 2.0, 2020) je Linux de facto referenční implementace a FreeBSD 13+ jede tentýž kód; nativní šifrování dokonce vzniklo v ZFS-on-Linux (0.8, 2019). Rozdíly zůstaly v integraci s OS:
 
 - **NFSv4 ACL na Linuxu nejsou vynutitelné** — linuxový VFS je neumí, reálně se jede POSIX ACL (`acltype=posixacl`); `acltype=nfsv4` je věc FreeBSD ([#4966](https://github.com/openzfs/zfs/issues/4966), WIP [PR #13186](https://github.com/openzfs/zfs/pull/13186)). Jediná skutečná funkční mezera. Pro tento projekt (domácí Samba/NFS) POSIX ACL stačí.
-- **Kernel modul mimo mainline (CDDL vs GPL)** — na čistém Debianu DKMS a riziko „kernel bez modulu" po upgrade; **na Proxmoxu odpadá** (PVE dodává kernel a ZFS společně otestované).
+- **Kernel modul mimo mainline (CDDL vs GPL)** — na čistém Debianu DKMS a riziko „kernel bez modulu“ po upgrade; **na Proxmoxu odpadá** (PVE dodává kernel a ZFS společně otestované).
 - **ARC žije mimo page cache** → `zfs_arc_max` nastavit ručně (jinak dvojité kešování a tahanice o RAM pod tlakem).
 - **Boot environments** nejsou v základu (FreeBSD má `bectl`; na Linuxu `zfsbootmenu`/`zectl`) — pro PVE nepodstatné.
 - **Nativní šifrování — dvě výhrady nezávislé na OS:** nešifruje metadata poolu (názvy datasetů a snapshotů, struktura, velikosti, časy zůstávají čitelné) a jde o nejméně prověřenou část kódu — send/recv šifrovaných datasetů neslo dlouholetou historii korupčních bugů (hlavní issue #12014 z 2021 uzavřen až 2025; opravy míří do 2.2.8/2.3.3, §15). → Potvrzuje volbu **LUKS + Tang** z §12 (šifruje vše včetně metadat); případné `send --raw` zálohy testovat obnovou.
@@ -188,24 +188,24 @@ Hlavní bolest mého stávajícího serveru (`mdraid + dm-crypt/LUKS + LVM + Btr
 
 **Řešení jsou dvě, obě vyžadují rebuild pole:**
 
-1. **`dm-integrity` pod mdraid** (nebo LVM RAID s `--raidintegrity y`): dá každému sektoru checksum → při korupci vrátí **chybu čtení místo špatných dat** → RAID6 dopočítá z parity a přepíše. Převádí „tichou" korupci na „hlasitou", kterou RAID umí. Cena: ~10–30 % write overhead, +1 vrstva.
+1. **`dm-integrity` pod mdraid** (nebo LVM RAID s `--raidintegrity y`): dá každému sektoru checksum → při korupci vrátí **chybu čtení místo špatných dat** → RAID6 dopočítá z parity a přepíše. Převádí „tichou“ korupci na „hlasitou“, kterou RAID umí. Cena: ~10–30 % write overhead, +1 vrstva.
 2. **ZFS** to má vestavěné nativně (checksum + redundance + self-heal v jedné vrstvě, 75 % efektivita u RAIDZ2).
 
-**Důsledek pro rozhodnutí:** protože oprava korupce **stejně vyžaduje rebuild pole**, padá argument „aspoň nemusím nic měnit". Rebuild bude tak jako tak — otázka je jen na co (ZFS vs mdadm/LVM+integrity).
+**Důsledek pro rozhodnutí:** protože oprava korupce **stejně vyžaduje rebuild pole**, padá argument „aspoň nemusím nic měnit“. Rebuild bude tak jako tak — otázka je jen na co (ZFS vs mdadm/LVM+integrity).
 
 ## 4. HA: nezávisí na engine, ale na počtu uzlů
 
-- **1 uzel = žádné HA s ničím** (ani single-node Ceph — není na co failovat). HA je otázka **„1 uzel vs 2 uzly", ne „ZFS vs Ceph".**
+- **1 uzel = žádné HA s ničím** (ani single-node Ceph — není na co failovat). HA je otázka **„1 uzel vs 2 uzly“, ne „ZFS vs Ceph“.**
 - **ZFS HA** (Proxmox VE):
   - **Proxmox ZFS replikace (`pvesr`) + HA manager** — async replika zvolů (interval min. 1 min) + automatický restart VM na jiném uzlu z poslední repliky. Měkké HA (RPO ~1 min, failover = restart, ne živá migrace). Pro média/foto/dokumenty/běžné služby dostatečné.
   - **DRBD-over-ZFS** — sync replika lokálního páru (RPO 0), tvrdé HA pro DB. Komplexnější.
 - **Přes WAN žádné real-time HA s žádným enginem** — synchronní zápisy přes rezidenční WAN (latence, jitter, výpadky) jsou showstopper. Geo úroveň je vždy jen async DR.
 
-### 4.1 „Orchestrovaný failover" (co to znamená)
+### 4.1 „Orchestrovaný failover“ (co to znamená)
 
 Ceph je **shared storage** → data dostupná ze všech uzlů → failover = triviální restart VM jinde. ZFS je **shared-nothing** → replika na druhém uzlu je samostatný, zpožděný, read-only pool. Failover proto vyžaduje vrstvu nad storage (orchestrátor), která provede: **detekci → fencing → promotion repliky → start služby → přesměrování → (po návratu) failback**. Proxmox HA manager to zvládne **automaticky** (orchestrovaný ≠ ruční), daň je RPO > 0, restart místo živé migrace, a fencing/failback komplexita.
 
-### 4.2 Scénář „uzel 1 shoří" (řešení bez Ceph)
+### 4.2 Scénář „uzel 1 shoří“ (řešení bez Ceph)
 
 Cílová sestava celá na ZFS:
 
@@ -232,13 +232,13 @@ Uzel 1 shoří → VM naskočí na uzel 2 (RPO ~1 min), bulk se obnoví z geo DR
 **Failback** (návrat na opravený uzel 1) je *plánovaný*, proto **bez výpadku**: nastaví se replikace uzel 2 → uzel 1 (naplní ho), po doběhnutí `qm migrate <vmid> node1 --online` → **živá migrace** přenese jen finální delta + stav RAM → VM se přepne bez přerušení. Jediné okno nedostupnosti v celém cyklu je původní failover.
 
 **Kolik HA zapnout** — rozděl VM do tří kbelíků:
-- „Musí běžet pořád" (Plex, *arr, Nextcloud, DNS…) → HA + replikace 1 min.
-- „Nevadí delší výpadek" → bez HA, jen zálohy do PBS.
-- „Ani minuta ztráty" (DB s aktivními transakcemi) → doplnit **app-level replikací** (Patroni ap.), ne kvůli tomu stavět Ceph.
+- „Musí běžet pořád“ (Plex, *arr, Nextcloud, DNS…) → HA + replikace 1 min.
+- „Nevadí delší výpadek“ → bez HA, jen zálohy do PBS.
+- „Ani minuta ztráty“ (DB s aktivními transakcemi) → doplnit **app-level replikací** (Patroni ap.), ne kvůli tomu stavět Ceph.
 
 ## 5. Deduplikace: neřešit na storage, řeší ji PBS
 
-- **ZFS legacy dedup** = pověstných ~5 GB RAM/TB (pro 150 TiB nereálné). **Fast Dedup (OpenZFS 2.3, 2025)** to zmírnil (DDT log/prefetch/prune/quota, DDT na special vdev), ale i tak je pomalejší než žádná dedup. Konsenzus: „dedup je teď dobrá — a stejně ji nepoužívej."
+- **ZFS legacy dedup** = pověstných ~5 GB RAM/TB (pro 150 TiB nereálné). **Fast Dedup (OpenZFS 2.3, 2025)** to zmírnil (DDT log/prefetch/prune/quota, DDT na special vdev), ale i tak je pomalejší než žádná dedup. Konsenzus: „dedup je teď dobrá — a stejně ji nepoužívej.“
 - **Pro reálná data dedup skoro nic nedá:** média i foto jsou už komprimovaná (ratio ~1.0), dokumenty jsou malý objem.
 - **Kde dedup dává smysl (VM images, zálohy) → řeší ji PBS** (Proxmox Backup Server) na aplikační vrstvě: chunk-based content-defined dedup napříč všemi zálohami, RAM-nenáročný (běží při záloze, ne inline na storage). Plus inkrementální zálohy (dirty-bitmap), komprese, client-side šifrování, retence, verify (integrity), remote sync.
 - **Ceph** nemá produkční inline dedup (RADOS inline dedup je experimentální; zralé je jen RGW object dedup pro S3).
@@ -268,7 +268,7 @@ Projekt zvažuje Kubernetes. To je oblast, kde Ceph má reálnou výhodu a ktero
 
 1. **Plná hodnota od 1 uzlu + žádná migrační past** (§10) — sedí na fázování.
 2. **Řádově méně RAM** — v mém návrhu vychází ZFS uzel na ~64 GB, plný Ceph uzel na 96–128 GB. Přímá úspora v DDR4 krizi.
-3. **Jednoduchost** — `zpool`/`zfs`, jedna vrstva, provoz „ve 3 ráno" pro solo admina bez on-call.
+3. **Jednoduchost** — `zpool`/`zfs`, jedna vrstva, provoz „ve 3 ráno“ pro solo admina bez on-call.
 4. **`send`/`recv`** — nejčistší inkrementální, verzované, bit-exact DR (na DR server).
 5. **Kapacitní efektivita** — RAIDZ2 75 % vs Ceph `size=3` 33 %; u 150 TiB desítky disků rozdílu.
 6. **Levnější síť** — Ceph chce 10 GbE povinně; ZFS single-node žádnou cluster síť, replikace i na 1 GbE.
@@ -323,7 +323,7 @@ ZFS a Ceph jsou nekompatibilní světy — nejde konvertovat, jen kopírovat (zt
 
 ## 13. Fill ratio a reálně použitelná kapacita
 
-Fill strop je u obou podobný (~80 %), takže **sám o sobě velký rozdíl nedělá** — hlavní kapacitní rozdíl je replikační overhead (viz „Srovnání v přehledu", řádek Kapacitní efektivita).
+Fill strop je u obou podobný (~80 %), takže **sám o sobě velký rozdíl nedělá** — hlavní kapacitní rozdíl je replikační overhead (viz „Srovnání v přehledu“, řádek Kapacitní efektivita).
 
 - **ZFS:** ~80 % kvůli výkonu/fragmentaci (CoW); nad to zpomaluje (ne ztráta dat), nad ~95 % vážně. Praxe (45Drives) uvádí reálný strop spíš ~90 %; nad 90 % ale existuje i hlášený případ selhání `zpool import` po výpadku napájení ([#18041](https://github.com/openzfs/zfs/issues/18041)) — strop 80 % má tedy zdravou rezervu.
 - **Ceph:** thresholdy `nearfull` 85 %, `backfillfull` 90 %, `full` 95 % (zápisy stop). Navíc **rezerva na self-heal** — výpadek OSD/uzlu se musí vejít na zbývající → prakticky ~75–80 %, **na málo uzlech míň** (výpadek 1 ze 3 = 33 % musí mít kam). ZFS tuto rezervu nepotřebuje.
@@ -359,7 +359,7 @@ Druhý doplněk vychází z nezávislé deep-research analýzy spolehlivosti ZFS
 | Kdy | Co | Vrstva | Oprava |
 |---|---|---|---|
 | 2016 | **hole_birth** — tichá korupce inkrementálních `zfs send` streamů: příjemce nehlásí chybu, ale cíl ≠ zdroj (místo nul dorazí stará data; [#4996](https://github.com/openzfs/zfs/issues/4996), [Debian #830824](https://bugs.debian.org/cgi-bin/bugreport.cgi?bug=830824)) | send/recv | ZoL 0.6.5.8 / 0.7.0-rc1: sender defaultně ignoruje vadná hole_birth metadata ([FAQ](https://openzfs.github.io/openzfs-docs/Project%20and%20Community/FAQ%20hole%20birth.html)) |
-| 3–4/2018 | Regrese v 0.7.7: „mizející" soubory (ztracené hardlinky) + falešné ENOSPC při kopírování adresářů s mnoha soubory; reálná ztráta dat dle [The Register](https://www.theregister.com/2018/04/10/zfs_on_linux_data_loss_fixed/) nulová | ZPL/VFS | urgentní 0.7.8 za 3 dny (revert) |
+| 3–4/2018 | Regrese v 0.7.7: „mizející“ soubory (ztracené hardlinky) + falešné ENOSPC při kopírování adresářů s mnoha soubory; reálná ztráta dat dle [The Register](https://www.theregister.com/2018/04/10/zfs_on_linux_data_loss_fixed/) nulová | ZPL/VFS | urgentní 0.7.8 za 3 dny (revert) |
 | 2021→2025 | Native encryption × send/recv ([#12014](https://github.com/openzfs/zfs/issues/12014) a příbuzné): permanent errors šifrovaných snapshotů při zálohách | šifrování | uzavřeno až 2025 (PR #17340; opravy 2.2.8/2.3.3) |
 | 11/2023 | **Dirty dnode** ([#15526](https://github.com/openzfs/zfs/issues/15526)): tichá korupce při kopírování (trigger coreutils 9.x + block cloning), **latentní ~od 2013**, scrub ji neviděl | core (dnode check) | 2.2.2 / 2.1.14 (12/2023) |
 
@@ -369,26 +369,26 @@ Druhý doplněk vychází z nezávislé deep-research analýzy spolehlivosti ZFS
 
 **Ceph — core zralý na obří škále, ale rizika přesně tam, kam tento projekt mířil:**
 
-- **CephFS snapshoty + multi-MDS = historicky nejkřehčí oblast.** Oficiální best practice ještě v éře Mimic (2018) zněla „[use a single active MDS and do not use snapshots](https://docs.ceph.com/en/mimic/cephfs/best-practices/)"; dnes jsou obě featury podporované, ale provozní incidenty se táhnou napříč verzemi: [#53192](https://tracker.ceph.com/issues/53192) (11/2021, Nautilus) — se snapshoty propad `rm -rf` ze ~400 na ~25 unlinků/s (`SnapRealm::split_at`, 100 % CPU MDS), degradace přetrvala i po smazání všech snapshotů a plné dořešení přišlo až s v20.2.0 (Tentacle, 11/2025) — **4 roky**; [Silvenga 7/2024](https://silvenga.com/posts/notes-on-cephfs-metadata-recovery/) — korupce MDS journalu při snapshot trimmingu po hromadném mazání (multi-MDS), pády MDS a riskantní recovery; [Rook #15273](https://github.com/rook/rook/issues/15273) (1/2025, Squid 19.2.0) — skupinové snapshoty ~20 PVC → latenční špičky a MDS „behind on trims". Pro projekt se snapshoty jako centrálním workflow přímý zásah — a na rozdíl od ZFS automount bugu (§2.5, má merged fix) jde o chování architektury MDS, ne o jeden bug s opravou.
+- **CephFS snapshoty + multi-MDS = historicky nejkřehčí oblast.** Oficiální best practice ještě v éře Mimic (2018) zněla „[use a single active MDS and do not use snapshots](https://docs.ceph.com/en/mimic/cephfs/best-practices/)“; dnes jsou obě featury podporované, ale provozní incidenty se táhnou napříč verzemi: [#53192](https://tracker.ceph.com/issues/53192) (11/2021, Nautilus) — se snapshoty propad `rm -rf` ze ~400 na ~25 unlinků/s (`SnapRealm::split_at`, 100 % CPU MDS), degradace přetrvala i po smazání všech snapshotů a plné dořešení přišlo až s v20.2.0 (Tentacle, 11/2025) — **4 roky**; [Silvenga 7/2024](https://silvenga.com/posts/notes-on-cephfs-metadata-recovery/) — korupce MDS journalu při snapshot trimmingu po hromadném mazání (multi-MDS), pády MDS a riskantní recovery; [Rook #15273](https://github.com/rook/rook/issues/15273) (1/2025, Squid 19.2.0) — skupinové snapshoty ~20 PVC → latenční špičky a MDS „behind on trims“. Pro projekt se snapshoty jako centrálním workflow přímý zásah — a na rozdíl od ZFS automount bugu (§2.5, má merged fix) jde o chování architektury MDS, ne o jeden bug s opravou.
 **Doložené korupční bugy Ceph — timeline** (doplněno 2026-08-02, jako tabulka 2026-08-06):
 
 | Kdy | Co | Vrstva | Oprava |
 |---|---|---|---|
-| 11/2019 | Fastbmap alokátor v 14.2.3/14.2.4 — RocksDB checksum errors; trefoval **jen OSD s odděleným DB/WAL zařízením** (doporučenou konfiguraci „block.db na SSD"; [advisory](https://lists.ceph.io/hyperkitty/list/ceph-users@ceph.io/thread/X6TNSDQK5DVKO6XFJW3DMJAJV63PLDYM/)) | BlueStore | expedovaná 14.2.5 |
+| 11/2019 | Fastbmap alokátor v 14.2.3/14.2.4 — RocksDB checksum errors; trefoval **jen OSD s odděleným DB/WAL zařízením** (doporučenou konfiguraci „block.db na SSD“; [advisory](https://lists.ceph.io/hyperkitty/list/ceph-users@ceph.io/thread/X6TNSDQK5DVKO6XFJW3DMJAJV63PLDYM/)) | BlueStore | expedovaná 14.2.5 |
 | 5/2020 | `bluefs_preextend_wal_files` → korupce RocksDB WAL ([#45613](https://tracker.ceph.com/issues/45613)) | BlueFS | volba vypnuta, fix 15.2.x |
 | 9/2020 | *Edinburgh:* korupce MDS journalu po síťové rekonfiguraci → kaskáda pádů MDS, týden disaster recovery na ~40TB FS; data zachráněna ([postmortem](https://blogs.ed.ac.uk/mhagdorn/2020/09/09/anatomy-of-a-cephfs-disaster/)) | CephFS/MDS | — (provozní havárie) |
 | 2021 | BlueFS špatně zvládal **>4GB zápisy z RocksDB** → potenciální korupce ([openSUSE advisory 5/2021](https://osv.dev/vulnerability/openSUSE-SU-2021:0672-1)) | BlueFS | 14.2.22 / 15.2.13 |
-| 10–12/2021 | Pacific **OMAP konverze** při upgradu: `quick_fix/repair` → poškozené OMAP klíče ([#53062](https://tracker.ceph.com/issues/53062), „IMPORTANT NOTICE") | upgrade cesta | 16.2.7 (12/2021) |
+| 10–12/2021 | Pacific **OMAP konverze** při upgradu: `quick_fix/repair` → poškozené OMAP klíče ([#53062](https://tracker.ceph.com/issues/53062), „IMPORTANT NOTICE“) | upgrade cesta | 16.2.7 (12/2021) |
 | 7/2024 | *Silvenga:* korupce MDS journalu při snapshot trimmingu po hromadném mazání; zachránily zálohy ([postmortem](https://silvenga.com/posts/notes-on-cephfs-metadata-recovery/)) | CephFS/MDS | — (provozní havárie) |
 
-Vzorec: **RADOS core na zdravém HW doložený případ „sám ztratil data" nemá** — čisté korupční bugy se koncentrují do 2019–2021 (zrání BlueStore: BlueFS↔RocksDB interakce, upgrade konverze); co je čerstvé (2024), je MDS/CephFS metadata vrstva. Každý z bugů ale vyžadoval včasnou reakci na advisory (sledovat ceph-users, nejezdit na point-release první den) = další položka provozní daně solo admina. Srovnání s tabulkou ZFS výše: ZFS jich má méně, ale dva tiché.
+Vzorec: **RADOS core na zdravém HW doložený případ „sám ztratil data“ nemá** — čisté korupční bugy se koncentrují do 2019–2021 (zrání BlueStore: BlueFS↔RocksDB interakce, upgrade konverze); co je čerstvé (2024), je MDS/CephFS metadata vrstva. Každý z bugů ale vyžadoval včasnou reakci na advisory (sledovat ceph-users, nejezdit na point-release první den) = další položka provozní daně solo admina. Srovnání s tabulkou ZFS výše: ZFS jich má méně, ale dva tiché.
 - **Většina reálných ztrát dat v Ceph = operátorské chyby, ne bugy:** `min_size=1` (nejčastější), `size=2`, zásahy do OSD během degradace/backfillu, kopírované `--yes-i-really-mean-it` příkazy, ignorovaný HEALTH_WARN. Riziko roste u **solo admina bez každodenní Ceph rutiny** — přesně tento profil (§8).
 - **Enterprise SSD s PLP prakticky povinné** (BlueStore dělá časté fsync; consumer SSD bez PLP = propad sync zápisů + riziko korupce při výpadku napájení). Plánovaná sestava stojí na consumer NVMe → Ceph cesta by znamenala dražší disky. ZFS potřebuje PLP jen pro SLOG, který se neplánuje.
 - **Debian balíčky mají doloženou historii problémů** (Reef 18.2.0 pro bookworm vůbec nešel sestavit; dashboard PyO3 pády) → upstream doporučuje cephadm v kontejnerech = další provozní vrstva navíc.
 
-**Btrfs (výchozí stack):** RAID5/6 write hole je oficiálně „not for production" i v roce 2026 ([RAID56 status](https://btrfs.readthedocs.io/en/latest/btrfs-man5.html)) — výchozí stack (Btrfs na LV **nad mdadm RAID6**, ne Btrfs RAID5/6) se mu správně vyhýbá; profily single/RAID1/10 jsou zralé (Meta na milionech strojů, default Fedora/openSUSE). Vlajková otrava ENOSPC/balance trvá.
+**Btrfs (výchozí stack):** RAID5/6 write hole je oficiálně „not for production“ i v roce 2026 ([RAID56 status](https://btrfs.readthedocs.io/en/latest/btrfs-man5.html)) — výchozí stack (Btrfs na LV **nad mdadm RAID6**, ne Btrfs RAID5/6) se mu správně vyhýbá; profily single/RAID1/10 jsou zralé (Meta na milionech strojů, default Fedora/openSUSE). Vlajková otrava ENOSPC/balance trvá.
 
-**Hardware napříč:** ECC doporučené, ne povinné — „scrub of death" je mýtus (Ahrens: ZFS bez ECC není rizikovější než jiný FS bez ECC; priorita: zálohy → checksumující FS → UPS → ECC). Skutečné riziko všech tří: disky lžoucí o flushi a QLC SSD pod zápisovou zátěží.
+**Hardware napříč:** ECC doporučené, ne povinné — „scrub of death“ je mýtus (Ahrens: ZFS bez ECC není rizikovější než jiný FS bez ECC; priorita: zálohy → checksumující FS → UPS → ECC). Skutečné riziko všech tří: disky lžoucí o flushi a QLC SSD pod zápisovou zátěží.
 
 ## Reference
 
@@ -406,7 +406,7 @@ Externí zdroje (ověřeno 2026-07; snapshot/ACL doplňky ověřeny 2026-08-01):
 - CephFS snapshoty: [Ceph docs — CephFS Snapshots](https://docs.ceph.com/en/latest/dev/cephfs-snapshots/)
 - Spolehlivostní profily (2026-08-01): [deep-research artefakt](https://claude.ai/public/artifacts/49c04b36-c45d-4b73-8652-c79f39de5ad5), [#15526 dirty dnode](https://github.com/openzfs/zfs/issues/15526), [#12014 encryption send/recv](https://github.com/openzfs/zfs/issues/12014), [#18041 import >90 % po výpadku](https://github.com/openzfs/zfs/issues/18041), [tracker #53192 — MDS latence se snapshoty (2021→fix 2025)](https://tracker.ceph.com/issues/53192), [Silvenga — CephFS metadata recovery (7/2024)](https://silvenga.com/posts/notes-on-cephfs-metadata-recovery/), [Rook #15273 — MDS trims při snapshotech (1/2025)](https://github.com/rook/rook/issues/15273), [CephFS best practices (Mimic)](https://docs.ceph.com/en/mimic/cephfs/best-practices/), [Btrfs RAID56 status](https://btrfs.readthedocs.io/en/latest/btrfs-man5.html)
 - Ceph korupční bugy — timeline (ověřeno 2026-08-02): [advisory 14.2.3/14.2.4 (11/2019)](https://lists.ceph.io/hyperkitty/list/ceph-users@ceph.io/thread/X6TNSDQK5DVKO6XFJW3DMJAJV63PLDYM/), [#45613 — bluefs_preextend_wal_files (5/2020)](https://tracker.ceph.com/issues/45613), [BlueFS >4GB writes (openSUSE advisory 5/2021)](https://osv.dev/vulnerability/openSUSE-SU-2021:0672-1), [#53062 — Pacific OMAP + IMPORTANT NOTICE (10/2021)](https://lists.ceph.io/hyperkitty/list/ceph-users@ceph.io/thread/U4QX4E32BR5IOICOUW4FR7E56YEET3CN/), [Edinburgh — Anatomy of a CephFS disaster (9/2020)](https://blogs.ed.ac.uk/mhagdorn/2020/09/09/anatomy-of-a-cephfs-disaster/)
-- ZFS korupční bugy — timeline (ověřeno 2026-08-06): [hole_birth #4996](https://github.com/openzfs/zfs/issues/4996), [Debian #830824](https://bugs.debian.org/cgi-bin/bugreport.cgi?bug=830824), [FAQ hole birth](https://openzfs.github.io/openzfs-docs/Project%20and%20Community/FAQ%20hole%20birth.html), [0.7.7→0.7.8 „mizející soubory" (The Register, 4/2018)](https://www.theregister.com/2018/04/10/zfs_on_linux_data_loss_fixed/)
+- ZFS korupční bugy — timeline (ověřeno 2026-08-06): [hole_birth #4996](https://github.com/openzfs/zfs/issues/4996), [Debian #830824](https://bugs.debian.org/cgi-bin/bugreport.cgi?bug=830824), [FAQ hole birth](https://openzfs.github.io/openzfs-docs/Project%20and%20Community/FAQ%20hole%20birth.html), [0.7.7→0.7.8 „mizející soubory“ (The Register, 4/2018)](https://www.theregister.com/2018/04/10/zfs_on_linux_data_loss_fixed/)
 
 ---
 
