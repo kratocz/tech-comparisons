@@ -1,7 +1,7 @@
 # ZFS vs Ceph: choosing the storage engine for a small self-hosted cluster
 
 - **Verdict:** ⭐ **ZFS on Proxmox VE** — valid for the context described below
-- **Facts verified:** July 2026 · addenda 2026-08-01/06 (the Linux snapshot layer §2.5–2.6; reliability profiles incl. the Ceph and ZFS corruption-bug timelines §15) · **2026-08-13 (growing one disk at a time, EC 2+2 vs RAIDZ2 §16 — including two corrections to earlier claims)** · **2026-08-14 (the snapshot automount layer rewritten upstream but still unreleased — §17; the eight objections keeping the decision open, with a pre-registered measurement rule — §18; *correction: `zfs rewrite` exists and four claims were wrong* — §19; encoding is bound to the vdev in ZFS and to the pool in Ceph — §20; what ZFS fixes permanently at creation, and how to decide each — §21; the object model those two assume — §22; resizing a ZVOL under a Proxmox VM, and why discard is usually the real answer — §23) · **2026-08-15 (correction: block cloning is on by default and cross-dataset works — §24; what a small file actually costs, and why it is not the table's 1-byte-write row — §25; choosing `ashift`, and a correction to §21.1 — §26; the rest of §21 swept the same way, including one fabricated figure — §27; `zfs rewrite` does not apply `recordsize`, and how to change it — §28; a glossary of the vocabulary the tables use, for all three columns — §29)**
+- **Facts verified:** July 2026 · addenda 2026-08-01/06 (the Linux snapshot layer §2.5–2.6; reliability profiles incl. the Ceph and ZFS corruption-bug timelines §15) · **2026-08-13 (growing one disk at a time, EC 2+2 vs RAIDZ2 §16 — including two corrections to earlier claims)** · **2026-08-14 (the snapshot automount layer rewritten upstream but still unreleased — §17; the eight objections keeping the decision open, with a pre-registered measurement rule — §18; *correction: `zfs rewrite` exists and four claims were wrong* — §19; encoding is bound to the vdev in ZFS and to the pool in Ceph — §20; what ZFS fixes permanently at creation, and how to decide each — §21; the object model those two assume — §22; resizing a ZVOL under a Proxmox VM, and why discard is usually the real answer — §23) · **2026-08-15 (correction: block cloning is on by default and cross-dataset works — §24; what a small file actually costs, and why it is not the table's 1-byte-write row — §25; choosing `ashift`, and a correction to §21.1 — §26; the rest of §21 swept the same way, including one fabricated figure — §27; `zfs rewrite` does not apply `recordsize`, and how to change it — §28; a glossary of the vocabulary the tables use, for all three columns — §29; how the trade differs at one node versus three, with a scope correction — §30)**
 - **Language:** 🇬🇧 English (canonical) · 🇨🇿 [Čeština — original](README.cs.md)
 - **Author:** Petr Kratochvíl — [krato.cz](https://krato.cz)
 
@@ -1036,6 +1036,73 @@ This is a glossary of terms **this document actually uses**, not an introduction
 | **Inline extent** | Small file contents stored inside the metadata b-tree rather than as a data block, bounded by `max_inline` (§25) |
 | **Profile** | The per-chunk redundancy setting (`single`, `dup`, `raid1`, `raid10`, `raid5/6`), chosen separately for data and metadata — which is how the incumbent stack runs metadata `dup` over mdadm |
 
+## 30. The trade at one node and at three (added 2026-08-15)
+
+The comparison table is rated for "1–3 nodes" as a single profile, which hides that the trade changes shape between the two ends of that range. This section separates them. Nothing here is newly verified; it is the document's own findings sorted by node count.
+
+### 30.1 What Ceph gives at one node
+
+More than §13 implies, because at one node the CRUSH failure domain is the **OSD**, not the host (`osd_crush_chooseleaf_type = 0`). Everything that needs *several failure domains* is therefore satisfiable by several disks in one box:
+
+- **Heterogeneous disks** absorbed by CRUSH weights, where RAIDZ discards the difference (§18.3).
+- **Self-healing without a replacement disk** — an `out` OSD's data is re-replicated onto the remaining ones if there is room. ZFS degrades and waits, unless a hot spare was configured.
+- **Removing capacity** — `osd out` plus rebalance. A RAIDZ vdev can never be removed (§21.1).
+- **Raising redundancy live** — `size=2→3` on a replicated pool. RAIDZ2→RAIDZ3 needs a rebuild (§20).
+- **Per-pool migration granularity** (§20), as long as there are enough OSDs for the target profile's `k+m`.
+- **Native S3 via RGW**, and **RWX for Kubernetes** through CephFS without an NFS re-export.
+- **Snapshot browsing** without a mount per snapshot, which is ZFS's weakest area on Linux (§2.5, §17).
+
+**And the sentence that reframes the whole list: none of it survives losing the machine.** At one node the failure domain is the disk, so Ceph is protecting against exactly what RAIDZ2 already protects against. Every item above is flexibility *inside* one box, bought at the price §13 sets out — no host-failure tolerance, `size=2` against Ceph's own *"risks data loss … only temporarily"*, a single monitor as a single point of failure, five-plus daemons, ~4 GB RAM per OSD, and CephFS unmountable by the kernel client on the node running the OSDs.
+
+Only two of Ceph's advantages genuinely require more nodes: live VM migration, and scaling.
+
+### 30.2 What three nodes costs
+
+Three nodes is where Ceph finally delivers what it exists for — surviving the loss of a machine. The bill is longest in exactly the same place.
+
+**Capacity and hardware**
+
+- `size=3` gives **33 %** against RAIDZ2's 75 %. At a 150 TiB target that is tens of drives.
+- **EC 2+2 is impossible on three nodes** — it needs `k+m` = four host-level domains. What remains is k=2,m=1: 67 %, but a **single parity**, so weaker redundancy than the RAIDZ2 in place today.
+- **Self-heal headroom**: restoring three copies after losing a node requires the data to fit on the remaining two, so the array cannot be filled.
+- **PLP SSDs near-mandatory** (BlueStore's fsync pattern), **10 GbE near-mandatory**, **~4 GB RAM per OSD**.
+
+**Performance**
+
+- Substantially slower than local ZFS for a single client: every write crosses the network and commits durably on each replica before the client is acknowledged.
+- Read-modify-write overhead on small writes under EC (§16.6).
+
+**Operations and reliability**
+
+- Five-plus daemons, cephadm containers, CRUSH and PGs against `zpool` and `zfs`.
+- §15's own conclusion: **operator error is the dominant real-world cause of loss**, and it scales with the number of moving parts. For a solo admin with no on-call this outweighs most of the technical rows.
+- **CephFS snapshots with multi-MDS remain the fragile area**, with incidents spanning 2021→2025 — a direct hit for an architecture that treats snapshots as the central workflow.
+
+**Rigidity ZFS does not have**
+
+- The EC profile is immutable, the same class of trap as RAIDZ parity (§20).
+- Moving off a single-node EC pool means a new pool and a full data migration (§18.8).
+
+**Cross-site replication** (from the sibling [storage-replication](../storage-replication/README.md) analysis)
+
+- CephFS mirroring ships **whole changed files**, not block deltas.
+- It **cannot state a transfer's size in advance** — decisive on a metered link.
+- Renaming a directory is **delete plus full re-copy**, worse on that operation than rsync.
+- Hardlinks decompose into separate copies.
+- The remote's live directory is inconsistent mid-sync; the DR point is the last completed snapshot only.
+- `rbd-mirror` needs simultaneous connectivity to both clusters, every monitor and OSD.
+- CephFS has no reflink (§24).
+
+### 30.3 Correction: "Ceph needs nodes" was applied where it does not hold
+
+An earlier reading of this material marked five of Ceph's advantages as unavailable at one to three nodes — per-pool migration, capacity removal, self-healing, live migration and scaling. Two of those were right. Three were wrong, and wrongly for a familiar reason: the constraint that forces node counts is `k+m` **failure domains**, and the assumption that a domain means a host was carried to a configuration where it means an OSD. The general rule was correct; its scope was not, which is the pattern `AGENTS.md` now has a rule about.
+
+### 30.4 Which of these are blockers here
+
+Of §30.1, only three could plausibly decide anything for this profile, and all three are questions about a future use case rather than today's operation: **shared RWX** if Kubernetes ever needs it (§14 examined this and found it does not), **heterogeneous disks** (§18.3, the strongest of the eight objections), and **S3** if a workload ever demands it.
+
+Of §30.2, three are severe enough to stand alone: the **capacity arithmetic**, where the only three-node alternative to 33 % gives weaker redundancy than the array already has; **CephFS snapshots**, which is the fragile area of the system this architecture leans on hardest; and **cross-site replication**, where file granularity with no size estimate meets a hard monthly cap.
+
 ## References
 
 External sources (block verified to 2026-08-14; per-entry dates given where they differ):
@@ -1063,6 +1130,6 @@ External sources (block verified to 2026-08-14; per-entry dates given where they
 
 ---
 
-*Researched and written in collaboration with Claude (Anthropic); facts verified against the sources above as of July 2026, with the addenda (snapshot layer, reliability profiles, corruption-bug timelines) verified 1–6 August 2026, the growth addendum verified 13 August 2026, and the automount update, the objections section, the `zfs rewrite` correction, the encoding-granularity section, the creation-time checklist, the object-model section and the ZVOL-resize section verified 14 August 2026, and the block-cloning correction the small-file section, the `ashift` section the §21 sweep, the `recordsize` correction and the glossary verified 15 August 2026. This document is a dated snapshot and is not continuously updated.*
+*Researched and written in collaboration with Claude (Anthropic); facts verified against the sources above as of July 2026, with the addenda (snapshot layer, reliability profiles, corruption-bug timelines) verified 1–6 August 2026, the growth addendum verified 13 August 2026, and the automount update, the objections section, the `zfs rewrite` correction, the encoding-granularity section, the creation-time checklist, the object-model section and the ZVOL-resize section verified 14 August 2026, and the block-cloning correction the small-file section, the `ashift` section the §21 sweep, the `recordsize` correction, the glossary and the node-count section verified 15 August 2026. This document is a dated snapshot and is not continuously updated.*
 
 *© 2026 Petr Kratochvíl · Licensed under [CC BY 4.0](../LICENSE)*

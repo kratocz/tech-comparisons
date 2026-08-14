@@ -1,7 +1,7 @@
 # ZFS vs Ceph — volba storage enginu pro malý self-hosted cluster
 
 - **Verdikt:** ⭐ **ZFS na Proxmox VE** — platí pro kontext popsaný níže
-- **Fakta ověřena:** červenec 2026 · doplňky 2026-08-01/06 (snapshot vrstva §2.5–2.6; spolehlivostní profily vč. timelines korupčních bugů Ceph i ZFS §15) · **2026-08-13 (růst po jednom disku, EC 2+2 vs RAIDZ2 §16 — vč. dvou oprav dřívějších tvrzení)** · **2026-08-14 (přepis snapshot automount vrstvy upstreamem, zatím nevydaný — §17; osm námitek držících rozhodnutí otevřené, s předem sepsaným měřicím pravidlem — §18; *oprava: `zfs rewrite` existuje a čtyři tvrzení byla chybná* — §19; kódování je v ZFS vázané na vdev a v Cephu na pool — §20; co ZFS zafixuje napevno při vytvoření a jak o tom rozhodnout — §21; objektový model, který obě předpokládají — §22; změna velikosti ZVOLu pod Proxmox VM a proč je skutečnou odpovědí obvykle discard — §23) · **2026-08-15 (oprava: block cloning je defaultně zapnutý a cross-dataset funguje — §24; kolik doopravdy stojí malý soubor a proč to není řádek tabulky o zápisu 1 bajtu — §25; volba `ashift` a oprava k §21.1 — §26; zbytek §21 projetý stejným sítem, včetně jednoho vymyšleného čísla — §27; `zfs rewrite` neaplikuje `recordsize` a jak ho tedy měnit — §28; slovník pojmů, které tabulky používají, pro všechny tři sloupce — §29)**
+- **Fakta ověřena:** červenec 2026 · doplňky 2026-08-01/06 (snapshot vrstva §2.5–2.6; spolehlivostní profily vč. timelines korupčních bugů Ceph i ZFS §15) · **2026-08-13 (růst po jednom disku, EC 2+2 vs RAIDZ2 §16 — vč. dvou oprav dřívějších tvrzení)** · **2026-08-14 (přepis snapshot automount vrstvy upstreamem, zatím nevydaný — §17; osm námitek držících rozhodnutí otevřené, s předem sepsaným měřicím pravidlem — §18; *oprava: `zfs rewrite` existuje a čtyři tvrzení byla chybná* — §19; kódování je v ZFS vázané na vdev a v Cephu na pool — §20; co ZFS zafixuje napevno při vytvoření a jak o tom rozhodnout — §21; objektový model, který obě předpokládají — §22; změna velikosti ZVOLu pod Proxmox VM a proč je skutečnou odpovědí obvykle discard — §23) · **2026-08-15 (oprava: block cloning je defaultně zapnutý a cross-dataset funguje — §24; kolik doopravdy stojí malý soubor a proč to není řádek tabulky o zápisu 1 bajtu — §25; volba `ashift` a oprava k §21.1 — §26; zbytek §21 projetý stejným sítem, včetně jednoho vymyšleného čísla — §27; `zfs rewrite` neaplikuje `recordsize` a jak ho tedy měnit — §28; slovník pojmů, které tabulky používají, pro všechny tři sloupce — §29; jak se kompromis liší při jednom uzlu a při třech, s opravou rozsahu — §30)**
 - **Jazyk:** 🇨🇿 čeština (originál) · 🇬🇧 [English version](README.md)
 - **Autor:** Petr Kratochvíl — [krato.cz](https://krato.cz)
 
@@ -1036,6 +1036,73 @@ Tohle je slovník pojmů, které **dokument opravdu používá**, ne úvod do t�
 | **Inline extent** | Obsah malého souboru uložený uvnitř metadatového b-stromu místo v datovém bloku, omezený `max_inline` (§25) |
 | **Profil** | Nastavení redundance po chuncích (`single`, `dup`, `raid1`, `raid10`, `raid5/6`), volené zvlášť pro data a metadata — tak stávající stack jede metadata v `dup` nad mdadm |
 
+## 30. Kompromis při jednom uzlu a při třech (doplněno 2026-08-15)
+
+Srovnávací tabulka je hodnocená pro „1–3 uzly“ jako jeden profil, což zakrývá, že kompromis mezi těmi dvěma konci mění tvar. Tahle sekce je odděluje. Nic tu není nově ověřované; jsou to vlastní nálezy dokumentu setříděné podle počtu uzlů.
+
+### 30.1 Co dá Ceph při jednom uzlu
+
+Víc, než §13 naznačuje, protože při jednom uzlu je CRUSH failure doména **OSD**, ne host (`osd_crush_chooseleaf_type = 0`). Všechno, co potřebuje *několik failure domén*, je tedy splnitelné několika disky v jedné bedně:
+
+- **Různě velké disky** strávené CRUSH vahami, kde RAIDZ rozdíl zahodí (§18.3).
+- **Samooprava bez náhradního disku** — data z `out` OSD se dopočítají na zbývající, pokud je kam. ZFS degraduje a čeká, pokud nemáš hot spare.
+- **Odebrání kapacity** — `osd out` a rebalance. RAIDZ vdev odebrat nelze nikdy (§21.1).
+- **Zvýšení redundance za běhu** — `size=2→3` u replikovaného poolu. RAIDZ2→RAIDZ3 chce přestavbu (§20).
+- **Granularita migrace po poolech** (§20), dokud je dost OSD na `k+m` cílového profilu.
+- **Nativní S3 přes RGW** a **RWX pro Kubernetes** přes CephFS bez re-exportu po NFS.
+- **Prohlížení snapshotů** bez mountu na každý snapshot, což je nejslabší oblast ZFS na Linuxu (§2.5, §17).
+
+**A věta, která ten seznam přerámuje celý: nic z toho nepřežije ztrátu toho stroje.** Při jednom uzlu je failure doménou disk, takže Ceph chrání přesně proti tomu, proti čemu už chrání RAIDZ2. Všechno výše je pružnost **uvnitř** jedné bedny, koupená za cenu, kterou vypisuje §13 — žádná odolnost proti ztrátě hostu, `size=2` proti vlastnímu *"risks data loss … only temporarily"* Cephu, jediný monitor jako single point of failure, pět a víc démonů, ~4 GB RAM na OSD a CephFS, který na uzlu s OSD nesmíš mountovat kernel klientem.
+
+Jen dvě Cephovy výhody opravdu vyžadují víc uzlů: živá migrace VM a škálování.
+
+### 30.2 Co stojí tři uzly
+
+Tři uzly jsou bod, kde Ceph konečně dodá to, kvůli čemu existuje — přežití ztráty stroje. Účet je nejdelší přesně na témže místě.
+
+**Kapacita a hardware**
+
+- `size=3` dá **33 %** proti 75 % u RAIDZ2. Při cíli 150 TiB to jsou desítky disků.
+- **EC 2+2 na třech uzlech nejde** — potřebuje `k+m` = čtyři domény na úrovni hostů. Zbývá k=2,m=1: 67 %, ale **jediná parita**, tedy slabší redundance než dnešní RAIDZ2.
+- **Self-heal headroom**: obnova tří kopií po ztrátě uzlu vyžaduje, aby se data vešla na zbylé dva, takže pole nejde doplnit.
+- **PLP SSD prakticky povinné** (fsync vzor BlueStore), **10GbE prakticky povinná**, **~4 GB RAM na OSD**.
+
+**Výkon**
+
+- Pro jednoho klienta podstatně pomalejší než lokální ZFS: každý zápis jde po síti a musí se trvanlivě potvrdit na každé replice, než dostane klient odpověď.
+- Read-modify-write režie u malých zápisů na EC (§16.6).
+
+**Provoz a spolehlivost**
+
+- Pět a víc démonů, cephadm kontejnery, CRUSH a PG proti `zpool` a `zfs`.
+- Vlastní závěr §15: **chyba obsluhy je dominantní reálnou příčinou ztrát** a roste s počtem pohyblivých částí. U sólo admina bez on-callu to převáží většinu technických řádků.
+- **CephFS snapshoty s multi-MDS zůstávají křehkou oblastí**, s incidenty 2021→2025 — přímý zásah pro architekturu, která snapshoty bere jako centrální workflow.
+
+**Tuhost, kterou ZFS nemá**
+
+- EC profil je neměnný, stejná třída pasti jako parita RAIDZ (§20).
+- Odchod z jednouzlového EC poolu znamená nový pool a plnou migraci dat (§18.8).
+
+**Replikace mezi lokalitami** (ze sourozenecké analýzy [storage-replication](../storage-replication/README.cs.md))
+
+- CephFS mirroring posílá **celé změněné soubory**, ne blokové delty.
+- **Neumí říct objem přenosu předem** — na měřené lince rozhodující.
+- Přejmenování adresáře je **smazání a plná znovukopie**, na téhle operaci horší než rsync.
+- Hardlinky se rozpadnou na samostatné kopie.
+- Živý adresář na cíli je uprostřed syncu nekonzistentní; DR bodem je jen poslední dokončený snapshot.
+- `rbd-mirror` potřebuje současnou konektivitu na oba clustery, každý monitor i OSD.
+- CephFS nemá reflink (§24).
+
+### 30.3 Oprava: „Ceph potřebuje uzly“ bylo použito tam, kde neplatí
+
+Dřívější čtení tohoto materiálu označilo pět Cephových výhod za nedostupné při jednom až třech uzlech — migraci po poolech, odebrání kapacity, samoopravu, živou migraci a škálování. Dvě z toho platily. Tři byly chybné, a chybné ze známého důvodu: omezením vynucujícím počty uzlů je `k+m` **failure domén**, a předpoklad, že doména znamená host, se přenesl do konfigurace, kde znamená OSD. Obecné pravidlo platilo; jeho rozsah ne, což je vzor, na který má `AGENTS.md` nově pravidlo.
+
+### 30.4 Co z toho je pro tenhle kontext blocker
+
+Z §30.1 by mohly něco rozhodnout jen tři, a všechny tři jsou otázkou budoucího use case, ne dnešního provozu: **sdílený RWX**, kdyby ho Kubernetes potřeboval (§14 to zkoumala a našla, že ne), **různě velké disky** (§18.3, nejsilnější z osmi námitek) a **S3**, kdyby si ho nějaký workload vyžádal.
+
+Z §30.2 jsou tři dost vážné samy o sobě: **kapacitní matematika**, kde jediná tříuzlová alternativa k 33 % dá slabší redundanci, než pole má dnes; **CephFS snapshoty**, tedy křehká oblast systému, o kterou se tahle architektura opírá nejvíc; a **replikace mezi lokalitami**, kde se souborová granularita bez odhadu objemu potká s tvrdým měsíčním stropem.
+
 ## Reference
 
 Externí zdroje (blok ověřen k 2026-08-14; dílčí data uvedena tam, kde se liší):
@@ -1063,6 +1130,6 @@ Externí zdroje (blok ověřen k 2026-08-14; dílčí data uvedena tam, kde se l
 
 ---
 
-*Vzniklo ve spolupráci s Claude (Anthropic); fakta ověřena proti uvedeným zdrojům k červenci 2026, doplňky (snapshot vrstva, spolehlivostní profily, timelines korupčních bugů) k 1.–6. srpnu 2026, doplněk o růstu po jednom disku k 13. srpnu 2026, a aktualizace automount vrstvy, sekce o námitkách, oprava k `zfs rewrite`, sekce o granularitě kódování, checklist rozhodnutí při vytvoření, sekce o objektovém modelu i sekce o změně velikosti ZVOLu k 14. srpnu 2026 a oprava k block cloningu sekce o malých souborech, sekce o `ashift` prohlídka §21, oprava k `recordsize` i slovník k 15. srpnu 2026. Dokument je datovaný snapshot a průběžně se neaktualizuje.*
+*Vzniklo ve spolupráci s Claude (Anthropic); fakta ověřena proti uvedeným zdrojům k červenci 2026, doplňky (snapshot vrstva, spolehlivostní profily, timelines korupčních bugů) k 1.–6. srpnu 2026, doplněk o růstu po jednom disku k 13. srpnu 2026, a aktualizace automount vrstvy, sekce o námitkách, oprava k `zfs rewrite`, sekce o granularitě kódování, checklist rozhodnutí při vytvoření, sekce o objektovém modelu i sekce o změně velikosti ZVOLu k 14. srpnu 2026 a oprava k block cloningu sekce o malých souborech, sekce o `ashift` prohlídka §21, oprava k `recordsize`, slovník i sekce o počtu uzlů k 15. srpnu 2026. Dokument je datovaný snapshot a průběžně se neaktualizuje.*
 
 *© 2026 Petr Kratochvíl · Licence [CC BY 4.0](../LICENSE)*
