@@ -42,7 +42,7 @@ Symbols: ✅ strength · 🟡 works with caveats / a compromise · ❌ weakness 
 | Data-loss bug history (§15) | 🟡 rare, fixed fast (dnode 2023; encryption send/recv closed 2025) | 🟡 core mature (CERN); fragile: CephFS snapshots+multi-MDS, operator error | 🟡 Btrfs RAID5/6 ❌ permanently (here on LV over mdadm ✓) |
 | Capacity efficiency | ✅ RAIDZ2 75 % (grown incrementally ~67–70 % until rewritten, §2.1) | 🟡 size=3 33 % (EC realistically from ~5–6 nodes; on 3 only k=2,m=1) | ✅ RAID6 ~75 % |
 | Fragmentation when full (common to all) | 🟡 yes (CoW) | 🟡 yes (BlueStore) | 🟡 yes (Btrfs CoW) + ENOSPC |
-| Defrag / cleanup | 🟡 `zfs rewrite` for file data (§19); free space only via `send/recv` rebuild | 🟡 OSD reweight / rewrite (CoW-safe, keeps snapshots) | ✅ `defragment` + `balance` (but **breaks reflinks**) |
+| Defrag / cleanup | ✅ `zfs rewrite` — defragmenting files and rebalancing after `zpool add` are stated purposes; loses its grip on a near-full pool (§19) | 🟡 OSD reweight / rewrite (CoW-safe, keeps snapshots) | ✅ `defragment` + `balance` (but **breaks reflinks**) |
 | CoW granularity (1-byte write) | 🟡 128K record (tunable 4K–1M; ZVOL 16K) | ❌ 4 MB with a snapshot (~4K without) | ✅ 4K (`nodatacow` for DBs = 0) |
 | Mixed-size disks | 🟡 across vdevs yes, wasteful within one | ✅ CRUSH weights | 🟡 mdadm smallest wins |
 | Add a disk (expand) | ✅ RAIDZ expansion (2.3) — old data keeps the old parity ratio until rewritten (§2.1) | ✅ trivial | ✅ mdadm `--grow` reshape (rewrites, no parity caveat) |
@@ -533,7 +533,7 @@ Ceph handles this natively through CRUSH weights, and that is a genuine, durable
 
 ### 18.4 Defragmentation (objection 4)
 
-Partly true, and weaker than I stated — see the correction in §19. `zfs rewrite` has existed since May 2025 and ships in 2.3.x and 2.4.x, so recompression and file-level rewriting no longer need a second pool. What it cannot repair is *free-space* fragmentation, which is what `FRAG` measures and what a near-full pool actually inflicts; for that, a `send`/`recv` rebuild remains the only cure. But the comparison table already rates **Ceph 🟡 on this row as well**: BlueStore fragments too. The ✅ belongs to Btrfs. And on the near-full case specifically, the failure modes differ in Ceph's disfavour: a full ZFS pool becomes slow, whereas a Ceph pool reaching its full ratio **stops accepting writes**. The real answer to "the array will often be very full" is not an engine but buying capacity earlier.
+Partly true, and weaker than I stated — see the correction in §19. `zfs rewrite` has existed since May 2025 and ships in 2.3.x and 2.4.x; defragmenting files and rebalancing after a vdev addition are its stated purposes, so neither needs a second pool any more. What survives of the objection is that it needs contiguous free space to write into, so its effectiveness falls away on the near-full pool that motivates using it; there a `send`/`recv` rebuild remains the reliable cure. But the comparison table already rates **Ceph 🟡 on this row as well**: BlueStore fragments too. The ✅ belongs to Btrfs. And on the near-full case specifically, the failure modes differ in Ceph's disfavour: a full ZFS pool becomes slow, whereas a Ceph pool reaching its full ratio **stops accepting writes**. The real answer to "the array will often be very full" is not an engine but buying capacity earlier.
 
 ### 18.5 Dedup (objection 5)
 
@@ -596,7 +596,11 @@ Four claims in this document said ZFS has no tool for rewriting existing data. T
 
 **What the tool does.** *"Rewrite blocks of specified file as is without modification at a new location and possibly with new properties, as if they were atomically read and written back."* It takes `-r` to recurse, `-x` to stay within one filesystem, and `-o`/`-l` for a byte range. It closes the recompression gap outright: changing `compression` or `recordsize` and then running `zfs rewrite -r` applies the new property to existing data, which previously required a `send`/`recv` cycle through another pool.
 
-**What it does not do, and why the objection partly survives.** It allocates from the same free space, so it does **not** repair free-space fragmentation — which is what the `FRAG` column actually measures: *"As the amount of space allocated increases, it becomes more difficult to locate free space"*, resulting in *"lower write performance compared to pools with more unfragmented free space."* For a pool whose free space is already shattered by having run near-full, the only cure is still a rebuild through `send`/`recv` into a fresh pool. Nor is this "block pointer rewrite" — the pool still cannot relocate blocks by itself; this is a file-level operation driven from userspace.
+**Defragmentation is a stated purpose, not a side effect.** The submitting PR is explicit about what users had been asking for: *"an ability to re-balance pool after vdev addition, de-fragment randomly written files, change some properties for already written files"*. Rebalancing after `zpool add` matters here in particular — §16 and objection 3 (§18.3) both end at "add a wider vdev of larger disks", after which existing data stays on the old vdevs until something rewrites it. `zfs rewrite -P -r` is that something.
+
+It also runs under load — *"protected by normal range locks, it can be done under any other load"* — is faster than a read-plus-write because *"it does not require data copying to user-space"*, and *"does not affect file's modification time or other properties"*, so mtime-based backup tools do not see the whole pool as changed.
+
+**Where the objection survives is narrower than first stated** (this paragraph was corrected the same day, after the original overstated it). Rewriting a file frees its scattered blocks and allocates a contiguous run, so free-space fragmentation — what the `FRAG` column measures, *"As the amount of space allocated increases, it becomes more difficult to locate free space"* — does improve as a consequence. But the mechanism needs somewhere contiguous to write the new copy **before** the old blocks are freed, and that is exactly what a near-full, heavily fragmented pool does not have; there the new copy lands fragmented too and little is gained. Snapshots make it worse still (see below). So `zfs rewrite` works best on the pool that needs it least, and a `send`/`recv` rebuild into a fresh pool remains the cure that always works. It is also still not "block pointer rewrite": the pool cannot relocate blocks on its own, this is driven per file from userspace.
 
 **Two flags that matter more than they look.**
 
@@ -606,7 +610,7 @@ Four claims in this document said ZFS has no tool for rewriting existing data. T
 
 **And the trade that has no tool.** When a rebuild is unavoidable, `zfs send -R` preserves every snapshot — but preserving them replays the original write history, which reproduces much of the fragmentation. Sending a single snapshot without `-R` yields a maximally compact result and discards the history. Fragmentation *is* the imprint of that history, so the two cannot both be kept.
 
-**Net effect on objection 4 (§18.4):** it drops from "no tool exists" to "a tool exists for file data, not for free space". It is weaker than stated, but it does not disappear — and neither does the conclusion that Ceph is not the answer to it, since BlueStore fragments as well and a full Ceph pool stops accepting writes where a full ZFS pool merely slows down.
+**Net effect on objection 4 (§18.4):** it drops from "no tool exists" to "a tool exists, and it stops helping precisely when the pool is too full — which is when you reach for it". It is weaker than stated, but it does not disappear — and neither does the conclusion that Ceph is not the answer to it, since BlueStore fragments as well and a full Ceph pool stops accepting writes where a full ZFS pool merely slows down.
 
 ## References
 

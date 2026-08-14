@@ -42,7 +42,7 @@ Symboly: ✅ silná stránka · 🟡 jde s výhradou / kompromis · ❌ slabina 
 | Historie data-loss bugů (§15) | 🟡 vzácné, rychle opravené (dnode 2023; encryption send/recv uzavřeno 2025) | 🟡 core zralý (CERN); křehké: CephFS snapshoty+multi-MDS, operátorské chyby | 🟡 Btrfs RAID5/6 ❌ trvale (zde na LV nad mdadm ✓) |
 | Kapacitní efektivita | ✅ RAIDZ2 75 % (inkrementálně rostlé ~67–70 % do rewritu, §2.1) | 🟡 size=3 33 % (EC reálně až od ~5–6 uzlů; na 3 jen k=2,m=1) | ✅ RAID6 ~75 % |
 | Fragmentace při plnosti (společná všem) | 🟡 ano (CoW) | 🟡 ano (BlueStore) | 🟡 ano (Btrfs CoW) + ENOSPC |
-| Defrag / úklid fragmentace | 🟡 `zfs rewrite` na souborová data (§19); volné místo jen přestavbou `send/recv` | 🟡 reweight OSD / rewrite (CoW-safe, zachová snapshoty) | ✅ `defragment` + `balance` (ale **ničí reflinky**) |
+| Defrag / úklid fragmentace | ✅ `zfs rewrite` — defragmentace souborů i rebalance po `zpool add` jsou deklarované účely; na téměř plném poolu ztrácí účinnost (§19) | 🟡 reweight OSD / rewrite (CoW-safe, zachová snapshoty) | ✅ `defragment` + `balance` (ale **ničí reflinky**) |
 | CoW granularita (1-byte write) | 🟡 128K record (laditelné 4K–1M; ZVOL 16K) | ❌ 4 MB se snapshotem (bez něj ~4K) | ✅ 4K (`nodatacow` pro DB = 0) |
 | Mixed-size disky | 🟡 napříč vdev ano, uvnitř plýtvá | ✅ CRUSH weights | 🟡 mdadm smallest wins |
 | Přidat disk (expand) | ✅ RAIDZ expansion (2.3) — stará data drží starý parity poměr do rewritu (§2.1) | ✅ triviální | ✅ mdadm `--grow` reshape (přepíše, bez parity caveatu) |
@@ -533,7 +533,7 @@ Ceph to řeší nativně přes CRUSH váhy a je to skutečná, durable výhoda. 
 
 ### 18.4 Defragmentace (námitka 4)
 
-Zčásti platí, a je slabší, než jak jsem to napsal — viz oprava v §19. `zfs rewrite` existuje od května 2025 a je v 2.3.x i 2.4.x, takže rekomprese a přepis na úrovni souborů už druhý pool nepotřebují. Co opravit neumí, je fragmentace *volného místa*, kterou měří `FRAG` a kterou pole na hraně kapacity skutečně způsobí; na tu zůstává jediným lékem přestavba přes `send`/`recv`. Jenže srovnávací tabulka dává **na tomhle řádku 🟡 i Cephu**: BlueStore fragmentuje také. ✅ tam patří Btrfs. A konkrétně u téměř zaplněného pole se způsoby selhání liší v Cephův neprospěch: plný ZFS pool zpomalí, zatímco Ceph pool při dosažení full ratio **přestane přijímat zápisy**. Skutečnou odpovědí na „pole bude často hodně plné“ není engine, ale kupovat kapacitu dřív.
+Zčásti platí, a je slabší, než jak jsem to napsal — viz oprava v §19. `zfs rewrite` existuje od května 2025 a je v 2.3.x i 2.4.x; defragmentace souborů i rebalance po přidání vdevu jsou jeho deklarované účely, takže ani jedno už nepotřebuje druhý pool. Z námitky přežívá to, že potřebuje kam souvisle zapsat, takže jeho účinnost padá právě na téměř plném poolu, který k jeho použití vede; tam zůstává spolehlivým lékem přestavba přes `send`/`recv`. Jenže srovnávací tabulka dává **na tomhle řádku 🟡 i Cephu**: BlueStore fragmentuje také. ✅ tam patří Btrfs. A konkrétně u téměř zaplněného pole se způsoby selhání liší v Cephův neprospěch: plný ZFS pool zpomalí, zatímco Ceph pool při dosažení full ratio **přestane přijímat zápisy**. Skutečnou odpovědí na „pole bude často hodně plné“ není engine, ale kupovat kapacitu dřív.
 
 ### 18.5 Deduplikace (námitka 5)
 
@@ -596,7 +596,11 @@ Námitka 6 je jediná z osmi, kterou jde levně otestovat, a emočně nese ostat
 
 **Co ten nástroj dělá.** *"Rewrite blocks of specified file as is without modification at a new location and possibly with new properties, as if they were atomically read and written back."* Bere `-r` pro rekurzi, `-x` pro setrvání v jednom filesystému a `-o`/`-l` pro rozsah v bajtech. Mezeru v rekompresi zavírá úplně: změníš `compression` nebo `recordsize`, pustíš `zfs rewrite -r` a nová property se aplikuje na existující data — což dřív vyžadovalo cyklus `send`/`recv` přes jiný pool.
 
-**Co nedělá a proč námitka zčásti přežívá.** Alokuje z téhož volného místa, takže fragmentaci volného prostoru **neopraví** — a přitom právě tu měří sloupec `FRAG`: *"As the amount of space allocated increases, it becomes more difficult to locate free space"*, s důsledkem *"lower write performance compared to pools with more unfragmented free space."* U poolu, jehož volné místo je už rozdrobené provozem na hraně kapacity, zůstává jediným lékem přestavba přes `send`/`recv` do čerstvého poolu. A není to ani „block pointer rewrite“ — pool si pořád neumí přemisťovat bloky sám; tohle je souborová operace řízená z userspace.
+**Defragmentace je deklarovaný účel, ne vedlejší efekt.** Zakládající PR přímo jmenuje, co uživatelé roky chtěli: *"an ability to re-balance pool after vdev addition, de-fragment randomly written files, change some properties for already written files"*. Rebalance po `zpool add` je tu podstatná zvlášť — §16 i námitka 3 (§18.3) obě končí u „přidej širší vdev z větších disků“, načež existující data zůstanou na starých vdevech, dokud je něco nepřepíše. `zfs rewrite -P -r` je to něco.
+
+Běží navíc za provozu — *"protected by normal range locks, it can be done under any other load"* —, je rychlejší než čtení plus zápis, protože *"it does not require data copying to user-space"*, a *"does not affect file's modification time or other properties"*, takže zálohovací nástroje řídící se podle mtime neuvidí celý pool jako změněný.
+
+**Kde námitka přežívá, je užší, než jsem napsal poprvé** (tenhle odstavec byl opraven týž den, protože původní znění přehánělo). Přepis souboru uvolní jeho rozházené bloky a alokuje souvislý úsek, takže fragmentace volného místa — kterou měří `FRAG`, *"As the amount of space allocated increases, it becomes more difficult to locate free space"* — se tím **zlepšuje**. Jenže ten mechanismus potřebuje kam souvisle zapsat novou kopii **dřív**, než se staré bloky uvolní, a to je přesně to, co téměř plný a silně fragmentovaný pool nemá; tam nová kopie přistane taky rozházená a získáš málo. Snapshoty to zhoršují ještě víc (viz níže). `zfs rewrite` tedy funguje nejlíp na poolu, který ho potřebuje nejmíň, a přestavba přes `send`/`recv` do čerstvého poolu zůstává lékem, který zabere vždycky. Pořád to také není „block pointer rewrite“: pool si bloky přemisťovat sám neumí, tohle se řídí po souborech z userspace.
 
 **Dva přepínače, na kterých záleží víc, než vypadá.**
 
@@ -606,7 +610,7 @@ Námitka 6 je jediná z osmi, kterou jde levně otestovat, a emočně nese ostat
 
 **A kompromis, na který nástroj není.** Když se přestavbě vyhnout nedá, `zfs send -R` zachová všechny snapshoty — jenže zachovat je znamená přehrát původní historii zápisů, což velkou část fragmentace zreprodukuje. Poslání jediného snapshotu bez `-R` dá maximálně kompaktní výsledek a historii zahodí. Fragmentace **je** otiskem té historie, takže obojí naráz mít nelze.
 
-**Čistý dopad na námitku 4 (§18.4):** klesá z „nástroj neexistuje“ na „nástroj na souborová data existuje, na volné místo ne“. Je slabší, než jak byla formulovaná, ale nemizí — a nemizí ani závěr, že odpovědí na ni není Ceph, protože BlueStore fragmentuje také a plný Ceph pool přestane přijímat zápisy tam, kde plný ZFS pool jen zpomalí.
+**Čistý dopad na námitku 4 (§18.4):** klesá z „nástroj neexistuje“ na „nástroj existuje a přestává pomáhat právě ve chvíli, kdy je pool moc plný — tedy když po něm sáhneš“. Je slabší, než jak byla formulovaná, ale nemizí — a nemizí ani závěr, že odpovědí na ni není Ceph, protože BlueStore fragmentuje také a plný Ceph pool přestane přijímat zápisy tam, kde plný ZFS pool jen zpomalí.
 
 ## Reference
 
