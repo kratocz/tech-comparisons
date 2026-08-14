@@ -1,7 +1,7 @@
 # ZFS vs Ceph: choosing the storage engine for a small self-hosted cluster
 
 - **Verdict:** ⭐ **ZFS on Proxmox VE** — valid for the context described below
-- **Facts verified:** July 2026 · addenda 2026-08-01/06 (the Linux snapshot layer §2.5–2.6; reliability profiles incl. the Ceph and ZFS corruption-bug timelines §15) · **2026-08-13 (growing one disk at a time, EC 2+2 vs RAIDZ2 §16 — including two corrections to earlier claims)**
+- **Facts verified:** July 2026 · addenda 2026-08-01/06 (the Linux snapshot layer §2.5–2.6; reliability profiles incl. the Ceph and ZFS corruption-bug timelines §15) · **2026-08-13 (growing one disk at a time, EC 2+2 vs RAIDZ2 §16 — including two corrections to earlier claims)** · **2026-08-14 (the snapshot automount layer rewritten upstream but still unreleased — §17)**
 - **Language:** 🇬🇧 English (canonical) · 🇨🇿 [Čeština — original](README.cs.md)
 - **Author:** Petr Kratochvíl — [krato.cz](https://krato.cz)
 
@@ -474,6 +474,30 @@ For **a single node with four disks, growing one disk at a time**, **ZFS RAIDZ2*
 
 **What would flip this:** growing by **nodes** instead of disks — then Ceph is the right choice from the start and saves a later migration (§10); or a workload dominated by **large sequential writes** (media archive, backups) rather than VM disks, where the read-modify-write overhead disappears.
 
+## 17. Update (2026-08-14): the snapshot automount layer was rewritten — and is in no release yet
+
+§2.5 named PR [#17943](https://github.com/openzfs/zfs/pull/17943) as the fix and recorded that it had not reached the 2.3.x LTS line. Both statements still hold. What has changed is the *shape* of the fix, and it is worth recording precisely, because the headline reads better than the practical situation.
+
+**#17943 fixed one race, not the lineage.** Its title is exact: "Fix snapshot automount race causing AVL tree panic" (merged 2025-12-08). The two issues §2.5 treats as the lineage — [#13131](https://github.com/openzfs/zfs/issues/13131) "Kernel Panic and DoS on massive amounts of snapshot mount/umount" (2022) and [#13327](https://github.com/openzfs/zfs/issues/13327) "processes stuck in kernel forever" — stayed open through it.
+
+**They were closed on 2026-08-06, by a rewrite.** The maintainer closed both with "Resolved by [#18847](https://github.com/openzfs/zfs/pull/18847)" — *"Linux: rewrite snapshot automount facility"*. Not a patch: commit `e8e30769` landed on master **2026-06-18**, and through July a batch of new ZTS tests followed it (snapdir detach under ongoing access, multiple automounts via multiple base-dataset mounts, shutdown behaviour when the automount is moved or bind-mounted elsewhere). Two neighbouring issues also closed: [#17659](https://github.com/openzfs/zfs/issues/17659), the systemd-triggered panic that hit Proxmox, on 2025-12-12, and [#18073](https://github.com/openzfs/zfs/issues/18073), the `recv` × `du` deadlock, on 2026-04-08.
+
+**And none of it is released.** Verified 2026-08-14:
+
+| | |
+|---|---|
+| Rewrite on master | 2026-06-18 (`e8e30769`) |
+| Latest releases | 2.4.3, 2.3.8, 2.2.10 — all **2026-06-12** |
+| Newest commit on `zfs-2.3-release` | 2026-06-08 |
+
+The rewrite landed **six days after** the most recent releases and has not been backported to the 2.3.x LTS branch. On anything installable today — including what Proxmox ships — the behaviour is the pre-rewrite behaviour.
+
+**What this changes for the verdict: nothing.** §2.5's conclusion stands unaltered: this is the weakest part of ZFS on Linux, and the mitigations are cheap (`snapdir=hidden` is the default; browse history with `zfs diff` or a clone rather than `.zfs`; do not walk `.zfs` on a receiving side during `recv`). Those mitigations remain the operative advice, not a stopgap until the next update.
+
+**What it changes for the outlook: the class looks closed upstream.** A rewrite plus a purpose-built test suite is a stronger signal than a race fix — the maintainers treated it as a design problem rather than a bug. The thing to watch is the first release containing `e8e30769` (2.4.4 or later) and whether it is ever backported to 2.3.x. Until one of those happens, the comparison table's "snapshot-layer stability" row stands exactly as published.
+
+*§2.5 is left as it was written. This is ageing, not an error: the section was accurate on 2026-08-01 and the world moved under it, which is what a dated snapshot is for.*
+
 ## References
 
 External sources (verified July 2026; snapshot/ACL addenda verified 2026-08-01):
@@ -495,6 +519,6 @@ External sources (verified July 2026; snapshot/ACL addenda verified 2026-08-01):
 
 ---
 
-*Researched and written in collaboration with Claude (Anthropic); facts verified against the sources above as of July 2026, with the addenda (snapshot layer, reliability profiles, corruption-bug timelines) verified 1–6 August 2026 and the growth addendum verified 13 August 2026. This document is a dated snapshot and is not continuously updated.*
+*Researched and written in collaboration with Claude (Anthropic); facts verified against the sources above as of July 2026, with the addenda (snapshot layer, reliability profiles, corruption-bug timelines) verified 1–6 August 2026 the growth addendum verified 13 August 2026 and the automount update 14 August 2026. This document is a dated snapshot and is not continuously updated.*
 
 *© 2026 Petr Kratochvíl · Licensed under [CC BY 4.0](../LICENSE)*

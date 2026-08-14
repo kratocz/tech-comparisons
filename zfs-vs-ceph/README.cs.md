@@ -1,7 +1,7 @@
 # ZFS vs Ceph — volba storage enginu pro malý self-hosted cluster
 
 - **Verdikt:** ⭐ **ZFS na Proxmox VE** — platí pro kontext popsaný níže
-- **Fakta ověřena:** červenec 2026 · doplňky 2026-08-01/06 (snapshot vrstva §2.5–2.6; spolehlivostní profily vč. timelines korupčních bugů Ceph i ZFS §15) · **2026-08-13 (růst po jednom disku, EC 2+2 vs RAIDZ2 §16 — vč. dvou oprav dřívějších tvrzení)**
+- **Fakta ověřena:** červenec 2026 · doplňky 2026-08-01/06 (snapshot vrstva §2.5–2.6; spolehlivostní profily vč. timelines korupčních bugů Ceph i ZFS §15) · **2026-08-13 (růst po jednom disku, EC 2+2 vs RAIDZ2 §16 — vč. dvou oprav dřívějších tvrzení)** · **2026-08-14 (přepis snapshot automount vrstvy upstreamem, zatím nevydaný — §17)**
 - **Jazyk:** 🇨🇿 čeština (originál) · 🇬🇧 [English version](README.md)
 - **Autor:** Petr Kratochvíl — [krato.cz](https://krato.cz)
 
@@ -474,6 +474,30 @@ Pro **jeden uzel se čtyřmi disky, rostoucí po jednom** vychází **ZFS RAIDZ2
 
 **Co by závěr otočilo:** růst po **uzlech** místo po discích — pak je Ceph správná volba od začátku a ušetří pozdější migraci (§10); nebo workload převážně **velké sekvenční zápisy** (archiv médií, zálohy) místo VM disků, kde režie read-modify-write mizí.
 
+## 17. Aktualizace (2026-08-14): snapshot automount vrstva byla přepsána — a není v žádném vydání
+
+§2.5 označila za opravu PR [#17943](https://github.com/openzfs/zfs/pull/17943) a zaznamenala, že se nedostala do 2.3.x LTS řady. Obě tvrzení dál platí. Změnil se **tvar** té opravy, a stojí za to ho zapsat přesně, protože titulek zní líp než praktická situace.
+
+**#17943 opravil jednu race condition, ne celou linii.** Jeho název je přesný: *"Fix snapshot automount race causing AVL tree panic"* (slito 2025-12-08). Dvě issues, které §2.5 bere jako tu linii — [#13131](https://github.com/openzfs/zfs/issues/13131) *"Kernel Panic and DoS on massive amounts of snapshot mount/umount"* (2022) a [#13327](https://github.com/openzfs/zfs/issues/13327) *"processes stuck in kernel forever"* —, zůstaly přes něj otevřené.
+
+**Zavřely se 2026-08-06, a to přepisem.** Maintainer obě uzavřel s poznámkou *"Resolved by* [#18847](https://github.com/openzfs/zfs/pull/18847)*"* — *"Linux: rewrite snapshot automount facility"*. Není to záplata: commit `e8e30769` přistál v masteru **2026-06-18** a v průběhu července ho následovala dávka nových ZTS testů (odpojení snapdiru za probíhajícího přístupu, více automountů přes více mountů základního datasetu, chování při shutdownu, když je automount přesunutý nebo bind-mountnutý jinam). Zavřely se i dvě sousední issues: [#17659](https://github.com/openzfs/zfs/issues/17659), panic vyvolaný systemd, který potkal i Proxmox, 2025-12-12, a [#18073](https://github.com/openzfs/zfs/issues/18073), deadlock `recv` × `du`, 2026-04-08.
+
+**A nic z toho není vydané.** Ověřeno 2026-08-14:
+
+| | |
+|---|---|
+| Přepis v masteru | 2026-06-18 (`e8e30769`) |
+| Poslední vydání | 2.4.3, 2.3.8, 2.2.10 — všechna **2026-06-12** |
+| Nejnovější commit ve `zfs-2.3-release` | 2026-06-08 |
+
+Přepis přistál **šest dní po** posledních vydáních a do 2.3.x LTS větve backportovaný není. Na čemkoli, co dnes jde nainstalovat — včetně toho, co dodává Proxmox —, platí chování před přepisem.
+
+**Co to mění pro verdikt: nic.** Závěr §2.5 zůstává beze změny: je to nejslabší část ZFS na Linuxu a zmírnění jsou levná (`snapdir=hidden` je default; historii procházet přes `zfs diff` nebo klon místo `.zfs`; nechodit do `.zfs` na přijímací straně během `recv`). Ta zmírnění zůstávají platnou radou, ne provizoriem do příští aktualizace.
+
+**Co to mění pro výhled: ta třída problémů vypadá upstreamem uzavřeně.** Přepis plus účelově psaná sada testů je silnější signál než oprava jedné race — vývojáři to vzali jako návrhový problém, ne jako bug. Sledovat je potřeba první vydání obsahující `e8e30769` (2.4.4 nebo novější) a jestli vůbec někdy přijde backport do 2.3.x. Dokud nenastane jedno z toho, řádek „stabilita snapshot vrstvy“ ve srovnávací tabulce platí přesně tak, jak vyšel.
+
+*§2.5 zůstává tak, jak byla napsána. Tohle je stárnutí, ne chyba: sekce byla k 2026-08-01 přesná a svět se pod ní pohnul, což je přesně to, na co datovaný snímek je.*
+
 ## Reference
 
 Externí zdroje (ověřeno 2026-07; snapshot/ACL doplňky ověřeny 2026-08-01):
@@ -495,6 +519,6 @@ Externí zdroje (ověřeno 2026-07; snapshot/ACL doplňky ověřeny 2026-08-01):
 
 ---
 
-*Vzniklo ve spolupráci s Claude (Anthropic); fakta ověřena proti uvedeným zdrojům k červenci 2026, doplňky (snapshot vrstva, spolehlivostní profily, timelines korupčních bugů) k 1.–6. srpnu 2026 a doplněk o růstu po jednom disku k 13. srpnu 2026. Dokument je datovaný snapshot a průběžně se neaktualizuje.*
+*Vzniklo ve spolupráci s Claude (Anthropic); fakta ověřena proti uvedeným zdrojům k červenci 2026, doplňky (snapshot vrstva, spolehlivostní profily, timelines korupčních bugů) k 1.–6. srpnu 2026 doplněk o růstu po jednom disku k 13. srpnu 2026 a aktualizace automount vrstvy k 14. srpnu 2026. Dokument je datovaný snapshot a průběžně se neaktualizuje.*
 
 *© 2026 Petr Kratochvíl · Licence [CC BY 4.0](../LICENSE)*
