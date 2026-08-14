@@ -657,7 +657,7 @@ Parita je jen ten případ, který napadne první. Táž tuhost platí pro **jak
 |---|---|---|
 | **`ashift`** | Nastavuje se per top-level vdev při `zpool create` / `add`; property na pozdější změnu neexistuje | **Použij 12 (4 KiB), pokud neumíš doložit opak.** Příliš nízká hodnota na 4Kn disku znamená trvalý read-modify-write při každém malém zápisu; příliš vysoká jen mrhá trochou místa u malých souborů. Nikdy nespoléhej na autodetekci u poolu, který přežije své první disky — disky o velikosti sektoru lžou |
 | **Úroveň parity** (raidz1/2/3) | *"Expansion does not change the number of failures that can be tolerated without data loss"* | RAIDZ2 do zhruba deseti disků; RAIDZ3 nad to, nebo tam, kde se okno resilveru protahuje na týdny (SMR, hodně plné pooly). §16 i výpočet kolem resilveru říkají, že pro tenhle profil vyhrává RAIDZ2 s měsíčním scrubem |
-| **Typ vdevu** (mirror / raidz / draid) | Konverze neexistuje ani jedním směrem | Mirrory kupují IOPS škálující s počtem vdevů a růst po dvou discích, za 50 % efektivity. RAIDZ kupuje kapacitu kolem 75 % a jeden vdev dodá náhodné IOPS zhruba jednoho disku |
+| **Typ vdevu** (mirror / raidz / draid) | Konverze neexistuje ani jedním směrem — a rozhoduje o tom, jestli *rozvržení* poolu vůbec zůstane vyjednatelné (§21.4) | Mirrory kupují IOPS škálující s počtem vdevů, růst po dvou discích a odebratelný vdev, za 50 % efektivity. RAIDZ kupuje kapacitu kolem 75 %, ale jeden vdev dodá náhodné IOPS zhruba jednoho disku a nikdy ho nedostaneš ven |
 | **Přidání RAIDZ vdevu** | Nikdy ho nejde odebrat: odstranění vyžaduje, aby *"the primary pool storage does not contain a top-level raidz or draid vdev"* | Ber každé `zpool add` raidz vdevu jako nevratné. Undo neexistuje, jen přestavba |
 | **`special` / `dedup` vdev na RAIDZ poolu** | Blokuje ho totéž omezení — je-li v poolu raidz, nejde odebrat nic | Rozhodni při stavbě, jestli ti záleží na IOPS metadat a malých souborů. A **zrcadli ho**: je to úložiště poolu, ne cache, takže jeho ztráta bere pool |
 | **Feature flagy poolu** | `zpool upgrade` zapíná, vypnout nejde nic | Zapínej vědomě. Zapnutá feature může udělat pool neimportovatelným pro starší ZFS — což se počítá při záchraně z rescue systému |
@@ -684,12 +684,14 @@ Tyhle trvalé nejsou a od `zfs rewrite` (§19) jde stará data dorovnat i bez dr
 
 ### 21.4 Na papíře vratné, v praxi ne
 
-- **Jeden pool, nebo víc** (§20). Rozdělení nestojí kapacitu — tři osmidiskové RAIDZ2 pooly použijí týchž 24 disků a šest parity jako jeden pool se třemi takovými vdevy — ale koupí ti granularitu migrace, za cenu volného místa v silech a chybějícího stripingu mezi nimi. Tohle je rozhodnutí, o kterém §20 tvrdí, že se má udělat vědomě, ne mimochodem.
+- **Jeden pool, nebo víc** (§20). *Opraveno týž den, protože tahle sekce to nejprve přehnala:* **přidat** pool později jde vždycky — potřebuje to jen nové disky a nic tomu nebrání. Co nejde, je **rozdělit** existující pool, protože uvolnit z něj disky znamená odebrat vdev, a RAIDZ vdev odebrat nelze nikdy. U **mirror** vdevů to jde: *"A mirrored top-level device (log or data) can be removed"* a *"the specified device will be evacuated by copying all allocated space from it to the other devices in the pool"* — za cenu trvalé mapovací tabulky v RAM, jejíž velikost napřed odhadne `zpool remove -n`.
+
+  Typ vdevu a počet poolů jsou tedy jedno rozhodnutí, ne dvě: RAIDZ zalije rozvržení do betonu, mirrory ho nechají vyjednatelné. A nedělá se jednou — opakuje se při každém rozšíření, protože každá nová dávka disků může buď rozšířit stávající pool, nebo založit další. Rozdělení nestojí kapacitu tak jako tak: tři osmidiskové RAIDZ2 pooly použijí týchž 24 disků a šest parity jako jeden pool se třemi takovými vdevy. Kupuje granularitu migrace; stojí volné místo v silech a chybějící striping mezi pooly.
 - **Hranice datasetů.** `send`/`recv` replikuje celé datasety, takže rozvržení datasetů **je** rozvržením replikace — přesně ten bod, který dělá §12 sourozenecké analýzy `storage-replication`. Strom, který se bude replikovat jinak často nebo vůbec, musí být vlastním datasetem od začátku.
 
 ### 21.5 Zkrácená verze
 
-Pokud jich má před prvním `zpool create` dostat skutečnou pozornost jen pět, ať jsou to: **`ashift`** (12), **typ vdevu a parita**, **jestli chceš `special` vdev**, **model šifrování** a **kolik poolů**. Těchhle pět nejde vzít zpět bez vyprázdnění poolu. Všechno z §21.3 jde později opravit přes `zfs rewrite` a všechno z §21.2 jde aspoň u jednoho datasetu spravit tím, že znovu vytvoříš ten dataset, ne celý pool.
+Pokud jich má před prvním `zpool create` dostat skutečnou pozornost jen čtvero, ať jsou to: **`ashift`** (12), **typ vdevu a parita**, **jestli chceš `special` vdev** a **model šifrování**. Tyhle čtyři nejde vzít zpět bez vyprázdnění poolu. Počet poolů *páté* není — rozhoduje se znovu při každém rozšíření (§21.4) a jak volně, to určuje zvolený typ vdevu, což je důvod, proč ten váží víc, než vypadá. Všechno z §21.3 jde později opravit přes `zfs rewrite` a všechno z §21.2 jde aspoň u jednoho datasetu spravit tím, že znovu vytvoříš ten dataset, ne celý pool.
 
 ## Reference
 
