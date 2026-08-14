@@ -1,7 +1,7 @@
 # ZFS vs Ceph: choosing the storage engine for a small self-hosted cluster
 
 - **Verdict:** ⭐ **ZFS on Proxmox VE** — valid for the context described below
-- **Facts verified:** July 2026 · addenda 2026-08-01/06 (the Linux snapshot layer §2.5–2.6; reliability profiles incl. the Ceph and ZFS corruption-bug timelines §15) · **2026-08-13 (growing one disk at a time, EC 2+2 vs RAIDZ2 §16 — including two corrections to earlier claims)** · **2026-08-14 (the snapshot automount layer rewritten upstream but still unreleased — §17; the eight objections keeping the decision open, with a pre-registered measurement rule — §18; **correction: `zfs rewrite` exists and four claims were wrong** — §19; encoding is bound to the vdev in ZFS and to the pool in Ceph — §20)**
+- **Facts verified:** July 2026 · addenda 2026-08-01/06 (the Linux snapshot layer §2.5–2.6; reliability profiles incl. the Ceph and ZFS corruption-bug timelines §15) · **2026-08-13 (growing one disk at a time, EC 2+2 vs RAIDZ2 §16 — including two corrections to earlier claims)** · **2026-08-14 (the snapshot automount layer rewritten upstream but still unreleased — §17; the eight objections keeping the decision open, with a pre-registered measurement rule — §18; **correction: `zfs rewrite` exists and four claims were wrong** — §19; encoding is bound to the vdev in ZFS and to the pool in Ceph — §20; what ZFS fixes permanently at creation, and how to decide each — §21)**
 - **Language:** 🇬🇧 English (canonical) · 🇨🇿 [Čeština — original](README.cs.md)
 - **Author:** Petr Kratochvíl — [krato.cz](https://krato.cz)
 
@@ -647,6 +647,50 @@ Parity is only the instance that comes to mind first. The same rigidity applies 
 
 **What it does not change:** the verdict, or §18's tally. This is not one of the eight objections; it is a ninth consideration, and the answer to it is not Ceph but **deciding the pool layout deliberately at build time**, while it is still free. Pool design is migration design, in the same way §12 of the sibling analysis observes that dataset design is replication design.
 
+## 21. Decisions ZFS makes permanent at creation (added 2026-08-14)
+
+§20 established that a ZFS pool cannot be re-encoded piecewise. That makes the set of choices fixed at creation time unusually load-bearing: each one is either free now or expensive forever. This section lists them, with what actually decides each.
+
+### 21.1 Pool and vdev — fixed for the life of the pool
+
+| Decision | Why it is permanent | How to decide |
+|---|---|---|
+| **`ashift`** | Set per top-level vdev by `zpool create` / `add`; there is no property to change it later | **Use 12 (4 KiB) unless you can prove otherwise.** Too low on a 4Kn drive is permanent read-modify-write on every small write; too high merely wastes a little space on small files. Never rely on auto-detection for a pool that will outlive its first drives — drives lie about their sector size |
+| **Parity level** (raidz1/2/3) | *"Expansion does not change the number of failures that can be tolerated without data loss"* | RAIDZ2 up to ~10-wide; RAIDZ3 beyond that, or where resilver windows run into weeks (SMR, very full pools). §16 and the resilver arithmetic say RAIDZ2 plus monthly scrubs beats RAIDZ3 for this profile |
+| **vdev type** (mirror / raidz / draid) | No conversion exists in either direction | Mirrors buy IOPS that scale with vdev count and growth two disks at a time, at 50 % efficiency. RAIDZ buys capacity at ~75 %, and one vdev delivers the random IOPS of roughly one disk |
+| **Adding a RAIDZ vdev** | It can never be removed: removal requires that *"the primary pool storage does not contain a top-level raidz or draid vdev"* | Treat every `zpool add` of a raidz vdev as irreversible. There is no undo, only a rebuild |
+| **`special` / `dedup` vdev on a RAIDZ pool** | Blocked by the same restriction — with a raidz present, nothing can be removed | Decide at build time whether small-file and metadata IOPS matter. And **mirror it**: it is pool storage, not cache, so losing it loses the pool |
+| **Pool feature flags** | `zpool upgrade` enables; nothing disables | Enable deliberately. Enabling a feature can make the pool unimportable by an older ZFS — which matters for recovery on a rescue system |
+| **draid geometry** (data / parity / spares / groups) | Fixed at creation like raidz | Only relevant above ~20 disks; below that RAIDZ is simpler |
+
+### 21.2 Dataset — fixed for the life of the dataset
+
+| Property | Documented wording | How to decide |
+|---|---|---|
+| **`encryption`** | *"encryption must be specified at dataset creation time and it cannot be changed afterwards"* | Native encryption cannot be retrofitted; LUKS underneath can be added disk by disk during replacement, and encrypts pool metadata too (§12). If native, decide the encryption-root layout at creation, because it defines what one key unlocks |
+| **`casesensitivity`** | *"This property cannot be changed after the file system is created."* | Default `sensitive` for Linux. `insensitive` only for a dataset dedicated to SMB clients that need it |
+| **`normalization`** | *"This property cannot be changed after the file system is created."* | `formD` if macOS clients will ever write here over SMB or NFS — macOS decomposes accented characters, and without normalization the same filename can exist twice. Cannot be fixed later |
+| **`utf8only`** | *"This property cannot be changed after the file system is created."* | Implied by setting `normalization`. Rejecting invalid UTF-8 is usually what you want; it will reject the occasional legacy filename |
+| **`volblocksize`** (ZVOLs) | *"The blocksize cannot be changed once the volume has been written."* | Match the guest's write pattern. Too small costs metadata overhead; too large multiplies every small guest write into the increment as well as onto the disk (§4 of the sibling replication analysis) |
+
+### 21.3 Changeable, but the old data does not follow
+
+These are not permanent, and since `zfs rewrite` (§19) the old data can be brought into line without a second pool — `zfs rewrite -P -r` applies the new value to existing files. They are listed because they are still worth getting right first, since rewriting a full pool takes time it may not have.
+
+- **`recordsize`** — 1 MiB for a media library, 128 KiB default, 16 KiB for a database dataset.
+- **`compression`** — `zstd` for cold bulk, `lz4` where latency matters.
+- **`copies`** — rarely useful on a redundant pool; it multiplies space without protecting against device loss.
+- **`dedup`** — the exception: switching it off does not reclaim the DDT, and `zpool ddtprune` prunes rather than removes (§18.5). Treat enabling it as permanent.
+
+### 21.4 Reversible on paper, not in practice
+
+- **One pool or several** (§20). Splitting costs no capacity — three 8-disk RAIDZ2 pools use the same 24 disks and 6 parity as one pool holding three such vdevs — but it buys migration granularity, at the price of siloed free space and no striping between them. This is the decision §20 argues should be made deliberately rather than by default.
+- **Dataset boundaries.** `send`/`recv` replicates whole datasets, so the dataset layout *is* the replication layout — the point §12 of the sibling `storage-replication` analysis makes. A tree that will be replicated on a different schedule, or not at all, needs to be its own dataset from the start.
+
+### 21.5 The short version
+
+If only five of these get real thought before the first `zpool create`, make them: **`ashift`** (12), **vdev type and parity**, **whether a `special` vdev is wanted**, **the encryption model**, and **how many pools**. Those five cannot be undone without emptying the pool. Everything else in §21.3 can be repaired later with `zfs rewrite`, and everything in §21.2 can at least be fixed for a single dataset by recreating that dataset rather than the whole pool.
+
 ## References
 
 External sources (verified July 2026; snapshot/ACL addenda verified 2026-08-01):
@@ -669,6 +713,6 @@ External sources (verified July 2026; snapshot/ACL addenda verified 2026-08-01):
 
 ---
 
-*Researched and written in collaboration with Claude (Anthropic); facts verified against the sources above as of July 2026, with the addenda (snapshot layer, reliability profiles, corruption-bug timelines) verified 1–6 August 2026 the growth addendum verified 13 August 2026, and the automount update, the objections section, the `zfs rewrite` correction and the encoding-granularity section 14 August 2026. This document is a dated snapshot and is not continuously updated.*
+*Researched and written in collaboration with Claude (Anthropic); facts verified against the sources above as of July 2026, with the addenda (snapshot layer, reliability profiles, corruption-bug timelines) verified 1–6 August 2026 the growth addendum verified 13 August 2026, and the automount update, the objections section, the `zfs rewrite` correction the encoding-granularity section and the creation-time checklist 14 August 2026. This document is a dated snapshot and is not continuously updated.*
 
 *© 2026 Petr Kratochvíl · Licensed under [CC BY 4.0](../LICENSE)*
