@@ -1,7 +1,7 @@
 # ZFS vs Ceph: choosing the storage engine for a small self-hosted cluster
 
 - **Verdict:** ⭐ **ZFS on Proxmox VE** — valid for the context described below
-- **Facts verified:** July 2026 · addenda 2026-08-01/06 (the Linux snapshot layer §2.5–2.6; reliability profiles incl. the Ceph and ZFS corruption-bug timelines §15) · **2026-08-13 (growing one disk at a time, EC 2+2 vs RAIDZ2 §16 — including two corrections to earlier claims)** · **2026-08-14 (the snapshot automount layer rewritten upstream but still unreleased — §17; the eight objections keeping the decision open, with a pre-registered measurement rule — §18; *correction: `zfs rewrite` exists and four claims were wrong* — §19; encoding is bound to the vdev in ZFS and to the pool in Ceph — §20; what ZFS fixes permanently at creation, and how to decide each — §21; the object model those two assume — §22; resizing a ZVOL under a Proxmox VM, and why discard is usually the real answer — §23) · **2026-08-15 (correction: block cloning is on by default and cross-dataset works — §24; what a small file actually costs, and why it is not the table's 1-byte-write row — §25; choosing `ashift`, and a correction to §21.1 — §26; the rest of §21 swept the same way, including one fabricated figure — §27)**
+- **Facts verified:** July 2026 · addenda 2026-08-01/06 (the Linux snapshot layer §2.5–2.6; reliability profiles incl. the Ceph and ZFS corruption-bug timelines §15) · **2026-08-13 (growing one disk at a time, EC 2+2 vs RAIDZ2 §16 — including two corrections to earlier claims)** · **2026-08-14 (the snapshot automount layer rewritten upstream but still unreleased — §17; the eight objections keeping the decision open, with a pre-registered measurement rule — §18; *correction: `zfs rewrite` exists and four claims were wrong* — §19; encoding is bound to the vdev in ZFS and to the pool in Ceph — §20; what ZFS fixes permanently at creation, and how to decide each — §21; the object model those two assume — §22; resizing a ZVOL under a Proxmox VM, and why discard is usually the real answer — §23) · **2026-08-15 (correction: block cloning is on by default and cross-dataset works — §24; what a small file actually costs, and why it is not the table's 1-byte-write row — §25; choosing `ashift`, and a correction to §21.1 — §26; the rest of §21 swept the same way, including one fabricated figure — §27; `zfs rewrite` does not apply `recordsize`, and how to change it — §28)**
 - **Language:** 🇬🇧 English (canonical) · 🇨🇿 [Čeština — original](README.cs.md)
 - **Author:** Petr Kratochvíl — [krato.cz](https://krato.cz)
 
@@ -675,9 +675,9 @@ Parity is only the instance that comes to mind first. The same rigidity applies 
 
 ### 21.3 Changeable, but the old data does not follow
 
-These are not permanent, and since `zfs rewrite` (§19) the old data can be brought into line without a second pool — `zfs rewrite -P -r` applies the new value to existing files. **On a ZVOL it cannot**: the command takes file and directory operands, so for a volume these properties really are new-data-only unless the volume is rebuilt through `send`/`recv` (§23.4). They are listed because they are still worth getting right first, since rewriting a full pool takes time it may not have.
+These are not permanent, and for `compression`, `checksum`, `dedup` and `copies` the old data can be brought into line without a second pool by `zfs rewrite -P -r` (§19). **`recordsize` is the exception** — *"Changes to properties that affect the size of a logical block, like recordsize, will have no effect"* — so for it the list below is genuinely new-data-only (§28). **On a ZVOL it cannot**: the command takes file and directory operands, so for a volume these properties really are new-data-only unless the volume is rebuilt through `send`/`recv` (§23.4). They are listed because they are still worth getting right first, since rewriting a full pool takes time it may not have.
 
-- **`recordsize`** — 1 MiB for a media library, 128 KiB default, 16 KiB for a database dataset.
+- **`recordsize`** — 1 MiB for a media library, 128 KiB default, 16 KiB for a database dataset. Not applied by a rewrite; existing files keep the size they were written at (§28).
 - **`compression`** — `zstd` for cold bulk, `lz4` where latency matters.
 - **`copies`** — rarely useful on a redundant pool; it multiplies space without protecting against device loss.
 - **`dedup`** — the exception: switching it off does not reclaim the DDT, and `zpool ddtprune` prunes rather than removes (§18.5). Treat enabling it as permanent.
@@ -946,6 +946,46 @@ That is the citation the claim was missing. It is sound, and it now points at th
 - **vdev type conversion** — an absence, argued two ways rather than assumed: the `zpool` subcommand list contains no conversion or reshape operation, and expansion is documented as preserving the parity level. Checked with a positive control, since an empty search is not a source.
 - **All five §21.2 dataset properties** — each already carried the documented wording; none moved.
 
+## 28. Changing `recordsize` in practice — and what `zfs rewrite` does not do (added 2026-08-15)
+
+§21.3 listed `recordsize` among the properties that are *"not permanent, and since `zfs rewrite` (§19) the old data can be brought into line without a second pool"*. That is wrong for `recordsize` specifically, and the man page says so in one sentence: *"Changes to properties that affect the size of a logical block, like **recordsize**, will have no effect."*
+
+### 28.1 What a rewrite actually applies
+
+*"Changed dataset properties that operate on the data or metadata without changing the logical size will be applied. These include **checksum**, **compression**, **dedup** and **copies**."*
+
+Four properties, and the boundary is exactly the phrase *"without changing the logical size"*. A rewrite relocates blocks; it does not re-block a file. So §19's claim that it closes the **recompression** gap stands — compression is in the list — but the same sentence never covered `recordsize`, and §21.3 extended it to something it was never able to do.
+
+The property's own documentation said as much all along, and is the sentence that should have been read first: *"Changing the file system's recordsize affects only files created afterward; existing files are unaffected."*
+
+### 28.2 So how does an existing file get a new record size?
+
+Only by being genuinely rewritten — its contents read and written again as new data, so that the new `recordsize` applies at allocation time. In practice:
+
+- **Copy the files** within or into the dataset (`cp`, `rsync`), then swap the originals out. Crude, but it is the only per-file route.
+- **`send`/`recv` the whole dataset** into a fresh one with the new value set. This is the route §19 wanted `zfs rewrite` to remove and, for `recordsize`, still does not.
+
+Both re-read and re-write every byte, so neither is the cheap in-place operation `zfs rewrite` is for `compression`.
+
+### 28.3 Choosing the value, given `recordsize` is a ceiling
+
+Raising it does not touch files smaller than the new size — §25 covers why, and it means a mixed tree sees a diluted effect. The value is *"a power of two greater than or equal to 512 B and less than or equal to 128 KiB. If the large_blocks feature is enabled on the pool, the size may be up to 16 MiB."*
+
+Match it to how the data is actually read and written:
+
+- **Large sequential data** (a media library) tolerates and benefits from a large record: fewer blocks, less metadata, and better compression ratios, because compression works on whole records.
+- **Small random writes** (a database) want a record near the application's page size. A 16 KiB write into a 1 MiB record dirties the whole megabyte, which is the write-amplification row of the comparison table and the reason the man page describes the property as *"designed solely for use with database workloads that access files in fixed-size records"*.
+
+Since it applies at file creation, the value is worth setting on a dataset **before** it is filled, not after — which is why §21 keeps it in the "worth getting right first" group even though it is technically changeable.
+
+### 28.4 The traps that still apply, to the properties a rewrite does change
+
+For `compression`, `checksum`, `dedup` and `copies`, `zfs rewrite` is the in-place route — with two conditions §19 already records and which are easy to meet in the wrong order:
+
+- **`-P` is not optional if the dataset is replicated.** Without it every rewritten block takes a new logical birth time, so the next incremental `send` ships the entire dataset.
+- **Prune snapshots first.** Rewriting blocks shared with a snapshot creates second copies rather than replacing the originals, so space grows before it shrinks.
+- And none of it reaches a **ZVOL** at all (§23.4).
+
 ## References
 
 External sources (block verified to 2026-08-14; per-entry dates given where they differ):
@@ -972,6 +1012,6 @@ External sources (block verified to 2026-08-14; per-entry dates given where they
 
 ---
 
-*Researched and written in collaboration with Claude (Anthropic); facts verified against the sources above as of July 2026, with the addenda (snapshot layer, reliability profiles, corruption-bug timelines) verified 1–6 August 2026, the growth addendum verified 13 August 2026, and the automount update, the objections section, the `zfs rewrite` correction, the encoding-granularity section, the creation-time checklist, the object-model section and the ZVOL-resize section verified 14 August 2026, and the block-cloning correction the small-file section, the `ashift` section and the §21 sweep verified 15 August 2026. This document is a dated snapshot and is not continuously updated.*
+*Researched and written in collaboration with Claude (Anthropic); facts verified against the sources above as of July 2026, with the addenda (snapshot layer, reliability profiles, corruption-bug timelines) verified 1–6 August 2026, the growth addendum verified 13 August 2026, and the automount update, the objections section, the `zfs rewrite` correction, the encoding-granularity section, the creation-time checklist, the object-model section and the ZVOL-resize section verified 14 August 2026, and the block-cloning correction the small-file section, the `ashift` section the §21 sweep and the `recordsize` correction verified 15 August 2026. This document is a dated snapshot and is not continuously updated.*
 
 *© 2026 Petr Kratochvíl · Licensed under [CC BY 4.0](../LICENSE)*

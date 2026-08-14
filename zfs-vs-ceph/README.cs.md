@@ -1,7 +1,7 @@
 # ZFS vs Ceph — volba storage enginu pro malý self-hosted cluster
 
 - **Verdikt:** ⭐ **ZFS na Proxmox VE** — platí pro kontext popsaný níže
-- **Fakta ověřena:** červenec 2026 · doplňky 2026-08-01/06 (snapshot vrstva §2.5–2.6; spolehlivostní profily vč. timelines korupčních bugů Ceph i ZFS §15) · **2026-08-13 (růst po jednom disku, EC 2+2 vs RAIDZ2 §16 — vč. dvou oprav dřívějších tvrzení)** · **2026-08-14 (přepis snapshot automount vrstvy upstreamem, zatím nevydaný — §17; osm námitek držících rozhodnutí otevřené, s předem sepsaným měřicím pravidlem — §18; *oprava: `zfs rewrite` existuje a čtyři tvrzení byla chybná* — §19; kódování je v ZFS vázané na vdev a v Cephu na pool — §20; co ZFS zafixuje napevno při vytvoření a jak o tom rozhodnout — §21; objektový model, který obě předpokládají — §22; změna velikosti ZVOLu pod Proxmox VM a proč je skutečnou odpovědí obvykle discard — §23) · **2026-08-15 (oprava: block cloning je defaultně zapnutý a cross-dataset funguje — §24; kolik doopravdy stojí malý soubor a proč to není řádek tabulky o zápisu 1 bajtu — §25; volba `ashift` a oprava k §21.1 — §26; zbytek §21 projetý stejným sítem, včetně jednoho vymyšleného čísla — §27)**
+- **Fakta ověřena:** červenec 2026 · doplňky 2026-08-01/06 (snapshot vrstva §2.5–2.6; spolehlivostní profily vč. timelines korupčních bugů Ceph i ZFS §15) · **2026-08-13 (růst po jednom disku, EC 2+2 vs RAIDZ2 §16 — vč. dvou oprav dřívějších tvrzení)** · **2026-08-14 (přepis snapshot automount vrstvy upstreamem, zatím nevydaný — §17; osm námitek držících rozhodnutí otevřené, s předem sepsaným měřicím pravidlem — §18; *oprava: `zfs rewrite` existuje a čtyři tvrzení byla chybná* — §19; kódování je v ZFS vázané na vdev a v Cephu na pool — §20; co ZFS zafixuje napevno při vytvoření a jak o tom rozhodnout — §21; objektový model, který obě předpokládají — §22; změna velikosti ZVOLu pod Proxmox VM a proč je skutečnou odpovědí obvykle discard — §23) · **2026-08-15 (oprava: block cloning je defaultně zapnutý a cross-dataset funguje — §24; kolik doopravdy stojí malý soubor a proč to není řádek tabulky o zápisu 1 bajtu — §25; volba `ashift` a oprava k §21.1 — §26; zbytek §21 projetý stejným sítem, včetně jednoho vymyšleného čísla — §27; `zfs rewrite` neaplikuje `recordsize` a jak ho tedy měnit — §28)**
 - **Jazyk:** 🇨🇿 čeština (originál) · 🇬🇧 [English version](README.md)
 - **Autor:** Petr Kratochvíl — [krato.cz](https://krato.cz)
 
@@ -675,9 +675,9 @@ Parita je jen ten případ, který napadne první. Táž tuhost platí pro **jak
 
 ### 21.3 Změnitelné, ale stará data nejdou s nimi
 
-Tyhle trvalé nejsou a od `zfs rewrite` (§19) jde stará data dorovnat i bez druhého poolu — `zfs rewrite -P -r` aplikuje novou hodnotu na existující soubory. **U ZVOLu to nejde**: příkaz bere operandy typu soubor a adresář, takže u svazku jsou tyhle properties opravdu jen pro nová data, dokud se svazek nepostaví znovu přes `send`/`recv` (§23.4). Uvádím je proto, že i tak se vyplatí trefit je hned napoprvé: přepis plného poolu zabere čas, který nemusíš mít.
+Tyhle trvalé nejsou a u `compression`, `checksum`, `dedup` a `copies` jde stará data dorovnat i bez druhého poolu pomocí `zfs rewrite -P -r` (§19). **`recordsize` je výjimka** — *"Changes to properties that affect the size of a logical block, like recordsize, will have no effect"* — takže u něj je seznam níže opravdu jen pro nová data (§28). **U ZVOLu to nejde**: příkaz bere operandy typu soubor a adresář, takže u svazku jsou tyhle properties opravdu jen pro nová data, dokud se svazek nepostaví znovu přes `send`/`recv` (§23.4). Uvádím je proto, že i tak se vyplatí trefit je hned napoprvé: přepis plného poolu zabere čas, který nemusíš mít.
 
-- **`recordsize`** — 1 MiB pro knihovnu médií, 128 KiB default, 16 KiB pro databázový dataset.
+- **`recordsize`** — 1 MiB pro knihovnu médií, 128 KiB default, 16 KiB pro databázový dataset. Přepis ho neaplikuje; existující soubory si drží velikost, se kterou vznikly (§28).
 - **`compression`** — `zstd` pro studená bulk data, `lz4` tam, kde jde o latenci.
 - **`copies`** — na redundantním poolu málokdy užitečné; násobí místo, aniž chrání proti ztrátě zařízení.
 - **`dedup`** — výjimka: vypnutí neuvolní DDT a `zpool ddtprune` prořezává, neodstraňuje (§18.5). Ber zapnutí jako trvalé.
@@ -946,6 +946,46 @@ To je ta citace, která tvrzení chyběla. Platí a teď ukazuje na větu, kter�
 - **Konverze typu vdevu** — absence, doložená dvěma způsoby místo předpokládaná: seznam subcommandů `zpool` neobsahuje žádnou konverzi ani reshape a rozšíření je dokumentované jako zachovávající úroveň parity. Ověřeno s pozitivní kontrolou, protože prázdné hledání není zdroj.
 - **Všech pět datasetových properties z §21.2** — každá už nesla doloženou formulaci; žádná se nehnula.
 
+## 28. Změna `recordsize` v praxi — a co `zfs rewrite` neumí (doplněno 2026-08-15)
+
+§21.3 řadila `recordsize` mezi vlastnosti, které *"trvalé nejsou a od `zfs rewrite` (§19) jde stará data dorovnat i bez druhého poolu"*. U `recordsize` to neplatí a man page to říká jednou větou: *"Changes to properties that affect the size of a logical block, like **recordsize**, will have no effect."*
+
+### 28.1 Co přepis doopravdy aplikuje
+
+*"Changed dataset properties that operate on the data or metadata without changing the logical size will be applied. These include **checksum**, **compression**, **dedup** and **copies**."*
+
+Čtyři vlastnosti, a hranicí je přesně to spojení *"without changing the logical size"*. Přepis bloky přesouvá; soubor nepřeblokuje. Tvrzení §19, že zavírá mezeru v **rekompresi**, tedy platí — komprese v tom seznamu je —, ale tatáž věta `recordsize` nikdy nepokrývala a §21.3 ji rozšířila na něco, co ten nástroj nikdy neuměl.
+
+Dokumentace té property to ostatně říkala celou dobu a je to věta, kterou jsem měl přečíst první: *"Changing the file system's recordsize affects only files created afterward; existing files are unaffected."*
+
+### 28.2 Jak tedy existující soubor dostane nový record size?
+
+Jen tím, že se doopravdy přepíše — obsah se přečte a zapíše znovu jako nová data, takže se nový `recordsize` uplatní při alokaci. Prakticky:
+
+- **Zkopírovat soubory** uvnitř datasetu nebo do něj (`cp`, `rsync`) a originály vyměnit. Hrubé, ale je to jediná cesta po jednotlivých souborech.
+- **`send`/`recv` celého datasetu** do čerstvého s novou hodnotou. Právě tuhle cestu chtěla §19 nástrojem `zfs rewrite` odstranit — a u `recordsize` ji pořád neodstraňuje.
+
+Obojí přečte a zapíše každý bajt, takže ani jedno není ta levná operace na místě, kterou `zfs rewrite` je pro `compression`.
+
+### 28.3 Volba hodnoty, když je `recordsize` strop
+
+Zvýšení se nedotkne souborů menších, než je nová hodnota — proč, řeší §25, a znamená to, že u smíšeného stromu se efekt rozředí. Hodnota je *"a power of two greater than or equal to 512 B and less than or equal to 128 KiB. If the large_blocks feature is enabled on the pool, the size may be up to 16 MiB."*
+
+Přizpůsob ji tomu, jak se data doopravdy čtou a zapisují:
+
+- **Velká sekvenční data** (knihovna médií) velký record snesou a těží z něj: méně bloků, méně metadat a lepší kompresní poměry, protože komprese pracuje po celých recordech.
+- **Malé náhodné zápisy** (databáze) chtějí record blízko stránce aplikace. 16KiB zápis do 1MiB recordu ušpiní celý megabajt, což je řádek o write amplification ve srovnávací tabulce a důvod, proč man page tu property popisuje jako *"designed solely for use with database workloads that access files in fixed-size records"*.
+
+Protože se uplatňuje při vzniku souboru, vyplatí se hodnotu nastavit na datasetu **dřív**, než se naplní, ne potom — a proto ji §21 drží ve skupině „vyplatí se trefit hned napoprvé“, i když je technicky změnitelná.
+
+### 28.4 Pasti, které pro měnitelné vlastnosti platí dál
+
+U `compression`, `checksum`, `dedup` a `copies` je `zfs rewrite` tou cestou na místě — se dvěma podmínkami, které §19 už zaznamenává a které se snadno splní ve špatném pořadí:
+
+- **`-P` není volitelné, pokud dataset replikuješ.** Bez něj dostane každý přepsaný blok nový logical birth time, takže příští inkrementální `send` pošle celý dataset.
+- **Nejdřív promazat snapshoty.** Přepis bloků sdílených se snapshotem vytvoří druhé kopie místo aby nahradil originály, takže místo napřed naroste, než se zmenší.
+- A na **ZVOL** nedosáhne nic z toho (§23.4).
+
 ## Reference
 
 Externí zdroje (blok ověřen k 2026-08-14; dílčí data uvedena tam, kde se liší):
@@ -972,6 +1012,6 @@ Externí zdroje (blok ověřen k 2026-08-14; dílčí data uvedena tam, kde se l
 
 ---
 
-*Vzniklo ve spolupráci s Claude (Anthropic); fakta ověřena proti uvedeným zdrojům k červenci 2026, doplňky (snapshot vrstva, spolehlivostní profily, timelines korupčních bugů) k 1.–6. srpnu 2026, doplněk o růstu po jednom disku k 13. srpnu 2026, a aktualizace automount vrstvy, sekce o námitkách, oprava k `zfs rewrite`, sekce o granularitě kódování, checklist rozhodnutí při vytvoření, sekce o objektovém modelu i sekce o změně velikosti ZVOLu k 14. srpnu 2026 a oprava k block cloningu sekce o malých souborech, sekce o `ashift` i prohlídka §21 k 15. srpnu 2026. Dokument je datovaný snapshot a průběžně se neaktualizuje.*
+*Vzniklo ve spolupráci s Claude (Anthropic); fakta ověřena proti uvedeným zdrojům k červenci 2026, doplňky (snapshot vrstva, spolehlivostní profily, timelines korupčních bugů) k 1.–6. srpnu 2026, doplněk o růstu po jednom disku k 13. srpnu 2026, a aktualizace automount vrstvy, sekce o námitkách, oprava k `zfs rewrite`, sekce o granularitě kódování, checklist rozhodnutí při vytvoření, sekce o objektovém modelu i sekce o změně velikosti ZVOLu k 14. srpnu 2026 a oprava k block cloningu sekce o malých souborech, sekce o `ashift` prohlídka §21 i oprava k `recordsize` k 15. srpnu 2026. Dokument je datovaný snapshot a průběžně se neaktualizuje.*
 
 *© 2026 Petr Kratochvíl · Licence [CC BY 4.0](../LICENSE)*
