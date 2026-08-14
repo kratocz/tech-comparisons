@@ -1,7 +1,7 @@
 # ZFS vs Ceph — volba storage enginu pro malý self-hosted cluster
 
 - **Verdikt:** ⭐ **ZFS na Proxmox VE** — platí pro kontext popsaný níže
-- **Fakta ověřena:** červenec 2026 · doplňky 2026-08-01/06 (snapshot vrstva §2.5–2.6; spolehlivostní profily vč. timelines korupčních bugů Ceph i ZFS §15) · **2026-08-13 (růst po jednom disku, EC 2+2 vs RAIDZ2 §16 — vč. dvou oprav dřívějších tvrzení)** · **2026-08-14 (přepis snapshot automount vrstvy upstreamem, zatím nevydaný — §17; osm námitek držících rozhodnutí otevřené, s předem sepsaným měřicím pravidlem — §18; **oprava: `zfs rewrite` existuje a čtyři tvrzení byla chybná** — §19; kódování je v ZFS vázané na vdev a v Cephu na pool — §20; co ZFS zafixuje napevno při vytvoření a jak o tom rozhodnout — §21; objektový model, který obě předpokládají — §22)**
+- **Fakta ověřena:** červenec 2026 · doplňky 2026-08-01/06 (snapshot vrstva §2.5–2.6; spolehlivostní profily vč. timelines korupčních bugů Ceph i ZFS §15) · **2026-08-13 (růst po jednom disku, EC 2+2 vs RAIDZ2 §16 — vč. dvou oprav dřívějších tvrzení)** · **2026-08-14 (přepis snapshot automount vrstvy upstreamem, zatím nevydaný — §17; osm námitek držících rozhodnutí otevřené, s předem sepsaným měřicím pravidlem — §18; **oprava: `zfs rewrite` existuje a čtyři tvrzení byla chybná** — §19; kódování je v ZFS vázané na vdev a v Cephu na pool — §20; co ZFS zafixuje napevno při vytvoření a jak o tom rozhodnout — §21; objektový model, který obě předpokládají — §22; změna velikosti ZVOLu pod Proxmox VM a proč je skutečnou odpovědí obvykle discard — §23)**
 - **Jazyk:** 🇨🇿 čeština (originál) · 🇬🇧 [English version](README.md)
 - **Autor:** Petr Kratochvíl — [krato.cz](https://krato.cz)
 
@@ -761,6 +761,53 @@ Výjimkou z „nedimenzují se“ jsou ZVOLy: ty `volsize` deklarují, ve výcho
 
 Zmenšování je ta část, která v podstatě neexistuje. Jediným mechanismem je odebrání top-level vdevu, což funguje u mirroru a holého zařízení, ale nikdy tam, kde je přítomný RAIDZ vdev (§21.4). **RAIDZ pool je jednosměrka** — a právě o téhle jediné asymetrii jsou §20 i §21 nakonec obě.
 
+## 23. Změna velikosti ZVOLu pod Proxmox VM (doplněno 2026-08-14)
+
+Srovnávací tabulka dává ZFS, Cephu i LVM u zmenšení VM disku ✅ a jako tvrzení o schopnosti je to správně. V praxi se ale ty dva směry nechovají ani vzdáleně stejně a nástroje jeden z nich odmítají. Tahle sekce je provozní detail za tím řádkem. **Ratingy neposouvá**, protože omezení, na kterém záleží, se ukazuje být Proxmoxovo, ne kteréhokoli backendu.
+
+### 23.1 Zvětšení: za běhu a přes `qm resize`
+
+```bash
+qm resize 101 scsi0 +500G
+```
+
+Používej `qm resize`, ne `zfs set volsize`. ZVOL zvětší obojí, ale jen `qm resize` o tom zároveň řekne QEMU, takže běžící host uvidí novou velikost okamžitě. Nastavení `volsize` za zády Proxmoxu nechá QEMU hlásit hostu starou velikost až do vypnutí VM — ZVOL je větší a host se to nedozví.
+
+Dvě omezení plynou ze samotné property. *"The volsize can only be set to a multiple of volblocksize, and cannot be zero."* A *"Any changes to volsize are reflected in an equivalent change to the reservation (or refreservation)"* — u thick ZVOLu tedy zvětšení ukousne místo v poolu okamžitě, dřív než host cokoli zapíše.
+
+### 23.2 Zmenšení: možné, odmítané a za běhu nebezpečné
+
+`zfs set volsize=` menší hodnotu přijme. Proxmox ne: *"Shrinking disk size is not supported."* To odmítnutí je **nezávislé na backendu** — `qm resize` odmítne zmenšit stejně tak RBD image nebo LVM svazek —, a proto tohle ZFS od Cephu v tabulce výše nerozlišuje.
+
+Důvod, proč to odmítnutí respektovat, je, že **ZFS netuší, co je uvnitř**. ZVOL jsou pro něj syrové bloky; uřízne pod posledním použitým extentem filesystému bez reptání. Výstraha v man page míří přesně na zařízení v provozu: *"These effects can also occur when the volume size is changed while it is in use (particularly when shrinking the size). Extreme care should be used when adjusting the volume size."*
+
+Zmenšovat disk **běžící** VM je nebezpečné i tehdy, když je filesystém uvnitř už správně zmenšený: jádro hosta má starou velikost zařízení nacachovanou, jeho page cache může držet data za novou hranicí a QEMU velikost směrem dolů nerenegociuje. Zvětšení je událost, kterou host vstřebá; zmenšení není jeho zrcadlovým obrazem.
+
+**Když to udělat musíš:**
+
+1. Zmenšit filesystém uvnitř hosta, pohodlně pod cílovou velikost.
+2. Ověřit, kde doopravdy leží poslední použitý blok — krok, který se vynechává nejčastěji.
+3. **Vypnout VM.** Není to volitelné.
+4. `zfs snapshot tank/vms/disk0@pred-zmensenim` — skutečná záchranná síť.
+5. `zfs set volsize=…` na hostiteli.
+6. Nabootovat a ověřit, teprve pak sahat na snapshot z kroku 4.
+
+Pozor na interakci v kroku 4: dokud ten snapshot existuje, drží staré bloky, takže uvolňované místo se neobjeví, dokud ho nezničíš. Což je stejně správné pořadí — nejdřív ověřit, pak uvolňovat.
+
+### 23.3 Co se obvykle chce místo toho: discard
+
+U **sparse** ZVOLu zmenšení `volsize` samo o sobě neuvolní nic. Spotřebované místo je to, co je zapsané, ne to, co je deklarované, takže snížením deklarace se neuvolní žádné bloky. Co poolu skutečně vrací místo po smazaných souborech uvnitř hosta, je discard:
+
+```
+# Proxmox: u disku zapnout Discard (a použít virtio-scsi)
+# v hostu:
+fstrim -av
+```
+
+Běží to za provozu, geometrii to nijak neohrožuje a dá se to opakovat podle plánu. U thin provisioned VM disku je to jediný mechanismus, který vůbec něco vrací, a je to skoro vždycky to, co „chci zmenšit ten disk“ doopravdy znamená.
+
+Zmenšení `volsize` si své riziko zaslouží jen u **thick** ZVOLu, kde jde o uvolnění rezervace, ne dat — a tam platí postup z §23.2 v plném rozsahu.
+
 ## Reference
 
 Externí zdroje (ověřeno 2026-07; snapshot/ACL doplňky ověřeny 2026-08-01):
@@ -772,6 +819,7 @@ Externí zdroje (ověřeno 2026-07; snapshot/ACL doplňky ověřeny 2026-08-01):
 - Fragmentace / defrag: [OpenZFS #3582](https://github.com/openzfs/zfs/issues/3582), [zfs-rewrite(8)](https://openzfs.github.io/openzfs-docs/man/master/8/zfs-rewrite.8.html), [#17246 — zavedení `zfs rewrite`](https://github.com/openzfs/zfs/pull/17246), [zpoolprops(7) — property `fragmentation`](https://openzfs.github.io/openzfs-docs/man/master/7/zpoolprops.7.html) (ověřeno 2026-08-14)
 - Fast Dedup: [Klara Systems](https://klarasystems.com/articles/introducing-openzfs-fast-dedup/), [despairlabs](https://despairlabs.com/blog/posts/2024-10-27-openzfs-dedup-is-good-dont-use-it/)
 - Ceph dedup: [Ceph docs — Deduplication (experimental)](https://docs.ceph.com/en/latest/dev/deduplication/), [RGW Object Dedup](https://docs.ceph.com/en/latest/radosgw/s3_objects_dedup/)
+- Změna velikosti ZVOLu (§23): [zfsprops(7) — `volsize`](https://openzfs.github.io/openzfs-docs/man/master/7/zfsprops.7.html), [Proxmox `qm(1)` — resize neumí zmenšit](https://pve.proxmox.com/pve-docs/qm.1.html) (ověřeno 2026-08-14)
 - ZVOL shrink: [FreeBSD Forums](https://forums.freebsd.org/threads/zfs-set-volsize-data-loss.55854/), [TrueNAS](https://www.truenas.com/community/threads/shrink-zvol-of-vm.100519/)
 - Snapshot automount / panic: [#13131](https://github.com/openzfs/zfs/issues/13131), [#13327](https://github.com/openzfs/zfs/issues/13327), [#17659](https://github.com/openzfs/zfs/issues/17659), [fix PR #17943](https://github.com/openzfs/zfs/pull/17943) (master 12/2025; mimo 2.3.6–2.3.8), [#18073](https://github.com/openzfs/zfs/issues/18073) (recv × du deadlock), [module params — `zfs_expire_snapshot`](https://openzfs.github.io/openzfs-docs/Performance%20and%20Tuning/Module%20Parameters.html)
 - NFSv4 ACL na Linuxu: [#4966](https://github.com/openzfs/zfs/issues/4966), [WIP PR #13186](https://github.com/openzfs/zfs/pull/13186)
@@ -783,6 +831,6 @@ Externí zdroje (ověřeno 2026-07; snapshot/ACL doplňky ověřeny 2026-08-01):
 
 ---
 
-*Vzniklo ve spolupráci s Claude (Anthropic); fakta ověřena proti uvedeným zdrojům k červenci 2026, doplňky (snapshot vrstva, spolehlivostní profily, timelines korupčních bugů) k 1.–6. srpnu 2026 doplněk o růstu po jednom disku k 13. srpnu 2026 a aktualizace automount vrstvy, sekce o námitkách, oprava k `zfs rewrite` sekce o granularitě kódování, checklist rozhodnutí při vytvoření i sekce o objektovém modelu k 14. srpnu 2026. Dokument je datovaný snapshot a průběžně se neaktualizuje.*
+*Vzniklo ve spolupráci s Claude (Anthropic); fakta ověřena proti uvedeným zdrojům k červenci 2026, doplňky (snapshot vrstva, spolehlivostní profily, timelines korupčních bugů) k 1.–6. srpnu 2026 doplněk o růstu po jednom disku k 13. srpnu 2026 a aktualizace automount vrstvy, sekce o námitkách, oprava k `zfs rewrite` sekce o granularitě kódování, checklist rozhodnutí při vytvoření, sekce o objektovém modelu i sekce o změně velikosti ZVOLu k 14. srpnu 2026. Dokument je datovaný snapshot a průběžně se neaktualizuje.*
 
 *© 2026 Petr Kratochvíl · Licence [CC BY 4.0](../LICENSE)*

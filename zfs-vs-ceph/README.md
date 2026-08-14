@@ -1,7 +1,7 @@
 # ZFS vs Ceph: choosing the storage engine for a small self-hosted cluster
 
 - **Verdict:** ⭐ **ZFS on Proxmox VE** — valid for the context described below
-- **Facts verified:** July 2026 · addenda 2026-08-01/06 (the Linux snapshot layer §2.5–2.6; reliability profiles incl. the Ceph and ZFS corruption-bug timelines §15) · **2026-08-13 (growing one disk at a time, EC 2+2 vs RAIDZ2 §16 — including two corrections to earlier claims)** · **2026-08-14 (the snapshot automount layer rewritten upstream but still unreleased — §17; the eight objections keeping the decision open, with a pre-registered measurement rule — §18; **correction: `zfs rewrite` exists and four claims were wrong** — §19; encoding is bound to the vdev in ZFS and to the pool in Ceph — §20; what ZFS fixes permanently at creation, and how to decide each — §21; the object model those two assume — §22)**
+- **Facts verified:** July 2026 · addenda 2026-08-01/06 (the Linux snapshot layer §2.5–2.6; reliability profiles incl. the Ceph and ZFS corruption-bug timelines §15) · **2026-08-13 (growing one disk at a time, EC 2+2 vs RAIDZ2 §16 — including two corrections to earlier claims)** · **2026-08-14 (the snapshot automount layer rewritten upstream but still unreleased — §17; the eight objections keeping the decision open, with a pre-registered measurement rule — §18; **correction: `zfs rewrite` exists and four claims were wrong** — §19; encoding is bound to the vdev in ZFS and to the pool in Ceph — §20; what ZFS fixes permanently at creation, and how to decide each — §21; the object model those two assume — §22; resizing a ZVOL under a Proxmox VM, and why discard is usually the real answer — §23)**
 - **Language:** 🇬🇧 English (canonical) · 🇨🇿 [Čeština — original](README.cs.md)
 - **Author:** Petr Kratochvíl — [krato.cz](https://krato.cz)
 
@@ -761,6 +761,53 @@ ZVOLs are the exception to "not sized": they declare a `volsize`, though thin by
 
 Shrinking is the part that essentially does not exist. The only mechanism is removing a top-level vdev, which works for a mirror or a bare device but never where a RAIDZ vdev is present (§21.4). **A RAIDZ pool is one-way traffic** — and that single asymmetry is what §20 and §21 are both ultimately about.
 
+## 23. Resizing a ZVOL under a Proxmox VM (added 2026-08-14)
+
+The comparison table rates ZFS, Ceph and LVM all ✅ on shrinking a VM disk, and as a statement about capability that is correct. In practice the two directions behave nothing alike, and the tooling refuses one of them. This section is the operational detail behind that row. **It does not move the ratings**, because the constraint that matters turns out to be Proxmox's rather than any backend's.
+
+### 23.1 Growing: online, and through `qm resize`
+
+```bash
+qm resize 101 scsi0 +500G
+```
+
+Use `qm resize`, not `zfs set volsize`. Both enlarge the ZVOL, but only `qm resize` also tells QEMU, so a running guest sees the new size immediately. Setting `volsize` behind Proxmox's back leaves QEMU reporting the old size to the guest until the VM is stopped — the ZVOL is bigger and the guest cannot tell.
+
+Two constraints come from the property itself. *"The volsize can only be set to a multiple of volblocksize, and cannot be zero."* And *"Any changes to volsize are reflected in an equivalent change to the reservation (or refreservation)"* — so on a thick ZVOL, growing it consumes pool space at once, before the guest writes anything.
+
+### 23.2 Shrinking: possible, refused, and dangerous while running
+
+`zfs set volsize=` accepts a smaller value. Proxmox does not: *"Shrinking disk size is not supported."* That refusal is **backend-independent** — `qm resize` declines to shrink an RBD image or an LVM volume just as readily — which is why this does not differentiate ZFS from Ceph in the table above.
+
+The reason to respect the refusal is that **ZFS has no idea what is inside**. A ZVOL is raw blocks to it; it will truncate below the filesystem's last used extent without complaint. The man page's warning is specifically about doing this to a device in use: *"These effects can also occur when the volume size is changed while it is in use (particularly when shrinking the size). Extreme care should be used when adjusting the volume size."*
+
+Shrinking a **running** VM's disk is unsafe even when the guest filesystem has already been shrunk correctly: the guest kernel has the old device size cached, its page cache may still hold data beyond the new boundary, and QEMU does not renegotiate size downwards. Growing is a size-increase event a guest can absorb; shrinking is not the mirror image of it.
+
+**If it must be done:**
+
+1. Shrink the filesystem inside the guest, to comfortably below the target.
+2. Confirm where the last used block actually sits — the step most often skipped.
+3. **Shut the VM down.** Not optional.
+4. `zfs snapshot tank/vms/disk0@pre-shrink` — the real safety net.
+5. `zfs set volsize=…` on the host.
+6. Boot and verify before going near step 4's snapshot.
+
+Note the interaction in step 4: while that snapshot exists it pins the old blocks, so the space being reclaimed will not appear until it is destroyed. That is the correct order anyway — verify first, reclaim second.
+
+### 23.3 What usually gets wanted instead: discard
+
+On a **sparse** ZVOL, shrinking `volsize` reclaims nothing by itself. Consumed space is what has been written, not what has been declared, so lowering the declaration frees no blocks. What actually returns space to the pool after files are deleted inside the guest is discard:
+
+```
+# Proxmox: enable Discard on the disk (and use virtio-scsi)
+# in the guest:
+fstrim -av
+```
+
+This runs online, carries no risk to the geometry, and can be repeated on a schedule. For a thin-provisioned VM disk it is the only mechanism that reclaims anything at all, and it is almost always what "I want to shrink this disk" actually means.
+
+Shrinking `volsize` earns its risk only on a **thick** ZVOL, where the point is to release the reservation rather than the data — and there the procedure in §23.2 applies in full.
+
 ## References
 
 External sources (verified July 2026; snapshot/ACL addenda verified 2026-08-01):
@@ -772,6 +819,7 @@ External sources (verified July 2026; snapshot/ACL addenda verified 2026-08-01):
 - Fragmentation / defrag: [OpenZFS #3582](https://github.com/openzfs/zfs/issues/3582), [zfs-rewrite(8)](https://openzfs.github.io/openzfs-docs/man/master/8/zfs-rewrite.8.html), [#17246 — introduce `zfs rewrite`](https://github.com/openzfs/zfs/pull/17246), [zpoolprops(7) — the `fragmentation` property](https://openzfs.github.io/openzfs-docs/man/master/7/zpoolprops.7.html) (verified 2026-08-14)
 - Fast Dedup: [Klara Systems](https://klarasystems.com/articles/introducing-openzfs-fast-dedup/), [despairlabs](https://despairlabs.com/blog/posts/2024-10-27-openzfs-dedup-is-good-dont-use-it/)
 - Ceph dedup: [Ceph docs — Deduplication (experimental)](https://docs.ceph.com/en/latest/dev/deduplication/), [RGW Object Dedup](https://docs.ceph.com/en/latest/radosgw/s3_objects_dedup/)
+- ZVOL resize (§23): [zfsprops(7) — `volsize`](https://openzfs.github.io/openzfs-docs/man/master/7/zfsprops.7.html), [Proxmox `qm(1)` — resize does not shrink](https://pve.proxmox.com/pve-docs/qm.1.html) (verified 2026-08-14)
 - ZVOL shrink: [FreeBSD Forums](https://forums.freebsd.org/threads/zfs-set-volsize-data-loss.55854/), [TrueNAS](https://www.truenas.com/community/threads/shrink-zvol-of-vm.100519/)
 - Snapshot automount / panics: [#13131](https://github.com/openzfs/zfs/issues/13131), [#13327](https://github.com/openzfs/zfs/issues/13327), [#17659](https://github.com/openzfs/zfs/issues/17659), [fix PR #17943](https://github.com/openzfs/zfs/pull/17943) (master 12/2025; not in 2.3.6–2.3.8), [#18073](https://github.com/openzfs/zfs/issues/18073) (recv × du deadlock), [module parameters — `zfs_expire_snapshot`](https://openzfs.github.io/openzfs-docs/Performance%20and%20Tuning/Module%20Parameters.html)
 - NFSv4 ACLs on Linux: [#4966](https://github.com/openzfs/zfs/issues/4966), [WIP PR #13186](https://github.com/openzfs/zfs/pull/13186)
@@ -783,6 +831,6 @@ External sources (verified July 2026; snapshot/ACL addenda verified 2026-08-01):
 
 ---
 
-*Researched and written in collaboration with Claude (Anthropic); facts verified against the sources above as of July 2026, with the addenda (snapshot layer, reliability profiles, corruption-bug timelines) verified 1–6 August 2026 the growth addendum verified 13 August 2026, and the automount update, the objections section, the `zfs rewrite` correction the encoding-granularity section, the creation-time checklist and the object-model section 14 August 2026. This document is a dated snapshot and is not continuously updated.*
+*Researched and written in collaboration with Claude (Anthropic); facts verified against the sources above as of July 2026, with the addenda (snapshot layer, reliability profiles, corruption-bug timelines) verified 1–6 August 2026 the growth addendum verified 13 August 2026, and the automount update, the objections section, the `zfs rewrite` correction the encoding-granularity section, the creation-time checklist, the object-model section and the ZVOL-resize section 14 August 2026. This document is a dated snapshot and is not continuously updated.*
 
 *© 2026 Petr Kratochvíl · Licensed under [CC BY 4.0](../LICENSE)*
