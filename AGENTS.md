@@ -108,6 +108,19 @@ conclusion.
   sentence — and if the source is silent, say that instead of inferring the
   stronger claim. `scripts/check-comparison.py` warns about the subset of these
   that appear in comparison tables, which is a net, not a substitute.
+- **An empty search result is not a source.** It shows that one query, against
+  one index, returned nothing — which is also what a misspelt term, the wrong
+  repository or branch, an index that never covered the thing, or a feature
+  living under another name all look like. Absence of evidence has to be argued
+  for; it does not arrive for free. When a claim rests on something *not*
+  existing, do two things: search several ways, and run a **positive control** —
+  search for something you are certain is there. If the control also comes back
+  empty, the search is broken, not the world. `storage-replication`'s "CephFS
+  cannot reflink" was right, but for a day it rested on a single empty code
+  search; the evidence that actually supports it is three terms returning zero
+  across the whole tree *plus* `copy_file_range` returning five, which is what
+  proves the search worked at all. And keep "the source is silent" distinct from
+  "the source says no" — silence goes into the document as silence.
 - Findings from an earlier AI conversation are **hypotheses, not sources**.
   Verify them against primary sources before they enter a document, and correct
   the document plainly when they turn out to be wrong.
