@@ -1,7 +1,7 @@
 # ZFS vs Ceph — volba storage enginu pro malý self-hosted cluster
 
 - **Verdikt:** ⭐ **ZFS na Proxmox VE** — platí pro kontext popsaný níže
-- **Fakta ověřena:** červenec 2026 · doplňky 2026-08-01/06 (snapshot vrstva §2.5–2.6; spolehlivostní profily vč. timelines korupčních bugů Ceph i ZFS §15) · **2026-08-13 (růst po jednom disku, EC 2+2 vs RAIDZ2 §16 — vč. dvou oprav dřívějších tvrzení)** · **2026-08-14 (přepis snapshot automount vrstvy upstreamem, zatím nevydaný — §17; osm námitek držících rozhodnutí otevřené, s předem sepsaným měřicím pravidlem — §18)**
+- **Fakta ověřena:** červenec 2026 · doplňky 2026-08-01/06 (snapshot vrstva §2.5–2.6; spolehlivostní profily vč. timelines korupčních bugů Ceph i ZFS §15) · **2026-08-13 (růst po jednom disku, EC 2+2 vs RAIDZ2 §16 — vč. dvou oprav dřívějších tvrzení)** · **2026-08-14 (přepis snapshot automount vrstvy upstreamem, zatím nevydaný — §17; osm námitek držících rozhodnutí otevřené, s předem sepsaným měřicím pravidlem — §18; **oprava: `zfs rewrite` existuje a čtyři tvrzení byla chybná** — §19)**
 - **Jazyk:** 🇨🇿 čeština (originál) · 🇬🇧 [English version](README.md)
 - **Autor:** Petr Kratochvíl — [krato.cz](https://krato.cz)
 
@@ -42,7 +42,7 @@ Symboly: ✅ silná stránka · 🟡 jde s výhradou / kompromis · ❌ slabina 
 | Historie data-loss bugů (§15) | 🟡 vzácné, rychle opravené (dnode 2023; encryption send/recv uzavřeno 2025) | 🟡 core zralý (CERN); křehké: CephFS snapshoty+multi-MDS, operátorské chyby | 🟡 Btrfs RAID5/6 ❌ trvale (zde na LV nad mdadm ✓) |
 | Kapacitní efektivita | ✅ RAIDZ2 75 % (inkrementálně rostlé ~67–70 % do rewritu, §2.1) | 🟡 size=3 33 % (EC reálně až od ~5–6 uzlů; na 3 jen k=2,m=1) | ✅ RAID6 ~75 % |
 | Fragmentace při plnosti (společná všem) | 🟡 ano (CoW) | 🟡 ano (BlueStore) | 🟡 ano (Btrfs CoW) + ENOSPC |
-| Defrag / úklid fragmentace | 🟡 rewrite `send/recv` (bez nástroje, CoW-safe) | 🟡 reweight OSD / rewrite (CoW-safe, zachová snapshoty) | ✅ `defragment` + `balance` (ale **ničí reflinky**) |
+| Defrag / úklid fragmentace | 🟡 `zfs rewrite` na souborová data (§19); volné místo jen přestavbou `send/recv` | 🟡 reweight OSD / rewrite (CoW-safe, zachová snapshoty) | ✅ `defragment` + `balance` (ale **ničí reflinky**) |
 | CoW granularita (1-byte write) | 🟡 128K record (laditelné 4K–1M; ZVOL 16K) | ❌ 4 MB se snapshotem (bez něj ~4K) | ✅ 4K (`nodatacow` pro DB = 0) |
 | Mixed-size disky | 🟡 napříč vdev ano, uvnitř plýtvá | ✅ CRUSH weights | 🟡 mdadm smallest wins |
 | Přidat disk (expand) | ✅ RAIDZ expansion (2.3) — stará data drží starý parity poměr do rewritu (§2.1) | ✅ triviální | ✅ mdadm `--grow` reshape (přepíše, bez parity caveatu) |
@@ -64,7 +64,7 @@ Symboly: ✅ silná stránka · 🟡 jde s výhradou / kompromis · ❌ slabina 
 | Deduplikace (auto, block-level) | 🟡 Fast Dedup, radši PBS | 🟡 experimentální / RGW batch | 🟡 Btrfs bees (batch) |
 | Reflink klon (`cp --reflink`) | 🟡 block cloning (2.2+), default off, cross-dataset ne | ❌ CephFS neumí (jen server-side copy) | ✅ nativní, stabilní |
 | Komprese — algoritmy | ✅ lz4 (default) + zstd (laditelný) | ✅ lz4/zstd/snappy/zlib (per-pool) | ✅ zstd/lzo/zlib |
-| Změna komprese u existujících dat | 🟡 jen nová data (rewrite `send/recv`) | 🟡 jen nová data (rewrite) | ✅ in-place `defragment -c` |
+| Změna komprese u existujících dat | ✅ in-place `zfs rewrite -r` (§19) | 🟡 jen nová data (rewrite) | ✅ in-place `defragment -c` |
 | Šifrování at-rest | ✅ ZFS native / LUKS | ✅ LUKS pod OSD | ✅ dm-crypt/LUKS |
 | Zálohy / DR | ✅ `send`/`recv` + PBS (čisté) | 🟡 3 rozhraní, mirroring křehký | 🟡 Btrfs send + snapshoty |
 | Procházení mnoha snapshotů (grep historie) | 🟡 mount per snapshot (automount `.zfs`; radši `zfs diff`/clone, §2.5) | ✅ CephFS `.snap` bez mountů (RBD ❌ map+mount ručně) | ✅ subvolume bez mountů (pozor: vlastní `st_dev`) |
@@ -136,7 +136,7 @@ Caveatem přijdeš o **~26 TB (~20 %)** proti čistému poli, ale proti Ceph `si
 ### 2.2 „Pomalost“ — příčiny
 
 - **SMR disky** (shingled): resilver benchmark **CMR 14,5 h vs SMR 9,5 dne (16×)**; random I/O SMR je „utterly terrible“, CoW walk resilveru to zhoršuje. SMR do RAID/NAS nepatří — potopí i Btrfs a Ceph.
-- **Plný pool** (CoW): nad ~80 % fillu roste fragmentace (ZFS nemá defragmentaci — „block pointer rewrite“ je nedodaný od 2015), výkon velkých bloků padá.
+- **Plný pool** (CoW): nad ~80 % fillu roste fragmentace (ZFS nemá defragmentaci *volného místa* — „block pointer rewrite“ je nedodaný od 2015; `zfs rewrite` přepíše souborová data, ale alokuje z téhož volného prostoru, §19), výkon velkých bloků padá.
 - **RAIDZ = IOPS jednoho disku** pro random workload (1 vdev). Pro sekvenční bulk (média, foto, backup) je rychlé.
 - **Mitigace:** CMR disky, dost RAM pro ARC, SLOG pro sync writes, pool < 80 %, a **separátní SSD/NVMe pool pro VM** (random) oddělený od HDD bulk poolu.
 
@@ -533,7 +533,7 @@ Ceph to řeší nativně přes CRUSH váhy a je to skutečná, durable výhoda. 
 
 ### 18.4 Defragmentace (námitka 4)
 
-Platí — nástroj neexistuje a jediným lékem je přepis přes `send`/`recv`. Jenže srovnávací tabulka dává **na tomhle řádku 🟡 i Cephu**: BlueStore fragmentuje také. ✅ tam patří Btrfs. A konkrétně u téměř zaplněného pole se způsoby selhání liší v Cephův neprospěch: plný ZFS pool zpomalí, zatímco Ceph pool při dosažení full ratio **přestane přijímat zápisy**. Skutečnou odpovědí na „pole bude často hodně plné“ není engine, ale kupovat kapacitu dřív.
+Zčásti platí, a je slabší, než jak jsem to napsal — viz oprava v §19. `zfs rewrite` existuje od května 2025 a je v 2.3.x i 2.4.x, takže rekomprese a přepis na úrovni souborů už druhý pool nepotřebují. Co opravit neumí, je fragmentace *volného místa*, kterou měří `FRAG` a kterou pole na hraně kapacity skutečně způsobí; na tu zůstává jediným lékem přestavba přes `send`/`recv`. Jenže srovnávací tabulka dává **na tomhle řádku 🟡 i Cephu**: BlueStore fragmentuje také. ✅ tam patří Btrfs. A konkrétně u téměř zaplněného pole se způsoby selhání liší v Cephův neprospěch: plný ZFS pool zpomalí, zatímco Ceph pool při dosažení full ratio **přestane přijímat zápisy**. Skutečnou odpovědí na „pole bude často hodně plné“ není engine, ale kupovat kapacitu dřív.
 
 ### 18.5 Deduplikace (námitka 5)
 
@@ -588,6 +588,26 @@ Námitka 6 je jediná z osmi, kterou jde levně otestovat, a emočně nese ostat
 
 **Co by z Cephu přece jen udělalo správnou volbu:** růst po jednotlivých různě velkých discích po mnoho let **a** přijetí 10GbE, PLP SSD, čtyř a více uzlů kvůli smysluplnému EC a podstatně horší latence pro jednoho klienta. To je konzistentní obchod. Není to oprava ničeho z tohoto seznamu.
 
+## 19. Oprava (2026-08-14): `zfs rewrite` existuje a čtyři tvrzení byla chybná
+
+Čtyři tvrzení v tomhle dokumentu říkala, že ZFS nemá nástroj na přepis existujících dat. To bylo chybné už v době psaní, ne jen zastaralé: subcommand `zfs rewrite` přistál upstreamem v **květnu 2025** ([#17246](https://github.com/openzfs/zfs/pull/17246)) a je v řadách **2.3.x i 2.4.x** — tedy v tom, co si dnes reálně nainstaluješ.
+
+**Opraveno na místě:** řádky „Defrag / úklid fragmentace“ a „Změna komprese u existujících dat“ ve srovnávací tabulce, odrážka o plném poolu v §2.4 a hodnocení námitky 4 v §18.4. Tahle sekce zaznamenává, co se změnilo a proč, podle pravidla repozitáře, že chyba se opravuje na místě **a** zapisuje.
+
+**Co ten nástroj dělá.** *"Rewrite blocks of specified file as is without modification at a new location and possibly with new properties, as if they were atomically read and written back."* Bere `-r` pro rekurzi, `-x` pro setrvání v jednom filesystému a `-o`/`-l` pro rozsah v bajtech. Mezeru v rekompresi zavírá úplně: změníš `compression` nebo `recordsize`, pustíš `zfs rewrite -r` a nová property se aplikuje na existující data — což dřív vyžadovalo cyklus `send`/`recv` přes jiný pool.
+
+**Co nedělá a proč námitka zčásti přežívá.** Alokuje z téhož volného místa, takže fragmentaci volného prostoru **neopraví** — a přitom právě tu měří sloupec `FRAG`: *"As the amount of space allocated increases, it becomes more difficult to locate free space"*, s důsledkem *"lower write performance compared to pools with more unfragmented free space."* U poolu, jehož volné místo je už rozdrobené provozem na hraně kapacity, zůstává jediným lékem přestavba přes `send`/`recv` do čerstvého poolu. A není to ani „block pointer rewrite“ — pool si pořád neumí přemisťovat bloky sám; tohle je souborová operace řízená z userspace.
+
+**Dva přepínače, na kterých záleží víc, než vypadá.**
+
+`-P` — *"Perform physical rewrite, preserving logical birth time of blocks."* Bez něj platí, že *"rewritten blocks update their logical birth time, meaning they will be included in incremental `zfs send` streams as modified data."* Naivní defragmentace tedy způsobí, že příští inkrementální `send` pošle celý dataset — což na měřené rezidenční WAN ze sourozenecké analýzy `storage-replication` znamená měsíční rozpočet na přenos utracený za přesouvání dat, která se nezměnila. `-P` udělá přepis pro replikaci neviditelný. V době psaní §2.4 neexistoval.
+
+`-C` a `-S` přeskakují bloky sdílené s klony a snapshoty, a důvod je to podstatné: *"rewriting these blocks would create separate copies and increase space usage."* Na poolu, který je příliš plný — tedy přesně v situaci, která k defragmentaci vede —, přepis snapshotovaných dat problém **zhorší**, protože snapshot drží starý blok a přepis přidá nový. Pořadí operací je proto: nejdřív promazat snapshoty, teprve pak přepisovat.
+
+**A kompromis, na který nástroj není.** Když se přestavbě vyhnout nedá, `zfs send -R` zachová všechny snapshoty — jenže zachovat je znamená přehrát původní historii zápisů, což velkou část fragmentace zreprodukuje. Poslání jediného snapshotu bez `-R` dá maximálně kompaktní výsledek a historii zahodí. Fragmentace **je** otiskem té historie, takže obojí naráz mít nelze.
+
+**Čistý dopad na námitku 4 (§18.4):** klesá z „nástroj neexistuje“ na „nástroj na souborová data existuje, na volné místo ne“. Je slabší, než jak byla formulovaná, ale nemizí — a nemizí ani závěr, že odpovědí na ni není Ceph, protože BlueStore fragmentuje také a plný Ceph pool přestane přijímat zápisy tam, kde plný ZFS pool jen zpomalí.
+
 ## Reference
 
 Externí zdroje (ověřeno 2026-07; snapshot/ACL doplňky ověřeny 2026-08-01):
@@ -595,7 +615,7 @@ Externí zdroje (ověřeno 2026-07; snapshot/ACL doplňky ověřeny 2026-08-01):
 - RAIDZ Expansion: [The Register](https://www.theregister.com/2025/01/23/openzfs_23_raid_expansion/), [FreeBSD Foundation](https://freebsdfoundation.org/blog/raid-z-expansion-feature-for-zfs/), [caveat parity ratio](https://louwrentius.com/zfs-raidz-expansion-is-awesome-but-has-a-small-caveat.html)
 - Device removal / shrink limity: [OpenZFS zpool-remove](https://openzfs.github.io/openzfs-docs/man/v2.0/8/zpool-remove.8.html), [cr0x.net](https://cr0x.net/en/zfs-vdev-removal-limits/)
 - SMR: [xda-developers](https://www.xda-developers.com/smr-hdds-are-fine-for-your-nas-until-you-try-to-resilver/), [vermaden](https://vermaden.wordpress.com/2024/05/29/zfs-resilver-smr-drives/), [OpenZFS #18132](https://github.com/openzfs/zfs/issues/18132)
-- Fragmentace / defrag: [OpenZFS #3582](https://github.com/openzfs/zfs/issues/3582)
+- Fragmentace / defrag: [OpenZFS #3582](https://github.com/openzfs/zfs/issues/3582), [zfs-rewrite(8)](https://openzfs.github.io/openzfs-docs/man/master/8/zfs-rewrite.8.html), [#17246 — zavedení `zfs rewrite`](https://github.com/openzfs/zfs/pull/17246), [zpoolprops(7) — property `fragmentation`](https://openzfs.github.io/openzfs-docs/man/master/7/zpoolprops.7.html) (ověřeno 2026-08-14)
 - Fast Dedup: [Klara Systems](https://klarasystems.com/articles/introducing-openzfs-fast-dedup/), [despairlabs](https://despairlabs.com/blog/posts/2024-10-27-openzfs-dedup-is-good-dont-use-it/)
 - Ceph dedup: [Ceph docs — Deduplication (experimental)](https://docs.ceph.com/en/latest/dev/deduplication/), [RGW Object Dedup](https://docs.ceph.com/en/latest/radosgw/s3_objects_dedup/)
 - ZVOL shrink: [FreeBSD Forums](https://forums.freebsd.org/threads/zfs-set-volsize-data-loss.55854/), [TrueNAS](https://www.truenas.com/community/threads/shrink-zvol-of-vm.100519/)
@@ -609,6 +629,6 @@ Externí zdroje (ověřeno 2026-07; snapshot/ACL doplňky ověřeny 2026-08-01):
 
 ---
 
-*Vzniklo ve spolupráci s Claude (Anthropic); fakta ověřena proti uvedeným zdrojům k červenci 2026, doplňky (snapshot vrstva, spolehlivostní profily, timelines korupčních bugů) k 1.–6. srpnu 2026 doplněk o růstu po jednom disku k 13. srpnu 2026 a aktualizace automount vrstvy i sekce o námitkách k 14. srpnu 2026. Dokument je datovaný snapshot a průběžně se neaktualizuje.*
+*Vzniklo ve spolupráci s Claude (Anthropic); fakta ověřena proti uvedeným zdrojům k červenci 2026, doplňky (snapshot vrstva, spolehlivostní profily, timelines korupčních bugů) k 1.–6. srpnu 2026 doplněk o růstu po jednom disku k 13. srpnu 2026 a aktualizace automount vrstvy, sekce o námitkách i oprava k `zfs rewrite` k 14. srpnu 2026. Dokument je datovaný snapshot a průběžně se neaktualizuje.*
 
 *© 2026 Petr Kratochvíl · Licence [CC BY 4.0](../LICENSE)*

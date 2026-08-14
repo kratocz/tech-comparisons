@@ -1,7 +1,7 @@
 # ZFS vs Ceph: choosing the storage engine for a small self-hosted cluster
 
 - **Verdict:** ⭐ **ZFS on Proxmox VE** — valid for the context described below
-- **Facts verified:** July 2026 · addenda 2026-08-01/06 (the Linux snapshot layer §2.5–2.6; reliability profiles incl. the Ceph and ZFS corruption-bug timelines §15) · **2026-08-13 (growing one disk at a time, EC 2+2 vs RAIDZ2 §16 — including two corrections to earlier claims)** · **2026-08-14 (the snapshot automount layer rewritten upstream but still unreleased — §17; the eight objections keeping the decision open, with a pre-registered measurement rule — §18)**
+- **Facts verified:** July 2026 · addenda 2026-08-01/06 (the Linux snapshot layer §2.5–2.6; reliability profiles incl. the Ceph and ZFS corruption-bug timelines §15) · **2026-08-13 (growing one disk at a time, EC 2+2 vs RAIDZ2 §16 — including two corrections to earlier claims)** · **2026-08-14 (the snapshot automount layer rewritten upstream but still unreleased — §17; the eight objections keeping the decision open, with a pre-registered measurement rule — §18; **correction: `zfs rewrite` exists and four claims were wrong** — §19)**
 - **Language:** 🇬🇧 English (canonical) · 🇨🇿 [Čeština — original](README.cs.md)
 - **Author:** Petr Kratochvíl — [krato.cz](https://krato.cz)
 
@@ -42,7 +42,7 @@ Symbols: ✅ strength · 🟡 works with caveats / a compromise · ❌ weakness 
 | Data-loss bug history (§15) | 🟡 rare, fixed fast (dnode 2023; encryption send/recv closed 2025) | 🟡 core mature (CERN); fragile: CephFS snapshots+multi-MDS, operator error | 🟡 Btrfs RAID5/6 ❌ permanently (here on LV over mdadm ✓) |
 | Capacity efficiency | ✅ RAIDZ2 75 % (grown incrementally ~67–70 % until rewritten, §2.1) | 🟡 size=3 33 % (EC realistically from ~5–6 nodes; on 3 only k=2,m=1) | ✅ RAID6 ~75 % |
 | Fragmentation when full (common to all) | 🟡 yes (CoW) | 🟡 yes (BlueStore) | 🟡 yes (Btrfs CoW) + ENOSPC |
-| Defrag / cleanup | 🟡 rewrite via `send/recv` (no tool, CoW-safe) | 🟡 OSD reweight / rewrite (CoW-safe, keeps snapshots) | ✅ `defragment` + `balance` (but **breaks reflinks**) |
+| Defrag / cleanup | 🟡 `zfs rewrite` for file data (§19); free space only via `send/recv` rebuild | 🟡 OSD reweight / rewrite (CoW-safe, keeps snapshots) | ✅ `defragment` + `balance` (but **breaks reflinks**) |
 | CoW granularity (1-byte write) | 🟡 128K record (tunable 4K–1M; ZVOL 16K) | ❌ 4 MB with a snapshot (~4K without) | ✅ 4K (`nodatacow` for DBs = 0) |
 | Mixed-size disks | 🟡 across vdevs yes, wasteful within one | ✅ CRUSH weights | 🟡 mdadm smallest wins |
 | Add a disk (expand) | ✅ RAIDZ expansion (2.3) — old data keeps the old parity ratio until rewritten (§2.1) | ✅ trivial | ✅ mdadm `--grow` reshape (rewrites, no parity caveat) |
@@ -64,7 +64,7 @@ Symbols: ✅ strength · 🟡 works with caveats / a compromise · ❌ weakness 
 | Deduplication (auto, block-level) | 🟡 Fast Dedup, prefer PBS | 🟡 experimental / RGW batch | 🟡 Btrfs bees (batch) |
 | Reflink clone (`cp --reflink`) | 🟡 block cloning (2.2+), default off, no cross-dataset | ❌ CephFS can't (server-side copy only) | ✅ native, stable |
 | Compression — algorithms | ✅ lz4 (default) + zstd (tunable) | ✅ lz4/zstd/snappy/zlib (per-pool) | ✅ zstd/lzo/zlib |
-| Recompressing existing data | 🟡 new data only (rewrite `send/recv`) | 🟡 new data only (rewrite) | ✅ in-place `defragment -c` |
+| Recompressing existing data | ✅ in-place `zfs rewrite -r` (§19) | 🟡 new data only (rewrite) | ✅ in-place `defragment -c` |
 | At-rest encryption | ✅ ZFS native / LUKS | ✅ LUKS under OSDs | ✅ dm-crypt/LUKS |
 | Backups / DR | ✅ `send`/`recv` + PBS (clean) | 🟡 3 interfaces, fragile mirroring | 🟡 Btrfs send + snapshots |
 | Browsing many snapshots (grepping history) | 🟡 one mount per snapshot (`.zfs` automount; prefer `zfs diff`/clone, §2.5) | ✅ CephFS `.snap`, no mounts (RBD ❌ manual map+mount) | ✅ subvolumes, no mounts (beware: own `st_dev`) |
@@ -136,7 +136,7 @@ The caveat costs you **~26 TB (~20 %)** against a clean array, but you still lea
 ### 2.2 "Slowness" — the causes
 
 - **SMR (shingled) disks:** resilver benchmark **CMR 14.5 h vs SMR 9.5 days (16×)**; SMR random I/O is "utterly terrible", and the resilver's CoW walk makes it worse. SMR does not belong in RAID/NAS — it would sink Btrfs and Ceph too.
-- **A full pool** (CoW): above ~80 % fill, fragmentation grows (ZFS has no defragmentation — "block pointer rewrite" has been undelivered since 2015), large-block performance drops.
+- **A full pool** (CoW): above ~80 % fill, fragmentation grows (ZFS has no *free-space* defragmentation — "block pointer rewrite" has been undelivered since 2015; `zfs rewrite` rewrites file data but allocates from the same free space, §19), large-block performance drops.
 - **RAIDZ = the IOPS of a single disk** for random workloads (one vdev). For sequential bulk (media, photos, backups) it is fast.
 - **Mitigations:** CMR disks, enough RAM for ARC, a SLOG for sync writes, pool < 80 %, and a **separate SSD/NVMe pool for VMs** (random) isolated from the HDD bulk pool.
 
@@ -533,7 +533,7 @@ Ceph handles this natively through CRUSH weights, and that is a genuine, durable
 
 ### 18.4 Defragmentation (objection 4)
 
-True — there is no defrag tool and the only cure is a `send`/`recv` rewrite. But the comparison table already rates **Ceph 🟡 on this row as well**: BlueStore fragments too. The ✅ belongs to Btrfs. And on the near-full case specifically, the failure modes differ in Ceph's disfavour: a full ZFS pool becomes slow, whereas a Ceph pool reaching its full ratio **stops accepting writes**. The real answer to "the array will often be very full" is not an engine but buying capacity earlier.
+Partly true, and weaker than I stated — see the correction in §19. `zfs rewrite` has existed since May 2025 and ships in 2.3.x and 2.4.x, so recompression and file-level rewriting no longer need a second pool. What it cannot repair is *free-space* fragmentation, which is what `FRAG` measures and what a near-full pool actually inflicts; for that, a `send`/`recv` rebuild remains the only cure. But the comparison table already rates **Ceph 🟡 on this row as well**: BlueStore fragments too. The ✅ belongs to Btrfs. And on the near-full case specifically, the failure modes differ in Ceph's disfavour: a full ZFS pool becomes slow, whereas a Ceph pool reaching its full ratio **stops accepting writes**. The real answer to "the array will often be very full" is not an engine but buying capacity earlier.
 
 ### 18.5 Dedup (objection 5)
 
@@ -588,6 +588,26 @@ Objection 6 is the only one of the eight that is cheap to test, and it carries t
 
 **What would make Ceph right after all:** growth by single heterogeneous disks over many years **and** acceptance of 10 GbE, PLP SSDs, four-plus nodes for meaningful EC, and materially worse single-client latency. That is a coherent trade. It is not a fix for anything on this list.
 
+## 19. Correction (2026-08-14): `zfs rewrite` exists, and four claims were wrong
+
+Four claims in this document said ZFS has no tool for rewriting existing data. That was wrong when written, not merely stale: the `zfs rewrite` subcommand landed upstream in **May 2025** ([#17246](https://github.com/openzfs/zfs/pull/17246)) and is present in both the **2.3.x and 2.4.x** release lines — that is, in what you would actually install today.
+
+**Corrected in place:** the "Defrag / cleanup" and "Recompressing existing data" rows of the comparison table, the full-pool bullet in §2.4, and §18.4's assessment of objection 4. This section records what changed and why, per the repository's rule that an error is fixed in place *and* logged.
+
+**What the tool does.** *"Rewrite blocks of specified file as is without modification at a new location and possibly with new properties, as if they were atomically read and written back."* It takes `-r` to recurse, `-x` to stay within one filesystem, and `-o`/`-l` for a byte range. It closes the recompression gap outright: changing `compression` or `recordsize` and then running `zfs rewrite -r` applies the new property to existing data, which previously required a `send`/`recv` cycle through another pool.
+
+**What it does not do, and why the objection partly survives.** It allocates from the same free space, so it does **not** repair free-space fragmentation — which is what the `FRAG` column actually measures: *"As the amount of space allocated increases, it becomes more difficult to locate free space"*, resulting in *"lower write performance compared to pools with more unfragmented free space."* For a pool whose free space is already shattered by having run near-full, the only cure is still a rebuild through `send`/`recv` into a fresh pool. Nor is this "block pointer rewrite" — the pool still cannot relocate blocks by itself; this is a file-level operation driven from userspace.
+
+**Two flags that matter more than they look.**
+
+`-P` — *"Perform physical rewrite, preserving logical birth time of blocks."* Without it, *"rewritten blocks update their logical birth time, meaning they will be included in incremental `zfs send` streams as modified data."* A naive defragmentation therefore makes the next incremental send ship the entire dataset — which, on the metered residential WAN of the sibling `storage-replication` analysis, is a month's transfer budget spent on moving data that did not change. `-P` makes the rewrite invisible to replication. It did not exist when §2.4 was written.
+
+`-C` and `-S` skip blocks shared with clones and snapshots, and the reason is the thing to remember: *"rewriting these blocks would create separate copies and increase space usage."* On a pool that is too full — the exact situation that motivates defragmenting — rewriting snapshotted data makes the problem **worse**, because the snapshot pins the old block and the rewrite adds a new one. The order of operations is therefore: prune snapshots first, rewrite second.
+
+**And the trade that has no tool.** When a rebuild is unavoidable, `zfs send -R` preserves every snapshot — but preserving them replays the original write history, which reproduces much of the fragmentation. Sending a single snapshot without `-R` yields a maximally compact result and discards the history. Fragmentation *is* the imprint of that history, so the two cannot both be kept.
+
+**Net effect on objection 4 (§18.4):** it drops from "no tool exists" to "a tool exists for file data, not for free space". It is weaker than stated, but it does not disappear — and neither does the conclusion that Ceph is not the answer to it, since BlueStore fragments as well and a full Ceph pool stops accepting writes where a full ZFS pool merely slows down.
+
 ## References
 
 External sources (verified July 2026; snapshot/ACL addenda verified 2026-08-01):
@@ -595,7 +615,7 @@ External sources (verified July 2026; snapshot/ACL addenda verified 2026-08-01):
 - RAIDZ Expansion: [The Register](https://www.theregister.com/2025/01/23/openzfs_23_raid_expansion/), [FreeBSD Foundation](https://freebsdfoundation.org/blog/raid-z-expansion-feature-for-zfs/), [the parity-ratio caveat](https://louwrentius.com/zfs-raidz-expansion-is-awesome-but-has-a-small-caveat.html)
 - Device removal / shrink limits: [OpenZFS zpool-remove](https://openzfs.github.io/openzfs-docs/man/v2.0/8/zpool-remove.8.html), [cr0x.net](https://cr0x.net/en/zfs-vdev-removal-limits/)
 - SMR: [xda-developers](https://www.xda-developers.com/smr-hdds-are-fine-for-your-nas-until-you-try-to-resilver/), [vermaden](https://vermaden.wordpress.com/2024/05/29/zfs-resilver-smr-drives/), [OpenZFS #18132](https://github.com/openzfs/zfs/issues/18132)
-- Fragmentation / defrag: [OpenZFS #3582](https://github.com/openzfs/zfs/issues/3582)
+- Fragmentation / defrag: [OpenZFS #3582](https://github.com/openzfs/zfs/issues/3582), [zfs-rewrite(8)](https://openzfs.github.io/openzfs-docs/man/master/8/zfs-rewrite.8.html), [#17246 — introduce `zfs rewrite`](https://github.com/openzfs/zfs/pull/17246), [zpoolprops(7) — the `fragmentation` property](https://openzfs.github.io/openzfs-docs/man/master/7/zpoolprops.7.html) (verified 2026-08-14)
 - Fast Dedup: [Klara Systems](https://klarasystems.com/articles/introducing-openzfs-fast-dedup/), [despairlabs](https://despairlabs.com/blog/posts/2024-10-27-openzfs-dedup-is-good-dont-use-it/)
 - Ceph dedup: [Ceph docs — Deduplication (experimental)](https://docs.ceph.com/en/latest/dev/deduplication/), [RGW Object Dedup](https://docs.ceph.com/en/latest/radosgw/s3_objects_dedup/)
 - ZVOL shrink: [FreeBSD Forums](https://forums.freebsd.org/threads/zfs-set-volsize-data-loss.55854/), [TrueNAS](https://www.truenas.com/community/threads/shrink-zvol-of-vm.100519/)
@@ -609,6 +629,6 @@ External sources (verified July 2026; snapshot/ACL addenda verified 2026-08-01):
 
 ---
 
-*Researched and written in collaboration with Claude (Anthropic); facts verified against the sources above as of July 2026, with the addenda (snapshot layer, reliability profiles, corruption-bug timelines) verified 1–6 August 2026 the growth addendum verified 13 August 2026, and the automount update and the objections section 14 August 2026. This document is a dated snapshot and is not continuously updated.*
+*Researched and written in collaboration with Claude (Anthropic); facts verified against the sources above as of July 2026, with the addenda (snapshot layer, reliability profiles, corruption-bug timelines) verified 1–6 August 2026 the growth addendum verified 13 August 2026, and the automount update, the objections section and the `zfs rewrite` correction 14 August 2026. This document is a dated snapshot and is not continuously updated.*
 
 *© 2026 Petr Kratochvíl · Licensed under [CC BY 4.0](../LICENSE)*
