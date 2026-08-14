@@ -1,7 +1,7 @@
 # ZFS vs Ceph — volba storage enginu pro malý self-hosted cluster
 
 - **Verdikt:** ⭐ **ZFS na Proxmox VE** — platí pro kontext popsaný níže
-- **Fakta ověřena:** červenec 2026 · doplňky 2026-08-01/06 (§2.5–2.6 snapshot vrstva na Linuxu; §15 spolehlivostní profily a timelines korupčních bugů) · 2026-08-13 (§16 růst po jednom disku) · **2026-08-14 (§17–§31 — osm námitek držících rozhodnutí otevřené s předem sepsaným měřicím pravidlem, šest oprav dřívějších tvrzení a referenční materiál k vnitřkům ZFS, objektovému modelu a Cephu napříč lokalitami)**. Každý nadpis sekce nese vlastní datum; patička je vypisuje jednotlivě.
+- **Fakta ověřena:** červenec 2026 · doplňky 2026-08-01/06 (§2.5–2.6 snapshot vrstva na Linuxu; §15 spolehlivostní profily a timelines korupčních bugů) · 2026-08-13 (§16 růst po jednom disku) · **2026-08-14 (§17–§31 — osm námitek držících rozhodnutí otevřené s předem sepsaným měřicím pravidlem, šest oprav dřívějších tvrzení a referenční materiál k vnitřkům ZFS, objektovému modelu a Cephu napříč lokalitami)**. Každý nadpis sekce nese vlastní datum; patička je vypisuje jednotlivě. · **2026-08-15 (§2.5 — oprava: panic bug #17659 je opravený ve 2.4.x a Proxmox VE 9 veze 2.4.3, ne 2.3.x)**
 - **Jazyk:** 🇨🇿 čeština (originál) · 🇬🇧 [English version](README.md)
 - **Autor:** Petr Kratochvíl — [krato.cz](https://krato.cz)
 
@@ -105,7 +105,7 @@ Tím se otázka „jak dělat Ceph fázovaně“ změnila na **„potřebuješ v
 | 3 | ZFS neumí shrink (jen expand) | 🟡 platí pro **pool/RAIDZ vdev**, **ne pro ZVOL** | Shrink RAIDZ vdev nejde; shrink **ZVOL** (blokové zařízení) jde (§6). Dvě různé operace! |
 | 4 | (výchozí server) tichá korupce se detekuje, ale neopraví | ✅ reálná díra | `dm-integrity` (stávající stack) nebo ZFS nativně (§3). |
 | 5 | Procházení snapshotů = mount každého zvlášť (tehdy „hodně přimountovaných zařízení“) | ✅ **platí dodnes** | Design nezměněn: `.zfs/snapshot/<x>` = automount, N snapshotů = N mountů; novinka je jen auto-odpojení po 5 min (`zfs_expire_snapshot`). Obcházet přes `zfs diff`/`clone`/`send` (§2.5). |
-| 6 | Kernel panic při mountu mnoha snapshotů | ✅ **reálné; upstream fix až 12/2025** | Dlouhá historie (#13131, #13327), poslední inkarnace #17659 (i na Proxmoxu); oprava PR #17943 v master, v LTS 2.3.x k 8/2026 chybí → mitigace v §2.5. |
+| 6 | Kernel panic při mountu mnoha snapshotů | 🟡 **reálné na 2.3.x, opravené ve 2.4.x** | Dlouhá historie (#13131, #13327), poslední inkarnace #17659; oprava PR #17943 je ve 2.4.0+, ve 2.3.x (vč. 2.3.8) chybí dál → na 2.3.x platí mitigace v §2.5. |
 
 ### 2.1 Mixed-size disky
 
@@ -158,7 +158,10 @@ Obě moje historické zkušenosti (výhrady 5 a 6) se potvrdily — první jako 
 
 - Historie: [#13131](https://github.com/openzfs/zfs/issues/13131) „Kernel Panic and DoS on massive amounts of snapshot mount/umount“ (2022, OpenZFS 2.1.2, repro Samba + hodně snapshotů), [#13327](https://github.com/openzfs/zfs/issues/13327) (procesy zaseklé v kernelu, rostoucí load).
 - Poslední inkarnace: [#17659](https://github.com/openzfs/zfs/issues/17659) (8/2025) — `VERIFY(avl_find(...)) failed / PANIC at avl.c:625:avl_add()` v `zfsctl_snapshot_mount` ← `zpl_snapdir_automount`; Debian 13 / OpenZFS 2.3.2, v threadu hlášeno i na **Proxmox VE 9 (OpenZFS 2.3.4)** se `snapdir=visible` a ~57 snapshoty — panic spouštěl jakýkoli `ls`/`find`/`stat` nad `.zfs/snapshot`. Spouštěč: souběžný automount téhož snapshotu (typicky dva mount namespacy — systemd unit, kontejner). Technicky nejde o klasický kernel panic, ale `spl_panic`/VERIFY assert — vlákno usne navždy, vše další nad ZFS uvízne v D stavu, stroj postupně umře, pomůže jen tvrdý reboot.
-- **Oprava:** [PR #17943](https://github.com/openzfs/zfs/pull/17943) (per-entry mutex) — **merged do master 8. 12. 2025**. Podle changelogů se ale do LTS řady 2.3.x (ověřeno 2.3.6–2.3.8) k 8/2026 nedostala → na distribucích s 2.3.x (vč. Proxmox VE 9) mitigace stále platí.
+- **Oprava:** [PR #17943](https://github.com/openzfs/zfs/pull/17943) (per-entry mutex) — **merged do master 8. 12. 2025**.
+- ✅ **Doplněno 2026-08-15 — kde oprava je a kde není.** Ověřeno **obsahem zdrojáku**, ne changelogem: hledán mutex `se_mtx` v `module/os/linux/zfs/zfs_ctldir.c` na jednotlivých tazích. **JE ve `zfs-2.4.0`, `2.4.1` i `2.4.3`; NENÍ ve `zfs-2.3.3` ani v nejnovější `zfs-2.3.8`** (6/2026). Na řadě 2.3.x tedy mitigace platí dál, na 2.4.x panic nehrozí.
+- ⚠️ **Oprava dřívějšího tvrzení:** dokument uváděl Proxmox VE 9 jako příklad distribuce s 2.3.x. **Není.** Přímé čtení jeho repozitáře (`pve-no-subscription`, trixie) ukazuje `zfsutils-linux` až **2.4.3-pve1**. Číslo pocházelo z článku o vydání PVE 9.0, ne z repa — verzi distribuce je potřeba číst z `Packages` indexu.
+- 📌 **Metodická poznámka:** ancestry test (`git compare` merge commitu proti tagu) na tuhle otázku **nefunguje** — cherry-pick do release větve vyrábí nové SHA, takže hlásí `diverged` i tam, kde změna přítomná je. Rozhoduje obsah souboru na daném tagu.
 - Příbuzné: [#18073](https://github.com/openzfs/zfs/issues/18073) (12/2025) — deadlock souběžného `zfs recv` × `du` nad `.zfs/snapshot` přijímaného FS (`z_teardown_lock`); oprava #18415 vyšla v releasech 5/2026. Relevantní pro DR přes `send`/`recv`: na přijímací straně nebrouzdat `.zfs` během replikačních oken.
 
 **Mitigace:**
@@ -1181,6 +1184,6 @@ Externí zdroje (blok ověřen k 2026-08-14; dílčí data uvedena tam, kde se l
 
 ---
 
-*Vzniklo ve spolupráci s Claude (Anthropic); fakta ověřena proti uvedeným zdrojům k červenci 2026, doplňky (snapshot vrstva, spolehlivostní profily, timelines korupčních bugů) k 1.–6. srpnu 2026, doplněk o růstu po jednom disku k 13. srpnu 2026, a aktualizace automount vrstvy, sekce o námitkách, oprava k `zfs rewrite`, sekce o granularitě kódování, checklist rozhodnutí při vytvoření, sekce o objektovém modelu i sekce o změně velikosti ZVOLu k 14. srpnu 2026 a oprava k block cloningu, sekce o malých souborech, sekce o `ashift`, prohlídka §21, oprava k `recordsize`, slovník, sekce o počtu uzlů i sekce o roztaženém clusteru k 14. srpnu 2026. Dokument je datovaný snapshot a průběžně se neaktualizuje.*
+*Vzniklo ve spolupráci s Claude (Anthropic); fakta ověřena proti uvedeným zdrojům k červenci 2026, doplňky (snapshot vrstva, spolehlivostní profily, timelines korupčních bugů) k 1.–6. srpnu 2026, doplněk o růstu po jednom disku k 13. srpnu 2026, oprava k panic bugu automountu k 15. srpnu 2026, a aktualizace automount vrstvy, sekce o námitkách, oprava k `zfs rewrite`, sekce o granularitě kódování, checklist rozhodnutí při vytvoření, sekce o objektovém modelu i sekce o změně velikosti ZVOLu k 14. srpnu 2026 a oprava k block cloningu, sekce o malých souborech, sekce o `ashift`, prohlídka §21, oprava k `recordsize`, slovník, sekce o počtu uzlů i sekce o roztaženém clusteru k 14. srpnu 2026. Dokument je datovaný snapshot a průběžně se neaktualizuje.*
 
 *© 2026 Petr Kratochvíl · Licence [CC BY 4.0](../LICENSE)*
