@@ -42,7 +42,7 @@ Symboly: ✅ silná stránka · 🟡 jde s výhradou / kompromis · ❌ slabina 
 | Historie data-loss bugů (§15) | 🟡 vzácné, rychle opravené (dnode 2023; encryption send/recv uzavřeno 2025) | 🟡 core zralý (CERN); křehké: CephFS snapshoty+multi-MDS, operátorské chyby | 🟡 Btrfs RAID5/6 ❌ trvale (zde na LV nad mdadm ✓) |
 | Kapacitní efektivita | ✅ RAIDZ2 75 % (inkrementálně rostlé ~67–70 % do rewritu, §2.1) | 🟡 size=3 33 % (EC reálně až od ~5–6 uzlů; na 3 jen k=2,m=1) | ✅ RAID6 ~75 % |
 | Fragmentace při plnosti (společná všem) | 🟡 ano (CoW) | 🟡 ano (BlueStore) | 🟡 ano (Btrfs CoW) + ENOSPC |
-| Defrag / úklid fragmentace | ✅ `zfs rewrite` — defragmentace souborů i rebalance po `zpool add` jsou deklarované účely; na téměř plném poolu ztrácí účinnost (§19) | 🟡 reweight OSD / rewrite (CoW-safe, zachová snapshoty) | ✅ `defragment` + `balance` (ale **ničí reflinky**) |
+| Defrag / úklid fragmentace | 🟡 `zfs rewrite` — defragmentace souborů i rebalance po `zpool add` jsou deklarované účely, ale bere jen operandy typu soubor a adresář, takže **ZVOLy jsou mimo**; a na téměř plném poolu navíc ztrácí účinnost (§19) | 🟡 reweight OSD / rewrite (CoW-safe, zachová snapshoty) | ✅ `defragment` + `balance` (ale **ničí reflinky**) |
 | CoW granularita (1-byte write) | 🟡 128K record (laditelné 4K–1M; ZVOL 16K) | ❌ 4 MB se snapshotem (bez něj ~4K) | ✅ 4K (`nodatacow` pro DB = 0) |
 | Mixed-size disky | 🟡 napříč vdev ano, uvnitř plýtvá | ✅ CRUSH weights | 🟡 mdadm smallest wins |
 | Přidat disk (expand) | ✅ RAIDZ expansion (2.3) — stará data drží starý parity poměr do rewritu (§2.1) | ✅ triviální | ✅ mdadm `--grow` reshape (přepíše, bez parity caveatu) |
@@ -594,7 +594,7 @@ Námitka 6 je jediná z osmi, kterou jde levně otestovat, a emočně nese ostat
 
 **Opraveno na místě:** řádky „Defrag / úklid fragmentace“ a „Změna komprese u existujících dat“ ve srovnávací tabulce, odrážka o plném poolu v §2.4 a hodnocení námitky 4 v §18.4. Tahle sekce zaznamenává, co se změnilo a proč, podle pravidla repozitáře, že chyba se opravuje na místě **a** zapisuje.
 
-**Co ten nástroj dělá.** *"Rewrite blocks of specified file as is without modification at a new location and possibly with new properties, as if they were atomically read and written back."* Bere `-r` pro rekurzi, `-x` pro setrvání v jednom filesystému a `-o`/`-l` pro rozsah v bajtech. Mezeru v rekompresi zavírá úplně: změníš `compression` nebo `recordsize`, pustíš `zfs rewrite -r` a nová property se aplikuje na existující data — což dřív vyžadovalo cyklus `send`/`recv` přes jiný pool.
+**Co ten nástroj dělá.** *"Rewrite blocks of specified file as is without modification at a new location and possibly with new properties, as if they were atomically read and written back."* Bere `-r` pro rekurzi, `-x` pro setrvání v jednom filesystému a `-o`/`-l` pro rozsah v bajtech. **Funguje ale jen na filesystémových datasetech** — *opraveno týž den: synopse zní `zfs rewrite [-CPSrvx] [-l length] [-o offset] file|directory…`, takže ZVOL, který je zařízením a ne souborem, mu předat nelze. Všechno, co tahle sekce tvrdí, platí pro filesystémové datasety; u ZVOLu zůstává jedinou cestou k rekompresi či defragmentaci `send`/`recv` do nového svazku (§23.4).* Pro filesystémové datasety mezeru v rekompresi zavírá úplně: změníš `compression` nebo `recordsize`, pustíš `zfs rewrite -r` a nová property se aplikuje na existující data — což dřív vyžadovalo cyklus `send`/`recv` přes jiný pool.
 
 **Defragmentace je deklarovaný účel, ne vedlejší efekt.** Zakládající PR přímo jmenuje, co uživatelé roky chtěli: *"an ability to re-balance pool after vdev addition, de-fragment randomly written files, change some properties for already written files"*. Rebalance po `zpool add` je tu podstatná zvlášť — §16 i námitka 3 (§18.3) obě končí u „přidej širší vdev z větších disků“, načež existující data zůstanou na starých vdevech, dokud je něco nepřepíše. `zfs rewrite -P -r` je to něco.
 
@@ -675,7 +675,7 @@ Parita je jen ten případ, který napadne první. Táž tuhost platí pro **jak
 
 ### 21.3 Změnitelné, ale stará data nejdou s nimi
 
-Tyhle trvalé nejsou a od `zfs rewrite` (§19) jde stará data dorovnat i bez druhého poolu — `zfs rewrite -P -r` aplikuje novou hodnotu na existující soubory. Uvádím je proto, že i tak se vyplatí trefit je hned napoprvé: přepis plného poolu zabere čas, který nemusíš mít.
+Tyhle trvalé nejsou a od `zfs rewrite` (§19) jde stará data dorovnat i bez druhého poolu — `zfs rewrite -P -r` aplikuje novou hodnotu na existující soubory. **U ZVOLu to nejde**: příkaz bere operandy typu soubor a adresář, takže u svazku jsou tyhle properties opravdu jen pro nová data, dokud se svazek nepostaví znovu přes `send`/`recv` (§23.4). Uvádím je proto, že i tak se vyplatí trefit je hned napoprvé: přepis plného poolu zabere čas, který nemusíš mít.
 
 - **`recordsize`** — 1 MiB pro knihovnu médií, 128 KiB default, 16 KiB pro databázový dataset.
 - **`compression`** — `zstd` pro studená bulk data, `lz4` tam, kde jde o latenci.
@@ -807,6 +807,18 @@ fstrim -av
 Běží to za provozu, geometrii to nijak neohrožuje a dá se to opakovat podle plánu. U thin provisioned VM disku je to jediný mechanismus, který vůbec něco vrací, a je to skoro vždycky to, co „chci zmenšit ten disk“ doopravdy znamená.
 
 Zmenšení `volsize` si své riziko zaslouží jen u **thick** ZVOLu, kde jde o uvolnění rezervace, ne dat — a tam platí postup z §23.2 v plném rozsahu.
+
+### 23.4 Co `zfs rewrite` v tomhle kontextu neumí
+
+§19 zaznamenává, že `zfs rewrite` zavírá mezeru v rekompresi a defragmentaci. Zavírá ji pro **filesystémové datasety**. Synopse zní `zfs rewrite [-CPSrvx] [-l length] [-o offset] file|directory…` — soubory a adresáře — a ZVOL je zařízení pod `/dev/zvol`, ne soubor uvnitř ZFS filesystému. Předat mu ho nelze.
+
+U disku VM na ZVOLu jsou tedy tři věci, které §19 a §21.3 nabízejí, nedostupné, a jedinou cestou ke kterékoli z nich je přestavba přes `send`/`recv` do nového svazku:
+
+- **Rekomprese.** `compression` se měnit dá, ale *"Changing this property affects only newly-written data"* je u svazku celý příběh — nic to zpětně nedorovná.
+- **Defragmentace** obsahu svazku.
+- **Rebalance** na nově přidaný vdev.
+
+Dvě menší fakta o ZVOLech, která se k tomu hodí mít: snapshot svazku vznikne jako každý jiný (`zfs snapshot tank/vms/disk0@jmeno`), ale jeho zařízení se neobjeví, dokud si o to neřekneš — *"Controls whether the volume snapshot devices under /dev/zvol/⟨pool⟩ are hidden or visible. The default value is hidden."* A žádný smysluplný strop velikosti neexistuje, takže 20TB ZVOL možný je; jestli je moudrý, je jiná otázka, protože takhle velký svazek udělá ZFS slepým vůči svému obsahu — žádné snapshoty po souborech, žádný `zfs rewrite` a granularita retence replikace je celý svazek. Pro bulk data si filesystémový dataset sdílený přes SMB nebo NFS zachová všechno tři; ZVOLy si své místo zaslouží u skutečných systémových disků virtuálů.
 
 ## Reference
 

@@ -55,7 +55,8 @@ def check_tables(rel: str, lines: list[str]) -> None:
             continue
         widths: dict[int, list[int]] = {}
         for offset, row in enumerate(block):
-            widths.setdefault(row.count("|"), []).append(start + offset)
+            # `\|` is a literal pipe inside a cell, not a separator
+            widths.setdefault(row.replace("\\|", "").count("|"), []).append(start + offset)
         if len(widths) > 1:
             detail = "; ".join(
                 f"{n} pipes on line(s) {', '.join(map(str, ls[:4]))}"

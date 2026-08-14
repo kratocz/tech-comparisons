@@ -42,7 +42,7 @@ Symbols: ✅ strength · 🟡 works with caveats / a compromise · ❌ weakness 
 | Data-loss bug history (§15) | 🟡 rare, fixed fast (dnode 2023; encryption send/recv closed 2025) | 🟡 core mature (CERN); fragile: CephFS snapshots+multi-MDS, operator error | 🟡 Btrfs RAID5/6 ❌ permanently (here on LV over mdadm ✓) |
 | Capacity efficiency | ✅ RAIDZ2 75 % (grown incrementally ~67–70 % until rewritten, §2.1) | 🟡 size=3 33 % (EC realistically from ~5–6 nodes; on 3 only k=2,m=1) | ✅ RAID6 ~75 % |
 | Fragmentation when full (common to all) | 🟡 yes (CoW) | 🟡 yes (BlueStore) | 🟡 yes (Btrfs CoW) + ENOSPC |
-| Defrag / cleanup | ✅ `zfs rewrite` — defragmenting files and rebalancing after `zpool add` are stated purposes; loses its grip on a near-full pool (§19) | 🟡 OSD reweight / rewrite (CoW-safe, keeps snapshots) | ✅ `defragment` + `balance` (but **breaks reflinks**) |
+| Defrag / cleanup | 🟡 `zfs rewrite` — defragmenting files and rebalancing after `zpool add` are stated purposes, but it takes file and directory operands only, so **ZVOLs are excluded**; also loses its grip on a near-full pool (§19) | 🟡 OSD reweight / rewrite (CoW-safe, keeps snapshots) | ✅ `defragment` + `balance` (but **breaks reflinks**) |
 | CoW granularity (1-byte write) | 🟡 128K record (tunable 4K–1M; ZVOL 16K) | ❌ 4 MB with a snapshot (~4K without) | ✅ 4K (`nodatacow` for DBs = 0) |
 | Mixed-size disks | 🟡 across vdevs yes, wasteful within one | ✅ CRUSH weights | 🟡 mdadm smallest wins |
 | Add a disk (expand) | ✅ RAIDZ expansion (2.3) — old data keeps the old parity ratio until rewritten (§2.1) | ✅ trivial | ✅ mdadm `--grow` reshape (rewrites, no parity caveat) |
@@ -594,7 +594,7 @@ Four claims in this document said ZFS has no tool for rewriting existing data. T
 
 **Corrected in place:** the "Defrag / cleanup" and "Recompressing existing data" rows of the comparison table, the full-pool bullet in §2.4, and §18.4's assessment of objection 4. This section records what changed and why, per the repository's rule that an error is fixed in place *and* logged.
 
-**What the tool does.** *"Rewrite blocks of specified file as is without modification at a new location and possibly with new properties, as if they were atomically read and written back."* It takes `-r` to recurse, `-x` to stay within one filesystem, and `-o`/`-l` for a byte range. It closes the recompression gap outright: changing `compression` or `recordsize` and then running `zfs rewrite -r` applies the new property to existing data, which previously required a `send`/`recv` cycle through another pool.
+**What the tool does.** *"Rewrite blocks of specified file as is without modification at a new location and possibly with new properties, as if they were atomically read and written back."* It takes `-r` to recurse, `-x` to stay within one filesystem, and `-o`/`-l` for a byte range. **It works on filesystem datasets only** — *corrected the same day: the synopsis is `zfs rewrite [-CPSrvx] [-l length] [-o offset] file|directory…`, so a ZVOL, being a device node rather than a file, cannot be passed to it. Everything this section claims applies to filesystem datasets; for a ZVOL the only route to recompression or defragmentation remains `send`/`recv` into a new volume (§23.4).* For filesystem datasets it closes the recompression gap outright: changing `compression` or `recordsize` and then running `zfs rewrite -r` applies the new property to existing data, which previously required a `send`/`recv` cycle through another pool.
 
 **Defragmentation is a stated purpose, not a side effect.** The submitting PR is explicit about what users had been asking for: *"an ability to re-balance pool after vdev addition, de-fragment randomly written files, change some properties for already written files"*. Rebalancing after `zpool add` matters here in particular — §16 and objection 3 (§18.3) both end at "add a wider vdev of larger disks", after which existing data stays on the old vdevs until something rewrites it. `zfs rewrite -P -r` is that something.
 
@@ -675,7 +675,7 @@ Parity is only the instance that comes to mind first. The same rigidity applies 
 
 ### 21.3 Changeable, but the old data does not follow
 
-These are not permanent, and since `zfs rewrite` (§19) the old data can be brought into line without a second pool — `zfs rewrite -P -r` applies the new value to existing files. They are listed because they are still worth getting right first, since rewriting a full pool takes time it may not have.
+These are not permanent, and since `zfs rewrite` (§19) the old data can be brought into line without a second pool — `zfs rewrite -P -r` applies the new value to existing files. **On a ZVOL it cannot**: the command takes file and directory operands, so for a volume these properties really are new-data-only unless the volume is rebuilt through `send`/`recv` (§23.4). They are listed because they are still worth getting right first, since rewriting a full pool takes time it may not have.
 
 - **`recordsize`** — 1 MiB for a media library, 128 KiB default, 16 KiB for a database dataset.
 - **`compression`** — `zstd` for cold bulk, `lz4` where latency matters.
@@ -807,6 +807,18 @@ fstrim -av
 This runs online, carries no risk to the geometry, and can be repeated on a schedule. For a thin-provisioned VM disk it is the only mechanism that reclaims anything at all, and it is almost always what "I want to shrink this disk" actually means.
 
 Shrinking `volsize` earns its risk only on a **thick** ZVOL, where the point is to release the reservation rather than the data — and there the procedure in §23.2 applies in full.
+
+### 23.4 What `zfs rewrite` cannot do here
+
+§19 records that `zfs rewrite` closes the recompression and defragmentation gap. It closes it for **filesystem datasets**. The synopsis is `zfs rewrite [-CPSrvx] [-l length] [-o offset] file|directory…` — files and directories — and a ZVOL is a device node under `/dev/zvol`, not a file inside a ZFS filesystem. It cannot be passed to the command.
+
+So for a VM disk on a ZVOL, three things §19 and §21.3 offer are unavailable, and the only route to any of them is a `send`/`recv` rebuild into a new volume:
+
+- **Recompression.** `compression` remains changeable, but *"Changing this property affects only newly-written data"* is the whole story on a volume — nothing backfills it.
+- **Defragmentation** of the volume's contents.
+- **Rebalancing** onto a newly added vdev.
+
+Two smaller ZVOL facts worth having alongside: a volume snapshot exists like any other (`zfs snapshot tank/vms/disk0@name`), but its device node does not appear until you ask — *"Controls whether the volume snapshot devices under /dev/zvol/⟨pool⟩ are hidden or visible. The default value is hidden."* And there is no meaningful size ceiling, so a 20 TB ZVOL is possible; whether it is wise is a different question, because a volume that large makes ZFS blind to its contents — no per-file snapshots, no `zfs rewrite`, and replication retention granularity of the whole volume. For bulk data a filesystem dataset shared over SMB or NFS keeps all three; ZVOLs earn their place for actual VM system disks.
 
 ## References
 
