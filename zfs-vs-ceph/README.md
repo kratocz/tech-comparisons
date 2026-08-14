@@ -1,7 +1,7 @@
 # ZFS vs Ceph: choosing the storage engine for a small self-hosted cluster
 
 - **Verdict:** ⭐ **ZFS on Proxmox VE** — valid for the context described below
-- **Facts verified:** July 2026 · addenda 2026-08-01/06 (the Linux snapshot layer §2.5–2.6; reliability profiles incl. the Ceph and ZFS corruption-bug timelines §15) · **2026-08-13 (growing one disk at a time, EC 2+2 vs RAIDZ2 §16 — including two corrections to earlier claims)** · **2026-08-14 (the snapshot automount layer rewritten upstream but still unreleased — §17; the eight objections keeping the decision open, with a pre-registered measurement rule — §18; *correction: `zfs rewrite` exists and four claims were wrong* — §19; encoding is bound to the vdev in ZFS and to the pool in Ceph — §20; what ZFS fixes permanently at creation, and how to decide each — §21; the object model those two assume — §22; resizing a ZVOL under a Proxmox VM, and why discard is usually the real answer — §23) · **2026-08-15 (correction: block cloning is on by default and cross-dataset works — §24; what a small file actually costs, and why it is not the table's 1-byte-write row — §25; choosing `ashift`, and a correction to §21.1 — §26; the rest of §21 swept the same way, including one fabricated figure — §27; `zfs rewrite` does not apply `recordsize`, and how to change it — §28; a glossary of the vocabulary the tables use, for all three columns — §29; how the trade differs at one node versus three, with a scope correction — §30)**
+- **Facts verified:** July 2026 · addenda 2026-08-01/06 (the Linux snapshot layer §2.5–2.6; reliability profiles incl. the Ceph and ZFS corruption-bug timelines §15) · **2026-08-13 (growing one disk at a time, EC 2+2 vs RAIDZ2 §16 — including two corrections to earlier claims)** · **2026-08-14 (the snapshot automount layer rewritten upstream but still unreleased — §17; the eight objections keeping the decision open, with a pre-registered measurement rule — §18; *correction: `zfs rewrite` exists and four claims were wrong* — §19; encoding is bound to the vdev in ZFS and to the pool in Ceph — §20; what ZFS fixes permanently at creation, and how to decide each — §21; the object model those two assume — §22; resizing a ZVOL under a Proxmox VM, and why discard is usually the real answer — §23) · **2026-08-15 (correction: block cloning is on by default and cross-dataset works — §24; what a small file actually costs, and why it is not the table's 1-byte-write row — §25; choosing `ashift`, and a correction to §21.1 — §26; the rest of §21 swept the same way, including one fabricated figure — §27; `zfs rewrite` does not apply `recordsize`, and how to change it — §28; a glossary of the vocabulary the tables use, for all three columns — §29; how the trade differs at one node versus three, with a scope correction — §30; why stretching a Ceph cluster across the internet fails, for a concrete shape — §31)**
 - **Language:** 🇬🇧 English (canonical) · 🇨🇿 [Čeština — original](README.cs.md)
 - **Author:** Petr Kratochvíl — [krato.cz](https://krato.cz)
 
@@ -1103,6 +1103,49 @@ Of §30.1, only three could plausibly decide anything for this profile, and all 
 
 Of §30.2, three are severe enough to stand alone: the **capacity arithmetic**, where the only three-node alternative to 33 % gives weaker redundancy than the array already has; **CephFS snapshots**, which is the fragile area of the system this architecture leans on hardest; and **cross-site replication**, where file granularity with no size estimate meets a hard monthly cap.
 
+## 31. Stretching a Ceph cluster across the internet (added 2026-08-15)
+
+§4 dismisses geo-HA across a WAN in one cell — *async DR only, sync is a showstopper*. That is the right conclusion and too short to be useful, because "put one of the three nodes at the other site" is an idea that keeps coming back. This section is why it does not work, for a concrete shape: two or three nodes, at least one behind `[ISP, internet, ISP]`, roughly 250 Mbps, with occasional link and node outages.
+
+### 31.1 The model, not the bandwidth, is the problem
+
+Ceph acknowledges a write only once it is durably committed on its replicas. So the WAN round-trip sits on **every write**, and bandwidth is beside the point: at 20 ms RTT a synchronous workload gets tens of IOPS regardless of how wide the pipe is.
+
+Upstream's stretch-mode page states no latency figure. The vendors who support the configuration do: **10 ms RTT maximum between data sites**, with up to 100 ms tolerated only for the tiebreaker. A residential path of ISP → internet → ISP is realistically 10–40 ms, which is at or beyond that ceiling before any jitter. The same vendor documentation names what happens when latency spikes: *"OSD flapping, loss of Monitor quorum, and slow (blocked) requests"* — all three of the failure modes below.
+
+### 31.2 The supported configuration does not fit two or three nodes
+
+Ceph's answer to two sites is **stretch mode**, and its requirements are explicit: *"Two Monitors must be run in each data center, plus a tiebreaker in a third (possibly in the cloud) for a total of five Monitors."* Five monitors, three sites. It also changes the pools: *"Pools will increase in size from the default `3` to `4`, and two replicas will be placed at each zone"* — **25 % capacity efficiency**, against RAIDZ2's 75 %.
+
+Two or three nodes across two sites therefore runs **without** stretch mode: no tiebreaker, and no automatic handling of `min_size` during a netsplit.
+
+### 31.3 Quorum comes out wrong in both variants
+
+- **Two nodes**: two monitors, so no majority survives losing either. Unusable without a third monitor elsewhere.
+- **Three nodes, one remote**: a link outage is a 2–1 split. The two local monitors keep quorum; **the remote node is the one that drops out**. The remote site is therefore never the surviving side — it contributes replicas but cannot operate on its own, which is the opposite of what a second site is for.
+
+### 31.4 The re-replication spiral, which is the insidious one
+
+`mon_osd_down_out_interval` defaults to **10 minutes**: after that, an unreachable OSD is marked `out` and Ceph begins re-replicating its data onto the surviving nodes. Any internet outage longer than ten minutes therefore starts moving a whole node's worth of data — and when the link returns, the node rejoins and it all has to be backfilled back.
+
+The arithmetic settles it. 250 Mbps is 31.25 MB/s, so **≈2.7 TB per day** at full saturation with no client traffic at all. A remote node holding 50 TB re-replicates in **≈18 days**; at this project's 150 TiB target any real recovery event is measured in weeks, spent degraded. Both assumptions — a saturated link and an idle cluster — are optimistic, so the real figure is worse.
+
+With only two or three nodes there is often nowhere to re-replicate *to*, so the cluster instead sits degraded for the duration. That is less destructive and no more comfortable: it means every outage leaves the data one failure from loss.
+
+### 31.5 The rest
+
+- **The `min_size` trap.** With `size=3`/`min_size=2` on three nodes, losing the remote leaves two and writes continue. Lose a *local* disk during that same outage and you are at one — **writes block**. Every internet outage puts the cluster one disk away from a write stoppage.
+- **Recovery traffic starves clients.** Backfill defaults are tuned for a LAN and will consume the whole link. `osd_max_backfills`, `osd_recovery_sleep` and mclock QoS exist, but keeping them right is continuous work.
+- **The false-positive guard is thin.** `mon_osd_min_down_reporters` defaults to 2 with `mon_osd_reporter_subtree_level` at `host`, which exists to stop an isolated network problem from marking a node down. With two or three hosts that majority is trivially small.
+- **Security.** Monitor and OSD ports over the public internet need a VPN, which adds latency to §31.1's budget and costs MTU.
+- **CephFS specifically.** Every metadata operation goes to an MDS, so clients on the far side pay the WAN for every `stat`, `open` and `readdir`. File workloads become unusable well before block ones do.
+
+### 31.6 What to do instead
+
+Two **independent** clusters with asynchronous replication between them, which is what §4 already concludes and what the sibling [storage-replication](../storage-replication/README.md) analysis is entirely about. The distinction is not a detail of configuration: a stretched cluster makes the WAN part of the write path, while async replication makes it part of the recovery path. Only the second survives a link that occasionally is not there.
+
+The one part of the original idea worth keeping is the instinct behind it — that a second site should hold data, not just backups. Async replication does exactly that; it simply refuses to make the internet a prerequisite for the first site continuing to work.
+
 ## References
 
 External sources (block verified to 2026-08-14; per-entry dates given where they differ):
@@ -1112,6 +1155,7 @@ External sources (block verified to 2026-08-14; per-entry dates given where they
 - Device removal / shrink limits: [OpenZFS zpool-remove](https://openzfs.github.io/openzfs-docs/man/v2.0/8/zpool-remove.8.html), [cr0x.net](https://cr0x.net/en/zfs-vdev-removal-limits/)
 - SMR: [xda-developers](https://www.xda-developers.com/smr-hdds-are-fine-for-your-nas-until-you-try-to-resilver/), [vermaden](https://vermaden.wordpress.com/2024/05/29/zfs-resilver-smr-drives/), [OpenZFS #18132](https://github.com/openzfs/zfs/issues/18132)
 - Fragmentation / defrag: [OpenZFS #3582](https://github.com/openzfs/zfs/issues/3582), [zfs-rewrite(8)](https://openzfs.github.io/openzfs-docs/man/master/8/zfs-rewrite.8.html), [#17246 — introduce `zfs rewrite`](https://github.com/openzfs/zfs/pull/17246), [zpoolprops(7) — the `fragmentation` property](https://openzfs.github.io/openzfs-docs/man/master/7/zpoolprops.7.html) (verified 2026-08-14)
+- Stretch clusters (§31): [Ceph — Stretch Mode](https://docs.ceph.com/en/latest/rados/operations/stretch-mode/), [Ceph — Monitor/OSD interaction](https://docs.ceph.com/en/latest/rados/configuration/mon-osd-interaction/), [Red Hat Ceph Storage 8 — Stretch clusters](https://docs.redhat.com/en/documentation/red_hat_ceph_storage/8/html/administration_guide/stretch-clusters-for-ceph-storage), [IBM Storage Ceph — Stretch clusters](https://www.ibm.com/docs/en/storage-ceph/8.0.0?topic=administration-stretch-clusters-ceph-storage) (verified 2026-08-15; the 10 ms RTT figure is the vendors', upstream states none)
 - Glossary (§29): [Ceph — Architecture](https://docs.ceph.com/en/latest/architecture/) (verified 2026-08-15)
 - `ashift` (§26): [zpoolprops(7) — the `ashift` property](https://openzfs.github.io/openzfs-docs/man/master/7/zpoolprops.7.html) (verified 2026-08-15)
 - Small files (§25): [zfsprops(7) — `recordsize`](https://openzfs.github.io/openzfs-docs/man/master/7/zfsprops.7.html), [zpool-features(7) — `embedded_data`](https://openzfs.github.io/openzfs-docs/man/master/7/zpool-features.7.html), [Btrfs — `max_inline`](https://btrfs.readthedocs.io/en/latest/Administration.html) (verified 2026-08-15)
@@ -1130,6 +1174,6 @@ External sources (block verified to 2026-08-14; per-entry dates given where they
 
 ---
 
-*Researched and written in collaboration with Claude (Anthropic); facts verified against the sources above as of July 2026, with the addenda (snapshot layer, reliability profiles, corruption-bug timelines) verified 1–6 August 2026, the growth addendum verified 13 August 2026, and the automount update, the objections section, the `zfs rewrite` correction, the encoding-granularity section, the creation-time checklist, the object-model section and the ZVOL-resize section verified 14 August 2026, and the block-cloning correction the small-file section, the `ashift` section the §21 sweep, the `recordsize` correction, the glossary and the node-count section verified 15 August 2026. This document is a dated snapshot and is not continuously updated.*
+*Researched and written in collaboration with Claude (Anthropic); facts verified against the sources above as of July 2026, with the addenda (snapshot layer, reliability profiles, corruption-bug timelines) verified 1–6 August 2026, the growth addendum verified 13 August 2026, and the automount update, the objections section, the `zfs rewrite` correction, the encoding-granularity section, the creation-time checklist, the object-model section and the ZVOL-resize section verified 14 August 2026, and the block-cloning correction the small-file section, the `ashift` section the §21 sweep, the `recordsize` correction, the glossary, the node-count section and the stretch-cluster section verified 15 August 2026. This document is a dated snapshot and is not continuously updated.*
 
 *© 2026 Petr Kratochvíl · Licensed under [CC BY 4.0](../LICENSE)*

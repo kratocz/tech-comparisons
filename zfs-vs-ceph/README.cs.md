@@ -1,7 +1,7 @@
 # ZFS vs Ceph — volba storage enginu pro malý self-hosted cluster
 
 - **Verdikt:** ⭐ **ZFS na Proxmox VE** — platí pro kontext popsaný níže
-- **Fakta ověřena:** červenec 2026 · doplňky 2026-08-01/06 (snapshot vrstva §2.5–2.6; spolehlivostní profily vč. timelines korupčních bugů Ceph i ZFS §15) · **2026-08-13 (růst po jednom disku, EC 2+2 vs RAIDZ2 §16 — vč. dvou oprav dřívějších tvrzení)** · **2026-08-14 (přepis snapshot automount vrstvy upstreamem, zatím nevydaný — §17; osm námitek držících rozhodnutí otevřené, s předem sepsaným měřicím pravidlem — §18; *oprava: `zfs rewrite` existuje a čtyři tvrzení byla chybná* — §19; kódování je v ZFS vázané na vdev a v Cephu na pool — §20; co ZFS zafixuje napevno při vytvoření a jak o tom rozhodnout — §21; objektový model, který obě předpokládají — §22; změna velikosti ZVOLu pod Proxmox VM a proč je skutečnou odpovědí obvykle discard — §23) · **2026-08-15 (oprava: block cloning je defaultně zapnutý a cross-dataset funguje — §24; kolik doopravdy stojí malý soubor a proč to není řádek tabulky o zápisu 1 bajtu — §25; volba `ashift` a oprava k §21.1 — §26; zbytek §21 projetý stejným sítem, včetně jednoho vymyšleného čísla — §27; `zfs rewrite` neaplikuje `recordsize` a jak ho tedy měnit — §28; slovník pojmů, které tabulky používají, pro všechny tři sloupce — §29; jak se kompromis liší při jednom uzlu a při třech, s opravou rozsahu — §30)**
+- **Fakta ověřena:** červenec 2026 · doplňky 2026-08-01/06 (snapshot vrstva §2.5–2.6; spolehlivostní profily vč. timelines korupčních bugů Ceph i ZFS §15) · **2026-08-13 (růst po jednom disku, EC 2+2 vs RAIDZ2 §16 — vč. dvou oprav dřívějších tvrzení)** · **2026-08-14 (přepis snapshot automount vrstvy upstreamem, zatím nevydaný — §17; osm námitek držících rozhodnutí otevřené, s předem sepsaným měřicím pravidlem — §18; *oprava: `zfs rewrite` existuje a čtyři tvrzení byla chybná* — §19; kódování je v ZFS vázané na vdev a v Cephu na pool — §20; co ZFS zafixuje napevno při vytvoření a jak o tom rozhodnout — §21; objektový model, který obě předpokládají — §22; změna velikosti ZVOLu pod Proxmox VM a proč je skutečnou odpovědí obvykle discard — §23) · **2026-08-15 (oprava: block cloning je defaultně zapnutý a cross-dataset funguje — §24; kolik doopravdy stojí malý soubor a proč to není řádek tabulky o zápisu 1 bajtu — §25; volba `ashift` a oprava k §21.1 — §26; zbytek §21 projetý stejným sítem, včetně jednoho vymyšleného čísla — §27; `zfs rewrite` neaplikuje `recordsize` a jak ho tedy měnit — §28; slovník pojmů, které tabulky používají, pro všechny tři sloupce — §29; jak se kompromis liší při jednom uzlu a při třech, s opravou rozsahu — §30; proč roztažení Ceph clusteru přes internet selže, na konkrétním tvaru — §31)**
 - **Jazyk:** 🇨🇿 čeština (originál) · 🇬🇧 [English version](README.md)
 - **Autor:** Petr Kratochvíl — [krato.cz](https://krato.cz)
 
@@ -1103,6 +1103,49 @@ Z §30.1 by mohly něco rozhodnout jen tři, a všechny tři jsou otázkou budou
 
 Z §30.2 jsou tři dost vážné samy o sobě: **kapacitní matematika**, kde jediná tříuzlová alternativa k 33 % dá slabší redundanci, než pole má dnes; **CephFS snapshoty**, tedy křehká oblast systému, o kterou se tahle architektura opírá nejvíc; a **replikace mezi lokalitami**, kde se souborová granularita bez odhadu objemu potká s tvrdým měsíčním stropem.
 
+## 31. Roztažení Ceph clusteru přes internet (doplněno 2026-08-15)
+
+§4 odbývá geo-HA přes WAN jednou buňkou — *jen asynchronní DR, synchronní je showstopper*. Je to správný závěr a příliš krátký na to, aby byl užitečný, protože „dát jeden ze tří uzlů do druhé lokality“ je nápad, který se vrací. Tahle sekce je o tom, proč nefunguje, na konkrétním tvaru: dva nebo tři uzly, aspoň jeden za `[ISP, internet, ISP]`, zhruba 250 Mbps, s občasnými výpadky linky i uzlů.
+
+### 31.1 Problémem je model, ne propustnost
+
+Ceph potvrdí zápis až po trvanlivém commitu na replikách. WAN kolečko tedy sedí na **každém zápisu** a propustnost je vedlejší: při 20 ms RTT dostane synchronní zátěž desítky IOPS bez ohledu na to, jak je linka široká.
+
+Upstream stránka o stretch mode žádné latenční číslo neuvádí. Dodavatelé, kteří tu konfiguraci podporují, ano: **maximálně 10 ms RTT mezi datovými lokalitami**, se 100 ms tolerovanými jen u tiebreakeru. Rezidenční cesta ISP → internet → ISP je realisticky 10–40 ms, tedy na stropě nebo za ním ještě před započtením výkyvů. Táž dokumentace jmenuje, co se při výkyvech latence děje: *"OSD flapping, loss of Monitor quorum, and slow (blocked) requests"* — všechny tři failure mody popsané níže.
+
+### 31.2 Podporovaná konfigurace na dva až tři uzly nesedí
+
+Odpovědí Cephu na dvě lokality je **stretch mode** a jeho požadavky jsou explicitní: *"Two Monitors must be run in each data center, plus a tiebreaker in a third (possibly in the cloud) for a total of five Monitors."* Pět monitorů, tři lokality. Mění i pooly: *"Pools will increase in size from the default `3` to `4`, and two replicas will be placed at each zone"* — **25 % kapacitní efektivity** proti 75 % u RAIDZ2.
+
+Dva nebo tři uzly ve dvou lokalitách tedy pojedou **bez** stretch mode: bez tiebreakeru a bez automatického řízení `min_size` při netsplitu.
+
+### 31.3 Kvórum vychází špatně v obou variantách
+
+- **Dva uzly**: dva monitory, takže většina ztrátu kteréhokoli nepřežije. Nepoužitelné bez třetího monitoru jinde.
+- **Tři uzly, jeden vzdálený**: výpadek linky je rozdělení 2–1. Dva lokální monitory drží kvórum, **vypadne ten vzdálený uzel**. Vzdálená lokalita tedy není nikdy přeživší stranou — přispívá replikami, ale sama fungovat nemůže, což je pravý opak toho, k čemu druhá lokalita je.
+
+### 31.4 Spirála re-replikace, ta zákeřná
+
+`mon_osd_down_out_interval` má default **10 minut**: po nich se nedostupné OSD označí `out` a Ceph začne přesouvat jeho data na přeživší uzly. Každý výpadek internetu delší než deset minut tedy rozjede přesun dat celého uzlu — a až se linka vrátí, uzel se připojí a všechno se musí backfillovat zpátky.
+
+Rozhodne to aritmetika. 250 Mbps je 31,25 MB/s, tedy **≈2,7 TB za den** při plném nasycení a nulovém provozu klientů. Vzdálený uzel s 50 TB se re-replikuje za **≈18 dní**; při cíli 150 TiB je každá reálná zotavovací událost otázkou týdnů strávených v degradovaném stavu. Oba předpoklady — nasycená linka a nečinný cluster — jsou optimistické, takže skutečné číslo je horší.
+
+Při dvou až třech uzlech často není **kam** re-replikovat, takže cluster místo toho sedí degradovaný po celou dobu. Je to méně destruktivní a stejně nepříjemné: znamená to, že každý výpadek nechá data jednu poruchu od ztráty.
+
+### 31.5 Zbytek
+
+- **Past `min_size`.** Při `size=3`/`min_size=2` na třech uzlech ztráta vzdáleného nechá dva a zápisy jedou. Ztrať během téhož výpadku *lokální* disk a jsi na jedné — **zápisy se zastaví**. Každý výpadek internetu staví cluster jeden disk od zastavení zápisů.
+- **Recovery provoz vyhladoví klienty.** Backfill defaulty jsou laděné na LAN a spotřebují celou linku. `osd_max_backfills`, `osd_recovery_sleep` a mclock QoS existují, ale udržovat je správně je trvalá práce.
+- **Ochrana proti falešným poplachům je tenká.** `mon_osd_min_down_reporters` má default 2 a `mon_osd_reporter_subtree_level` je `host`, což má bránit tomu, aby izolovaný síťový problém shodil uzel. Při dvou až třech hostech je ta většina triviálně malá.
+- **Bezpečnost.** Porty monitorů a OSD na veřejném internetu chtějí VPN, která přidá latenci do rozpočtu z §31.1 a ubere MTU.
+- **CephFS zvlášť.** Každá metadatová operace jde na MDS, takže klienti na druhé straně platí WAN za každý `stat`, `open` i `readdir`. Souborové zátěže se stanou nepoužitelnými dřív než blokové.
+
+### 31.6 Co místo toho
+
+Dva **nezávislé** clustery s asynchronní replikací mezi nimi — což už uzavírá §4 a čemu se celá sourozenecká analýza [storage-replication](../storage-replication/README.cs.md) věnuje. Ten rozdíl není konfigurační detail: roztažený cluster dělá z WAN součást **zápisové** cesty, kdežto asynchronní replikace z ní dělá součást cesty **zotavovací**. Jen to druhé přežije linku, která tam občas není.
+
+Jediné, co z původního nápadu stojí za zachování, je instinkt za ním — že druhá lokalita má držet data, ne jen zálohy. Asynchronní replikace přesně to dělá; jen odmítá udělat z internetu podmínku toho, aby první lokalita dál fungovala.
+
 ## Reference
 
 Externí zdroje (blok ověřen k 2026-08-14; dílčí data uvedena tam, kde se liší):
@@ -1112,6 +1155,7 @@ Externí zdroje (blok ověřen k 2026-08-14; dílčí data uvedena tam, kde se l
 - Device removal / shrink limity: [OpenZFS zpool-remove](https://openzfs.github.io/openzfs-docs/man/v2.0/8/zpool-remove.8.html), [cr0x.net](https://cr0x.net/en/zfs-vdev-removal-limits/)
 - SMR: [xda-developers](https://www.xda-developers.com/smr-hdds-are-fine-for-your-nas-until-you-try-to-resilver/), [vermaden](https://vermaden.wordpress.com/2024/05/29/zfs-resilver-smr-drives/), [OpenZFS #18132](https://github.com/openzfs/zfs/issues/18132)
 - Fragmentace / defrag: [OpenZFS #3582](https://github.com/openzfs/zfs/issues/3582), [zfs-rewrite(8)](https://openzfs.github.io/openzfs-docs/man/master/8/zfs-rewrite.8.html), [#17246 — zavedení `zfs rewrite`](https://github.com/openzfs/zfs/pull/17246), [zpoolprops(7) — property `fragmentation`](https://openzfs.github.io/openzfs-docs/man/master/7/zpoolprops.7.html) (ověřeno 2026-08-14)
+- Roztažené clustery (§31): [Ceph — Stretch Mode](https://docs.ceph.com/en/latest/rados/operations/stretch-mode/), [Ceph — Monitor/OSD interaction](https://docs.ceph.com/en/latest/rados/configuration/mon-osd-interaction/), [Red Hat Ceph Storage 8 — Stretch clusters](https://docs.redhat.com/en/documentation/red_hat_ceph_storage/8/html/administration_guide/stretch-clusters-for-ceph-storage), [IBM Storage Ceph — Stretch clusters](https://www.ibm.com/docs/en/storage-ceph/8.0.0?topic=administration-stretch-clusters-ceph-storage) (ověřeno 2026-08-15; údaj 10 ms RTT je dodavatelský, upstream žádný neuvádí)
 - Slovník (§29): [Ceph — Architecture](https://docs.ceph.com/en/latest/architecture/) (ověřeno 2026-08-15)
 - `ashift` (§26): [zpoolprops(7) — property `ashift`](https://openzfs.github.io/openzfs-docs/man/master/7/zpoolprops.7.html) (ověřeno 2026-08-15)
 - Malé soubory (§25): [zfsprops(7) — `recordsize`](https://openzfs.github.io/openzfs-docs/man/master/7/zfsprops.7.html), [zpool-features(7) — `embedded_data`](https://openzfs.github.io/openzfs-docs/man/master/7/zpool-features.7.html), [Btrfs — `max_inline`](https://btrfs.readthedocs.io/en/latest/Administration.html) (ověřeno 2026-08-15)
@@ -1130,6 +1174,6 @@ Externí zdroje (blok ověřen k 2026-08-14; dílčí data uvedena tam, kde se l
 
 ---
 
-*Vzniklo ve spolupráci s Claude (Anthropic); fakta ověřena proti uvedeným zdrojům k červenci 2026, doplňky (snapshot vrstva, spolehlivostní profily, timelines korupčních bugů) k 1.–6. srpnu 2026, doplněk o růstu po jednom disku k 13. srpnu 2026, a aktualizace automount vrstvy, sekce o námitkách, oprava k `zfs rewrite`, sekce o granularitě kódování, checklist rozhodnutí při vytvoření, sekce o objektovém modelu i sekce o změně velikosti ZVOLu k 14. srpnu 2026 a oprava k block cloningu sekce o malých souborech, sekce o `ashift` prohlídka §21, oprava k `recordsize`, slovník i sekce o počtu uzlů k 15. srpnu 2026. Dokument je datovaný snapshot a průběžně se neaktualizuje.*
+*Vzniklo ve spolupráci s Claude (Anthropic); fakta ověřena proti uvedeným zdrojům k červenci 2026, doplňky (snapshot vrstva, spolehlivostní profily, timelines korupčních bugů) k 1.–6. srpnu 2026, doplněk o růstu po jednom disku k 13. srpnu 2026, a aktualizace automount vrstvy, sekce o námitkách, oprava k `zfs rewrite`, sekce o granularitě kódování, checklist rozhodnutí při vytvoření, sekce o objektovém modelu i sekce o změně velikosti ZVOLu k 14. srpnu 2026 a oprava k block cloningu sekce o malých souborech, sekce o `ashift` prohlídka §21, oprava k `recordsize`, slovník, sekce o počtu uzlů i sekce o roztaženém clusteru k 15. srpnu 2026. Dokument je datovaný snapshot a průběžně se neaktualizuje.*
 
 *© 2026 Petr Kratochvíl · Licence [CC BY 4.0](../LICENSE)*
