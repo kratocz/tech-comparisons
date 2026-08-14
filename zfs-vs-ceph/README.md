@@ -1,7 +1,7 @@
 # ZFS vs Ceph: choosing the storage engine for a small self-hosted cluster
 
 - **Verdict:** ⭐ **ZFS on Proxmox VE** — valid for the context described below
-- **Facts verified:** July 2026 · addenda 2026-08-01/06 (the Linux snapshot layer §2.5–2.6; reliability profiles incl. the Ceph and ZFS corruption-bug timelines §15) · **2026-08-13 (growing one disk at a time, EC 2+2 vs RAIDZ2 §16 — including two corrections to earlier claims)** · **2026-08-14 (the snapshot automount layer rewritten upstream but still unreleased — §17; the eight objections keeping the decision open, with a pre-registered measurement rule — §18; *correction: `zfs rewrite` exists and four claims were wrong* — §19; encoding is bound to the vdev in ZFS and to the pool in Ceph — §20; what ZFS fixes permanently at creation, and how to decide each — §21; the object model those two assume — §22; resizing a ZVOL under a Proxmox VM, and why discard is usually the real answer — §23)**
+- **Facts verified:** July 2026 · addenda 2026-08-01/06 (the Linux snapshot layer §2.5–2.6; reliability profiles incl. the Ceph and ZFS corruption-bug timelines §15) · **2026-08-13 (growing one disk at a time, EC 2+2 vs RAIDZ2 §16 — including two corrections to earlier claims)** · **2026-08-14 (the snapshot automount layer rewritten upstream but still unreleased — §17; the eight objections keeping the decision open, with a pre-registered measurement rule — §18; *correction: `zfs rewrite` exists and four claims were wrong* — §19; encoding is bound to the vdev in ZFS and to the pool in Ceph — §20; what ZFS fixes permanently at creation, and how to decide each — §21; the object model those two assume — §22; resizing a ZVOL under a Proxmox VM, and why discard is usually the real answer — §23) · **2026-08-15 (correction: block cloning is on by default and cross-dataset works — §24)**
 - **Language:** 🇬🇧 English (canonical) · 🇨🇿 [Čeština — original](README.cs.md)
 - **Author:** Petr Kratochvíl — [krato.cz](https://krato.cz)
 
@@ -62,7 +62,7 @@ Symbols: ✅ strength · 🟡 works with caveats / a compromise · ❌ weakness 
 | K8s persistent volumes | 🟡 local-PV RWO (`zfs-localpv`) | ✅ distributed RWX (`ceph-csi`) | 🟡 local-PV (LVM CSI) |
 | Native S3 / object storage | ❌ (only MinIO/Garage on top) | ✅ RGW | ❌ (only MinIO on top) |
 | Deduplication (auto, block-level) | 🟡 Fast Dedup, prefer PBS | 🟡 experimental / RGW batch | 🟡 Btrfs bees (batch) |
-| Reflink clone (`cp --reflink`) | 🟡 block cloning (2.2+), default off, no cross-dataset | ❌ CephFS can't (server-side copy only) | ✅ native, stable |
+| Reflink clone (`cp --reflink`) | 🟡 block cloning (2.2+), **on by default**, cross-dataset conditional; still shedding correctness bugs (§24) | ❌ CephFS can't (server-side copy only) | ✅ native, stable |
 | Compression — algorithms | ✅ lz4 (default) + zstd (tunable) | ✅ lz4/zstd/snappy/zlib (per-pool) | ✅ zstd/lzo/zlib |
 | Recompressing existing data | ✅ in-place `zfs rewrite -r` (§19) | 🟡 new data only (rewrite) | ✅ in-place `defragment -c` |
 | At-rest encryption | ✅ ZFS native / LUKS | ✅ LUKS under OSDs | ✅ dm-crypt/LUKS |
@@ -363,7 +363,7 @@ This second addendum draws on an independent deep-research reliability analysis 
 | 2021→2025 | Native encryption × send/recv ([#12014](https://github.com/openzfs/zfs/issues/12014) and friends): permanent errors on encrypted snapshots during backups | encryption | closed only in 2025 (PR #17340; fixes in 2.2.8/2.3.3) |
 | 11/2023 | **Dirty dnode** ([#15526](https://github.com/openzfs/zfs/issues/15526)): silent corruption during copies (trigger: coreutils 9.x + block cloning), **latent since ~2013**, invisible to scrub | core (dnode check) | 2.2.2 / 2.1.14 (12/2023) |
 
-- **Lessons:** two of the four bugs were **silent** — checksums cannot catch a bug sitting above them → backups + verifying replicas (scrub on the target, test restores); hole_birth is exactly the send/recv DR scenario. The risks sit in the send paths and freshly shipped features, never in the core RAIDZ/mirror write path → run conservative versions, let novelties mature (block cloning is off by default anyway).
+- **Lessons:** two of the four bugs were **silent** — checksums cannot catch a bug sitting above them → backups + verifying replicas (scrub on the target, test restores); hole_birth is exactly the send/recv DR scenario. The risks sit in the send paths and freshly shipped features, never in the core RAIDZ/mirror write path → run conservative versions, let novelties mature (block cloning is on by default and still being fixed, §24).
 - **Encryption: the LUKS + Tang path (§12) is untouched by the whole encryption saga.** Debian 13 / Ubuntu 24.04 / PVE 9 all ship versions carrying every fix above.
 - Fill levels: see §13 — practice tolerates ~90 %, so the 80 % ceiling has a healthy margin (incl. [#18041](https://github.com/openzfs/zfs/issues/18041)).
 
@@ -820,6 +820,22 @@ So for a VM disk on a ZVOL, three things §19 and §21.3 offer are unavailable, 
 
 Two smaller ZVOL facts worth having alongside: a volume snapshot exists like any other (`zfs snapshot tank/vms/disk0@name`), but its device node does not appear until you ask — *"Controls whether the volume snapshot devices under /dev/zvol/⟨pool⟩ are hidden or visible. The default value is hidden."* And there is no meaningful size ceiling, so a 20 TB ZVOL is possible; whether it is wise is a different question, because a volume that large makes ZFS blind to its contents — no per-file snapshots, no `zfs rewrite`, and replication retention granularity of the whole volume. For bulk data a filesystem dataset shared over SMB or NFS keeps all three; ZVOLs earn their place for actual VM system disks.
 
+## 24. Correction (2026-08-15): block cloning is on by default, and cross-dataset works
+
+The comparison table rated `cp --reflink` for ZFS as *"block cloning (2.2+), default off, no cross-dataset"*. Two of those three clauses were wrong, and wrong when written rather than merely stale — they describe the brief window after the 2.2.0 corruption incident, not any version you would install.
+
+**`zfs_bclone_enabled` defaults to 1.** Checked against `man/man4/zfs.4` on `zfs-2.2-release`, `zfs-2.3-release` and `master`: all three carry `Ns = Ns Sy 1`, so block cloning is reachable out of the box on every currently shipping line. The parameter's job is the reverse of what the table implied — *"If this setting is 0, then even if `feature@block_cloning` is enabled, using functions and system calls that attempt to clone blocks will act as though the feature is disabled."* It also stopped being called experimental in 11/2024.
+
+**Cross-dataset cloning is supported, with conditions.** The feature documentation says so directly: *"Blocks can be cloned across datasets under some conditions (like equal recordsize, the same master encryption key, etc.)"*, and *"ZFS tries its best to clone across datasets including encrypted ones"* while conceding it is *"limited for various (nontrivial) reasons depending on the OS and/or ZFS internals"*. "No cross-dataset" was too strong; "conditional" is the accurate word.
+
+**What does still need doing is the pool feature.** `block_cloning` is a pool feature, so a pool created before 2.2 has it `disabled` until `zpool upgrade`. After that no further action is needed — it *"becomes active when first block is cloned"* on its own.
+
+**The rating stays 🟡, for a different reason than the one given.** Not "off by default" but "on by default and still shedding correctness bugs". The 2026 commit log alone carries *Fix read corruption after block clone after truncate* (04/2026), *Fix double free for blocks cloned after DDT prune* (05/2026) and *Fix reads for blocks freed after being cloned* (07/2026). That is three read- or free-path correctness fixes in four months, in a feature that has been shipping since 2023. §15's rule — let novelties mature, run conservative versions — applies to it exactly as before; only the sentence claiming it is inert by default was untrue.
+
+**Corrected in place:** the reflink row of the comparison table, and §15's closing lesson, which used "block cloning is off by default anyway" as reassurance it could not provide.
+
+The other two columns were checked and stand. CephFS has no `FICLONE` implementation in the Ceph tree, which is what the ❌ meant; server-side copy via `copy_file_range` is a different thing and does not deduplicate the underlying storage. Btrfs reflinks remain the mature reference case, which is why `cp --reflink` is the canonical example of the feature.
+
 ## References
 
 External sources (block verified to 2026-08-14; per-entry dates given where they differ):
@@ -829,6 +845,7 @@ External sources (block verified to 2026-08-14; per-entry dates given where they
 - Device removal / shrink limits: [OpenZFS zpool-remove](https://openzfs.github.io/openzfs-docs/man/v2.0/8/zpool-remove.8.html), [cr0x.net](https://cr0x.net/en/zfs-vdev-removal-limits/)
 - SMR: [xda-developers](https://www.xda-developers.com/smr-hdds-are-fine-for-your-nas-until-you-try-to-resilver/), [vermaden](https://vermaden.wordpress.com/2024/05/29/zfs-resilver-smr-drives/), [OpenZFS #18132](https://github.com/openzfs/zfs/issues/18132)
 - Fragmentation / defrag: [OpenZFS #3582](https://github.com/openzfs/zfs/issues/3582), [zfs-rewrite(8)](https://openzfs.github.io/openzfs-docs/man/master/8/zfs-rewrite.8.html), [#17246 — introduce `zfs rewrite`](https://github.com/openzfs/zfs/pull/17246), [zpoolprops(7) — the `fragmentation` property](https://openzfs.github.io/openzfs-docs/man/master/7/zpoolprops.7.html) (verified 2026-08-14)
+- Block cloning (§24): [zfs(4) — `zfs_bclone_enabled`](https://openzfs.github.io/openzfs-docs/man/master/4/zfs.4.html), [zpool-features(7) — `block_cloning`](https://openzfs.github.io/openzfs-docs/man/master/7/zpool-features.7.html) (verified 2026-08-15 against the 2.2, 2.3 and master branches)
 - Fast Dedup: [Klara Systems](https://klarasystems.com/articles/introducing-openzfs-fast-dedup/), [despairlabs](https://despairlabs.com/blog/posts/2024-10-27-openzfs-dedup-is-good-dont-use-it/)
 - Ceph dedup: [Ceph docs — Deduplication (experimental)](https://docs.ceph.com/en/latest/dev/deduplication/), [RGW Object Dedup](https://docs.ceph.com/en/latest/radosgw/s3_objects_dedup/)
 - ZVOL resize (§23): [zfsprops(7) — `volsize`](https://openzfs.github.io/openzfs-docs/man/master/7/zfsprops.7.html), [Proxmox `qm(1)` — resize does not shrink](https://pve.proxmox.com/pve-docs/qm.1.html) (verified 2026-08-14)
@@ -843,6 +860,6 @@ External sources (block verified to 2026-08-14; per-entry dates given where they
 
 ---
 
-*Researched and written in collaboration with Claude (Anthropic); facts verified against the sources above as of July 2026, with the addenda (snapshot layer, reliability profiles, corruption-bug timelines) verified 1–6 August 2026, the growth addendum verified 13 August 2026, and the automount update, the objections section, the `zfs rewrite` correction, the encoding-granularity section, the creation-time checklist, the object-model section and the ZVOL-resize section verified 14 August 2026. This document is a dated snapshot and is not continuously updated.*
+*Researched and written in collaboration with Claude (Anthropic); facts verified against the sources above as of July 2026, with the addenda (snapshot layer, reliability profiles, corruption-bug timelines) verified 1–6 August 2026, the growth addendum verified 13 August 2026, and the automount update, the objections section, the `zfs rewrite` correction, the encoding-granularity section, the creation-time checklist, the object-model section and the ZVOL-resize section verified 14 August 2026, and the block-cloning correction verified 15 August 2026. This document is a dated snapshot and is not continuously updated.*
 
 *© 2026 Petr Kratochvíl · Licensed under [CC BY 4.0](../LICENSE)*

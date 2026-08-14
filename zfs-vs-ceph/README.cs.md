@@ -1,7 +1,7 @@
 # ZFS vs Ceph — volba storage enginu pro malý self-hosted cluster
 
 - **Verdikt:** ⭐ **ZFS na Proxmox VE** — platí pro kontext popsaný níže
-- **Fakta ověřena:** červenec 2026 · doplňky 2026-08-01/06 (snapshot vrstva §2.5–2.6; spolehlivostní profily vč. timelines korupčních bugů Ceph i ZFS §15) · **2026-08-13 (růst po jednom disku, EC 2+2 vs RAIDZ2 §16 — vč. dvou oprav dřívějších tvrzení)** · **2026-08-14 (přepis snapshot automount vrstvy upstreamem, zatím nevydaný — §17; osm námitek držících rozhodnutí otevřené, s předem sepsaným měřicím pravidlem — §18; *oprava: `zfs rewrite` existuje a čtyři tvrzení byla chybná* — §19; kódování je v ZFS vázané na vdev a v Cephu na pool — §20; co ZFS zafixuje napevno při vytvoření a jak o tom rozhodnout — §21; objektový model, který obě předpokládají — §22; změna velikosti ZVOLu pod Proxmox VM a proč je skutečnou odpovědí obvykle discard — §23)**
+- **Fakta ověřena:** červenec 2026 · doplňky 2026-08-01/06 (snapshot vrstva §2.5–2.6; spolehlivostní profily vč. timelines korupčních bugů Ceph i ZFS §15) · **2026-08-13 (růst po jednom disku, EC 2+2 vs RAIDZ2 §16 — vč. dvou oprav dřívějších tvrzení)** · **2026-08-14 (přepis snapshot automount vrstvy upstreamem, zatím nevydaný — §17; osm námitek držících rozhodnutí otevřené, s předem sepsaným měřicím pravidlem — §18; *oprava: `zfs rewrite` existuje a čtyři tvrzení byla chybná* — §19; kódování je v ZFS vázané na vdev a v Cephu na pool — §20; co ZFS zafixuje napevno při vytvoření a jak o tom rozhodnout — §21; objektový model, který obě předpokládají — §22; změna velikosti ZVOLu pod Proxmox VM a proč je skutečnou odpovědí obvykle discard — §23) · **2026-08-15 (oprava: block cloning je defaultně zapnutý a cross-dataset funguje — §24)**
 - **Jazyk:** 🇨🇿 čeština (originál) · 🇬🇧 [English version](README.md)
 - **Autor:** Petr Kratochvíl — [krato.cz](https://krato.cz)
 
@@ -62,7 +62,7 @@ Symboly: ✅ silná stránka · 🟡 jde s výhradou / kompromis · ❌ slabina 
 | K8s persistent volumes | 🟡 local-PV RWO (`zfs-localpv`) | ✅ distribuované RWX (`ceph-csi`) | 🟡 local-PV (LVM CSI) |
 | Nativní S3 / object storage | ❌ (jen MinIO/Garage navrch) | ✅ RGW | ❌ (jen MinIO navrch) |
 | Deduplikace (auto, block-level) | 🟡 Fast Dedup, radši PBS | 🟡 experimentální / RGW batch | 🟡 Btrfs bees (batch) |
-| Reflink klon (`cp --reflink`) | 🟡 block cloning (2.2+), default off, cross-dataset ne | ❌ CephFS neumí (jen server-side copy) | ✅ nativní, stabilní |
+| Reflink klon (`cp --reflink`) | 🟡 block cloning (2.2+), **defaultně zapnutý**, cross-dataset podmíněně; pořád ze sebe setřásá chyby (§24) | ❌ CephFS neumí (jen server-side copy) | ✅ nativní, stabilní |
 | Komprese — algoritmy | ✅ lz4 (default) + zstd (laditelný) | ✅ lz4/zstd/snappy/zlib (per-pool) | ✅ zstd/lzo/zlib |
 | Změna komprese u existujících dat | ✅ in-place `zfs rewrite -r` (§19) | 🟡 jen nová data (rewrite) | ✅ in-place `defragment -c` |
 | Šifrování at-rest | ✅ ZFS native / LUKS | ✅ LUKS pod OSD | ✅ dm-crypt/LUKS |
@@ -363,7 +363,7 @@ Druhý doplněk vychází z nezávislé deep-research analýzy spolehlivosti ZFS
 | 2021→2025 | Native encryption × send/recv ([#12014](https://github.com/openzfs/zfs/issues/12014) a příbuzné): permanent errors šifrovaných snapshotů při zálohách | šifrování | uzavřeno až 2025 (PR #17340; opravy 2.2.8/2.3.3) |
 | 11/2023 | **Dirty dnode** ([#15526](https://github.com/openzfs/zfs/issues/15526)): tichá korupce při kopírování (trigger coreutils 9.x + block cloning), **latentní ~od 2013**, scrub ji neviděl | core (dnode check) | 2.2.2 / 2.1.14 (12/2023) |
 
-- **Lekce:** dva ze čtyř bugů byly **tiché** — checksumy nechytí bug, který sedí nad nimi → zálohy + ověřování replik (scrub na cíli, testovací restore); hole_birth je přesně scénář send/recv DR. Rizika sedí v send cestách a čerstvých featurách, ne v základní RAIDZ/mirror zápisové cestě → konzervativní verze, novinky nechat uležet (block cloning je beztak default off).
+- **Lekce:** dva ze čtyř bugů byly **tiché** — checksumy nechytí bug, který sedí nad nimi → zálohy + ověřování replik (scrub na cíli, testovací restore); hole_birth je přesně scénář send/recv DR. Rizika sedí v send cestách a čerstvých featurách, ne v základní RAIDZ/mirror zápisové cestě → konzervativní verze, novinky nechat uležet (block cloning je defaultně zapnutý a pořád se opravuje, §24).
 - **Šifrování: cesty LUKS + Tang (§12) se celá encryption saga netýká.** Debian 13 / Ubuntu 24.04 / PVE 9 dnes vozí verze se všemi uvedenými fixy.
 - Plnost: viz §13 — praxe snese ~90 %, ale strop 80 % má zdravou rezervu (vč. [#18041](https://github.com/openzfs/zfs/issues/18041)).
 
@@ -820,6 +820,22 @@ U disku VM na ZVOLu jsou tedy tři věci, které §19 a §21.3 nabízejí, nedos
 
 Dvě menší fakta o ZVOLech, která se k tomu hodí mít: snapshot svazku vznikne jako každý jiný (`zfs snapshot tank/vms/disk0@jmeno`), ale jeho zařízení se neobjeví, dokud si o to neřekneš — *"Controls whether the volume snapshot devices under /dev/zvol/⟨pool⟩ are hidden or visible. The default value is hidden."* A žádný smysluplný strop velikosti neexistuje, takže 20TB ZVOL možný je; jestli je moudrý, je jiná otázka, protože takhle velký svazek udělá ZFS slepým vůči svému obsahu — žádné snapshoty po souborech, žádný `zfs rewrite` a granularita retence replikace je celý svazek. Pro bulk data si filesystémový dataset sdílený přes SMB nebo NFS zachová všechno tři; ZVOLy si své místo zaslouží u skutečných systémových disků virtuálů.
 
+## 24. Oprava (2026-08-15): block cloning je defaultně zapnutý a cross-dataset funguje
+
+Srovnávací tabulka hodnotila `cp --reflink` u ZFS jako *„block cloning (2.2+), default off, cross-dataset ne“*. Dvě ze tří těch částí byly chybné, a chybné už v době psaní, ne jen zastaralé — popisují krátké okno po korupčním incidentu ve 2.2.0, ne jakoukoli verzi, kterou bys reálně nainstaloval.
+
+**`zfs_bclone_enabled` má default 1.** Ověřeno proti `man/man4/zfs.4` ve větvích `zfs-2.2-release`, `zfs-2.3-release` i `master`: všechny tři nesou `Ns = Ns Sy 1`, takže block cloning je v každé dnes dodávané řadě dostupný rovnou. Úloha toho parametru je opačná, než tabulka naznačovala — *"If this setting is 0, then even if `feature@block_cloning` is enabled, using functions and system calls that attempt to clone blocks will act as though the feature is disabled."* A přestal se označovat za experimentální v 11/2024.
+
+**Cross-dataset klonování podporované je, s podmínkami.** Dokumentace featury to říká přímo: *"Blocks can be cloned across datasets under some conditions (like equal recordsize, the same master encryption key, etc.)"* a *"ZFS tries its best to clone across datasets including encrypted ones"*, byť připouští, že je to *"limited for various (nontrivial) reasons depending on the OS and/or ZFS internals"*. „Cross-dataset ne“ bylo příliš silné; přesné slovo je „podmíněně“.
+
+**Co udělat opravdu je potřeba, je pool feature.** `block_cloning` je vlastnost poolu, takže pool vytvořený před 2.2 ji má `disabled`, dokud nepřijde `zpool upgrade`. Pak už nic dalšího netřeba — *"becomes active when first block is cloned"* sama od sebe.
+
+**Hodnocení zůstává 🟡, ale z jiného důvodu, než jaký byl uveden.** Ne „defaultně vypnuté“, ale „defaultně zapnuté a pořád ze sebe setřásající chyby správnosti“. Jen commit log roku 2026 nese *Fix read corruption after block clone after truncate* (04/2026), *Fix double free for blocks cloned after DDT prune* (05/2026) a *Fix reads for blocks freed after being cloned* (07/2026). To jsou tři opravy ve čtecí a uvolňovací cestě za čtyři měsíce, u featury dodávané od roku 2023. Pravidlo z §15 — nechat novinky uležet, jet konzervativní verze — na ni platí přesně jako dřív; nepravdivá byla jen ta věta, že je defaultně netečná.
+
+**Opraveno na místě:** reflink řádek srovnávací tabulky a závěrečné poučení v §15, které používalo „block cloning je beztak default off“ jako uklidnění, které poskytnout nemohlo.
+
+Zbylé dva sloupce byly zkontrolovány a platí. CephFS nemá ve stromu Cephu žádnou implementaci `FICLONE`, což to ❌ znamenalo; server-side copy přes `copy_file_range` je něco jiného a podkladové úložiště nededuplikuje. Btrfs reflinky zůstávají zralým referenčním případem, a proto je `cp --reflink` kanonickým příkladem té funkce.
+
 ## Reference
 
 Externí zdroje (blok ověřen k 2026-08-14; dílčí data uvedena tam, kde se liší):
@@ -829,6 +845,7 @@ Externí zdroje (blok ověřen k 2026-08-14; dílčí data uvedena tam, kde se l
 - Device removal / shrink limity: [OpenZFS zpool-remove](https://openzfs.github.io/openzfs-docs/man/v2.0/8/zpool-remove.8.html), [cr0x.net](https://cr0x.net/en/zfs-vdev-removal-limits/)
 - SMR: [xda-developers](https://www.xda-developers.com/smr-hdds-are-fine-for-your-nas-until-you-try-to-resilver/), [vermaden](https://vermaden.wordpress.com/2024/05/29/zfs-resilver-smr-drives/), [OpenZFS #18132](https://github.com/openzfs/zfs/issues/18132)
 - Fragmentace / defrag: [OpenZFS #3582](https://github.com/openzfs/zfs/issues/3582), [zfs-rewrite(8)](https://openzfs.github.io/openzfs-docs/man/master/8/zfs-rewrite.8.html), [#17246 — zavedení `zfs rewrite`](https://github.com/openzfs/zfs/pull/17246), [zpoolprops(7) — property `fragmentation`](https://openzfs.github.io/openzfs-docs/man/master/7/zpoolprops.7.html) (ověřeno 2026-08-14)
+- Block cloning (§24): [zfs(4) — `zfs_bclone_enabled`](https://openzfs.github.io/openzfs-docs/man/master/4/zfs.4.html), [zpool-features(7) — `block_cloning`](https://openzfs.github.io/openzfs-docs/man/master/7/zpool-features.7.html) (ověřeno 2026-08-15 proti větvím 2.2, 2.3 a master)
 - Fast Dedup: [Klara Systems](https://klarasystems.com/articles/introducing-openzfs-fast-dedup/), [despairlabs](https://despairlabs.com/blog/posts/2024-10-27-openzfs-dedup-is-good-dont-use-it/)
 - Ceph dedup: [Ceph docs — Deduplication (experimental)](https://docs.ceph.com/en/latest/dev/deduplication/), [RGW Object Dedup](https://docs.ceph.com/en/latest/radosgw/s3_objects_dedup/)
 - Změna velikosti ZVOLu (§23): [zfsprops(7) — `volsize`](https://openzfs.github.io/openzfs-docs/man/master/7/zfsprops.7.html), [Proxmox `qm(1)` — resize neumí zmenšit](https://pve.proxmox.com/pve-docs/qm.1.html) (ověřeno 2026-08-14)
@@ -843,6 +860,6 @@ Externí zdroje (blok ověřen k 2026-08-14; dílčí data uvedena tam, kde se l
 
 ---
 
-*Vzniklo ve spolupráci s Claude (Anthropic); fakta ověřena proti uvedeným zdrojům k červenci 2026, doplňky (snapshot vrstva, spolehlivostní profily, timelines korupčních bugů) k 1.–6. srpnu 2026, doplněk o růstu po jednom disku k 13. srpnu 2026, a aktualizace automount vrstvy, sekce o námitkách, oprava k `zfs rewrite`, sekce o granularitě kódování, checklist rozhodnutí při vytvoření, sekce o objektovém modelu i sekce o změně velikosti ZVOLu k 14. srpnu 2026. Dokument je datovaný snapshot a průběžně se neaktualizuje.*
+*Vzniklo ve spolupráci s Claude (Anthropic); fakta ověřena proti uvedeným zdrojům k červenci 2026, doplňky (snapshot vrstva, spolehlivostní profily, timelines korupčních bugů) k 1.–6. srpnu 2026, doplněk o růstu po jednom disku k 13. srpnu 2026, a aktualizace automount vrstvy, sekce o námitkách, oprava k `zfs rewrite`, sekce o granularitě kódování, checklist rozhodnutí při vytvoření, sekce o objektovém modelu i sekce o změně velikosti ZVOLu k 14. srpnu 2026 a oprava k block cloningu k 15. srpnu 2026. Dokument je datovaný snapshot a průběžně se neaktualizuje.*
 
 *© 2026 Petr Kratochvíl · Licence [CC BY 4.0](../LICENSE)*
