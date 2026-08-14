@@ -138,6 +138,17 @@ conclusion.
   treat the extension as a **new claim** and go back for its own scope line.
   The question is not "is this true?" but "did the sentence I read say
   anything about *this*?".
+
+  For Ceph specifically the scope variable is almost always the same one, and
+  it is worth naming because it went missing three times in two days: **which
+  failure domain the claim assumes**. Re-replication after a loss, self-heal
+  headroom, EC's `k+m` requirement and what a node going away actually costs
+  all behave differently under an OSD-level domain than a host-level one, and
+  the single-node configuration silently uses the former
+  (`osd_crush_chooseleaf_type = 0`). Every claim about Ceph's behaviour on
+  failure should therefore say, at least to yourself, which domain it assumes —
+  a claim that does not survive being asked "at how many hosts?" was written
+  about a different cluster than the one being described.
 - Findings from an earlier AI conversation are **hypotheses, not sources**.
   Verify them against primary sources before they enter a document, and correct
   the document plainly when they turn out to be wrong.
