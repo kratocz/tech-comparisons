@@ -115,8 +115,8 @@ conclusion.
   for; it does not arrive for free. When a claim rests on something *not*
   existing, do two things: search several ways, and run a **positive control** —
   search for something you are certain is there. If the control also comes back
-  empty, the search is broken, not the world. `storage-replication`'s "CephFS
-  cannot reflink" was right, but for a day it rested on a single empty code
+  empty, the search is broken, not the world. `zfs-vs-ceph`'s "CephFS cannot
+  reflink" was right, but for a day it rested on a single empty code
   search; the evidence that actually supports it is three terms returning zero
   across the whole tree *plus* `copy_file_range` returning five, which is what
   proves the search worked at all. And keep "the source is silent" distinct from
