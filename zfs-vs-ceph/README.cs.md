@@ -62,7 +62,7 @@ Symboly: ✅ silná stránka · 🟡 jde s výhradou / kompromis · ❌ slabina 
 | K8s persistent volumes | 🟡 local-PV RWO (`zfs-localpv`) | ✅ distribuované RWX (`ceph-csi`) | 🟡 local-PV (LVM CSI) |
 | Nativní S3 / object storage | ❌ (jen MinIO/Garage navrch) | ✅ RGW | ❌ (jen MinIO navrch) |
 | Deduplikace (auto, block-level) | 🟡 Fast Dedup, radši PBS | 🟡 experimentální / RGW batch | 🟡 Btrfs bees (batch) |
-| Reflink klon (`cp --reflink`) | 🟡 block cloning (2.2+), **defaultně zapnutý**, cross-dataset podmíněně; pořád ze sebe setřásá chyby (§24) | ❌ CephFS neumí (jen server-side copy) | ✅ nativní, stabilní |
+| Reflink klon (`cp --reflink`) | 🟡 block cloning (2.2+), defaultně zapnutý, cross-dataset podmíněně; pořád ze sebe setřásá chyby (§24) | ❌ nemá `FICLONE`; `copy_file_range` kopíruje server-side, ale alokuje nové objekty (§24) | ✅ nativní, stabilní |
 | Komprese — algoritmy | ✅ lz4 (default) + zstd (laditelný) | ✅ lz4/zstd/snappy/zlib (per-pool) | ✅ zstd/lzo/zlib |
 | Změna komprese u existujících dat | ✅ in-place `zfs rewrite -r` (§19) | 🟡 jen nová data (rewrite) | ✅ in-place `defragment -c` |
 | Šifrování at-rest | ✅ ZFS native / LUKS | ✅ LUKS pod OSD | ✅ dm-crypt/LUKS |
@@ -834,7 +834,9 @@ Srovnávací tabulka hodnotila `cp --reflink` u ZFS jako *„block cloning (2.2+
 
 **Opraveno na místě:** reflink řádek srovnávací tabulky a závěrečné poučení v §15, které používalo „block cloning je beztak default off“ jako uklidnění, které poskytnout nemohlo.
 
-Zbylé dva sloupce byly zkontrolovány a platí. CephFS nemá ve stromu Cephu žádnou implementaci `FICLONE`, což to ❌ znamenalo; server-side copy přes `copy_file_range` je něco jiného a podkladové úložiště nededuplikuje. Btrfs reflinky zůstávají zralým referenčním případem, a proto je `cp --reflink` kanonickým příkladem té funkce.
+**Sloupec CephFS byl 2026-08-15 přeověřen, tentokrát pořádně.** Včerejší ❌ stálo na jediném prázdném code searchi, což důkaz není. Teď stojí na třech: `FICLONE`, `FICLONERANGE` i `reflink` vracejí napříč celým stromem `ceph/ceph` **nula** výskytů, zatímco `copy_file_range` jich má pět; dokumentace CephFS v jádře nezmiňuje reflink, `FICLONE` ani sdílení bloků vůbec; a co dokumentuje, je mount volba `nocopyfrom` — *"Don't use the RADOS 'copy-from' operation to perform remote object copies. Currently, it's only used in `copy_file_range`…"*
+
+A právě ten rozdíl je smyslem celého řádku. RADOS `copy-from` přesune kopírování z klienta a ušetří síťové kolečko, ale **alokuje nové objekty**: žádné sdílené bloky, žádná úspora místa. Na CephFS tedy `cp --reflink=always` rovnou selže a `--reflink=auto` tiše degraduje na plnou kopii — tedy přesně na výsledek, kterému se reflink snaží předejít. Btrfs reflinky zůstávají zralým referenčním případem, a proto je `cp --reflink` kanonickým příkladem té funkce.
 
 ## Reference
 

@@ -62,7 +62,7 @@ Symbols: ✅ strength · 🟡 works with caveats / a compromise · ❌ weakness 
 | K8s persistent volumes | 🟡 local-PV RWO (`zfs-localpv`) | ✅ distributed RWX (`ceph-csi`) | 🟡 local-PV (LVM CSI) |
 | Native S3 / object storage | ❌ (only MinIO/Garage on top) | ✅ RGW | ❌ (only MinIO on top) |
 | Deduplication (auto, block-level) | 🟡 Fast Dedup, prefer PBS | 🟡 experimental / RGW batch | 🟡 Btrfs bees (batch) |
-| Reflink clone (`cp --reflink`) | 🟡 block cloning (2.2+), **on by default**, cross-dataset conditional; still shedding correctness bugs (§24) | ❌ CephFS can't (server-side copy only) | ✅ native, stable |
+| Reflink clone (`cp --reflink`) | 🟡 block cloning (2.2+), on by default, cross-dataset conditional; still shedding correctness bugs (§24) | ❌ no `FICLONE`; `copy_file_range` copies server-side but allocates new objects (§24) | ✅ native, stable |
 | Compression — algorithms | ✅ lz4 (default) + zstd (tunable) | ✅ lz4/zstd/snappy/zlib (per-pool) | ✅ zstd/lzo/zlib |
 | Recompressing existing data | ✅ in-place `zfs rewrite -r` (§19) | 🟡 new data only (rewrite) | ✅ in-place `defragment -c` |
 | At-rest encryption | ✅ ZFS native / LUKS | ✅ LUKS under OSDs | ✅ dm-crypt/LUKS |
@@ -834,7 +834,9 @@ The comparison table rated `cp --reflink` for ZFS as *"block cloning (2.2+), def
 
 **Corrected in place:** the reflink row of the comparison table, and §15's closing lesson, which used "block cloning is off by default anyway" as reassurance it could not provide.
 
-The other two columns were checked and stand. CephFS has no `FICLONE` implementation in the Ceph tree, which is what the ❌ meant; server-side copy via `copy_file_range` is a different thing and does not deduplicate the underlying storage. Btrfs reflinks remain the mature reference case, which is why `cp --reflink` is the canonical example of the feature.
+**The CephFS column was re-checked on 2026-08-15, this time properly.** Yesterday's ❌ rested on a single empty code search, which is not evidence. It now rests on three: `FICLONE`, `FICLONERANGE` and `reflink` each return **zero** occurrences across the whole `ceph/ceph` tree, while `copy_file_range` returns five; the kernel's CephFS documentation mentions no reflink, `FICLONE` or block-sharing capability anywhere; and what it does document is the `nocopyfrom` mount option — *"Don't use the RADOS 'copy-from' operation to perform remote object copies. Currently, it's only used in `copy_file_range`…"*
+
+That distinction is the whole point of the row. RADOS `copy-from` moves the copy off the client and saves the network round-trip, but it **allocates new objects**: no shared blocks, no space saved. So on CephFS `cp --reflink=always` fails outright and `--reflink=auto` silently degrades to a full copy — which is exactly the outcome a reflink exists to avoid. Btrfs reflinks remain the mature reference case, which is why `cp --reflink` is the canonical example of the feature.
 
 ## References
 
