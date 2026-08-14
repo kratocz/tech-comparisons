@@ -64,6 +64,39 @@ def check_tables(rel: str, lines: list[str]) -> None:
             err(f"{rel}:{start}", f"table rows disagree on cell count — {detail}")
 
 
+# Phrases that assert something is impossible rather than merely bad. These are
+# the claims that need a primary source, because they are the ones a reader
+# cannot check and the ones this repo has had to walk back.
+ABSOLUTE = re.compile(
+    r"(no tool|not possible|impossible|no way to|"
+    r"neexistuje|nelze|nejde to|bez nástroje)", re.I)
+
+# A row counts as sourced if it links out, points at a section, or quotes
+# documentation verbatim — the citation is usually in a neighbouring cell.
+CITED = ("](", "§", '*"', '"*', "`")
+
+
+def check_absolute_claims(rel: str, lines: list[str]) -> None:
+    """Flag impossibility claims in table rows that carry no citation.
+
+    Deliberately narrow. Of the three overstatements this repo shipped on
+    2026-08-14 this would have caught one ("no tool, CoW-safe"); the other two
+    were a wrong number and a prose sentence, which no lint of this shape can
+    see. It is a cheap net over the highest-traffic spot, not a guarantee —
+    the rule in AGENTS.md is what actually does the work.
+    """
+    for start, block in table_blocks(lines):
+        for offset, row in enumerate(block):
+            m = ABSOLUTE.search(row)
+            if not m:
+                continue
+            if any(tok in row for tok in CITED):
+                continue
+            warn(f"{rel}:{start + offset}",
+                 f'table row asserts "{m.group(0)}" with no citation, §-reference or quoted '
+                 f'wording — check it against a primary source before it ships')
+
+
 def check_section_refs(rel: str, text: str) -> None:
     """Every §N must resolve to a '## N.' heading in this file.
 
@@ -72,9 +105,23 @@ def check_section_refs(rel: str, text: str) -> None:
     """
     local = re.sub(r"\[[^\]]*\]\((?:\.\./|\./)[^)]*\)", "", text)
     sections = {int(m.group(1)) for m in re.finditer(r"^## (\d+)\.", local, re.M)}
-    refs = {int(m.group(1)) for m in re.finditer(r"§(\d+)", local)}
+    subsections = {m.group(1) for m in re.finditer(r"^### (\d+\.\d+)", local, re.M)}
+    refs = {int(m.group(1)) for m in re.finditer(r"§(\d+)(?!\.\d)", local)}
+    subrefs = {m.group(1) for m in re.finditer(r"§(\d+\.\d+)", local)}
     for missing in sorted(refs - sections):
         err(rel, f"§{missing} referenced but no '## {missing}.' section exists")
+    for missing in sorted(subrefs - subsections):
+        err(rel, f"§{missing} referenced but no '### {missing}' sub-section exists")
+
+    # A sibling document named near a bare §N means the reference will be
+    # resolved against the wrong file — it needs a relative link.
+    SIBLINGS = r"zfs-vs-ceph|storage-replication|smartwatch-platforms"
+    for pat in (rf"({SIBLINGS})[^\n§]{{0,60}}§(\d+)",     # "storage-replication §12"
+                rf"§(\d+)[^\n§]{{0,60}}({SIBLINGS})"):     # "§12 of the sibling storage-replication"
+        for m in re.finditer(pat, local):
+            warn(rel, "a §-reference sits next to a sibling document's name but carries no "
+                      "relative link — it will resolve against this file instead")
+            break
 
     # Consecutive, no gaps or repeats. A draft may open with a `## 0.` status
     # section, so the run is allowed to start at 0 as well as 1.
@@ -112,7 +159,7 @@ def check_ordered_lists(rel: str, lines: list[str]) -> None:
 
 def check_links(rel: str, path: str, text: str) -> None:
     base = os.path.dirname(path)
-    for m in re.finditer(r"\]\(((?:\.\./|\./)[^)#\s]+)", text):
+    for m in re.finditer(r"\]\((?!https?:)([^)#\s]+)", text):
         target = os.path.normpath(os.path.join(base, m.group(1)))
         if not os.path.exists(target):
             err(rel, f"relative link does not resolve: {m.group(1)}")
@@ -125,7 +172,7 @@ def check_header(rel: str, lines: list[str]) -> None:
     head = lines[:12]
     if not any(l.startswith("- **") for l in head):
         err(rel, "header metadata is not a bullet list (CommonMark merges plain lines)")
-    tags = len(re.findall(r"\[OVĚŘIT\]|\[VERIFY\]", "\n".join(lines[12:])))
+    tags = len(re.findall(r"\[(?:OVĚŘIT|VERIFY)[^\]]*\]", "\n".join(lines[12:])))
     if tags:
         warn(rel, f"{tags} open [OVĚŘIT]/[VERIFY] tag(s) in the body — the header must name them")
 
@@ -137,18 +184,24 @@ def check_czech_quotes(rel: str, text: str) -> None:
 
 
 def check_parity(directory: str, en: str, cs: str) -> None:
-    def shape(path: str) -> tuple[int, int]:
+    def shape(path: str):
         text = open(path, encoding="utf-8").read()
         lines = text.split("\n")
         rows = sum(len(b) for _, b in table_blocks(lines))
-        return len(re.findall(r"^## ", text, re.M)), rows
+        secs = re.findall(r"^## (\d+)\.", text, re.M)
+        subs = re.findall(r"^### (\d+\.\d+)", text, re.M)
+        return len(re.findall(r"^## ", text, re.M)), rows, secs, subs
 
-    en_sec, en_rows = shape(en)
-    cs_sec, cs_rows = shape(cs)
+    en_sec, en_rows, en_n, en_s = shape(en)
+    cs_sec, cs_rows, cs_n, cs_s = shape(cs)
     if en_sec != cs_sec:
         err(directory, f"language versions disagree on section count: EN {en_sec}, CS {cs_sec}")
     if en_rows != cs_rows:
         err(directory, f"language versions disagree on table row count: EN {en_rows}, CS {cs_rows}")
+    if en_n != cs_n:
+        err(directory, f"numbered sections differ: EN {en_n} vs CS {cs_n}")
+    if en_s != cs_s:
+        err(directory, f"sub-section numbering differs: EN {en_s} vs CS {cs_s}")
 
 
 def check_index_row(directory: str) -> None:
@@ -162,6 +215,7 @@ def check_document(path: str) -> None:
     text = open(path, encoding="utf-8").read()
     lines = text.split("\n")
     check_tables(rel, lines)
+    check_absolute_claims(rel, lines)
     check_section_refs(rel, text)
     check_ordered_lists(rel, lines)
     check_links(rel, path, text)

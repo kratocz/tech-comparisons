@@ -56,7 +56,11 @@ one axis. `storage-replication` puts Btrfs after the Ceph columns because
 Two formatting details that are easy to get wrong and tedious to fix later.
 Czech text uses Czech quotation marks (`„…“`) — not a Czech opening quote closed
 with an ASCII one, which is what you get by default and which nothing warns you
-about. And inside table cells, put spaces around a slash separating two values
+about. The exception is a **verbatim quotation from an English source**: those
+keep ASCII quotes, normally inside italics (`*"…"*`), because they are being
+reproduced rather than written. Mixing the two — opening with `„` and closing a
+piece of English with `"` — is the mistake that actually happens, repeatedly;
+`scripts/check-comparison.py` catches it as an unbalanced-quote error. And inside table cells, put spaces around a slash separating two values
 (`` `recordsize` / `volblocksize` ``): without them the cell has no break
 opportunity and holds the whole column wider than its content needs.
 
@@ -94,6 +98,16 @@ conclusion.
 - Prefer primary sources: the vendor's own spec or support page over a review
   quoting it. Where sources contradict each other, record the contradiction in
   the document and say which one is treated as authoritative and why.
+- **An impossibility claim needs a primary source before it is written**, not
+  after someone questions it. "There is no tool", "it cannot be changed", "never",
+  "only via migration" — these are the claims a reader cannot check and the ones
+  this repo has had to walk back three times in a single day (`zfs rewrite`
+  existed; it does more than the correction first allowed; the pool count was not
+  irreversible). Each time the trigger was a reader's question rather than a
+  verification pass. Fetch the man page or the docs page *first*, then write the
+  sentence — and if the source is silent, say that instead of inferring the
+  stronger claim. `scripts/check-comparison.py` warns about the subset of these
+  that appear in comparison tables, which is a net, not a substitute.
 - Findings from an earlier AI conversation are **hypotheses, not sources**.
   Verify them against primary sources before they enter a document, and correct
   the document plainly when they turn out to be wrong.
@@ -161,12 +175,21 @@ scripts/check-comparison.py                  # every comparison
 scripts/check-comparison.py storage-replication
 ```
 
-It verifies that every row of a table has the same cell count, that each `§N`
-resolves to a section that exists, that numbered sections and ordered lists run
-consecutively, that relative links resolve, that no URL was mangled by a bulk
-edit, that the two language versions agree on section and table-row counts, and
-that Czech quotes are balanced. It warns about open `[OVĚŘIT]` / `[VERIFY]` tags
-rather than failing on them. Run it before every commit that touches a
+**Errors** (these fail the run): a table whose rows disagree on cell count; a
+`§N` or `§N.M` that resolves to no section or sub-section in that file; numbered
+sections or ordered lists that are not consecutive; a relative link that does not
+resolve; a URL mangled by a bulk edit; the two language versions disagreeing on
+section count, table-row count, section numbers or sub-section numbers;
+unbalanced Czech quotes.
+
+**Warnings** (reported, never fatal): open `[OVĚŘIT]` / `[VERIFY]` tags, with or
+without text inside the brackets; a comparison directory with no English version;
+a `§`-reference sitting next to a sibling document's name without a relative link,
+which would otherwise resolve against the wrong file; and a table row asserting
+an impossibility with no citation, `§`-reference or quoted wording behind it.
+
+What it does **not** check is prose. Every convention above that lives in a
+sentence rather than in structure is still on the writer. Run it before every commit that touches a
 comparison — writing `storage-replication` it caught a table column inserted at
 the wrong index and two ordered lists numbered out of sequence, none of which
 survived a reading.
@@ -179,6 +202,20 @@ place *and* record the correction as a dated addendum section at the end
 (`## 13. Correction (2026-08-13): …`), saying what was wrong and what it changed.
 Always append, never renumber: `§N` cross-references — including ones in sibling
 documents — point at the existing numbers.
+
+**New content lands the same way.** A published document grows by appending
+dated sections (`## 20. … (added 2026-08-14)`), never by rewriting earlier ones,
+for the same reason. Two places must then name the new section: the header's
+**Facts verified** bullet and the closing footer. They are the document's index
+of what was added when, and a section missing from either is invisible to a
+reader who starts at the top.
+
+**Exception — a correction to a section published the same day** may be recorded
+inline, as a dated parenthetical inside that section, rather than as its own
+addendum. Appending `## 24. Correction …` to fix `## 23.` written an hour
+earlier adds numbering without adding information. The cut-off is publication
+date, not convenience: once a section has been out for a day, it gets a proper
+addendum.
 
 If the error sat underneath a decision rule, leave the rule exactly as written
 and report that it **did not fire**. Rewriting a rule once you have seen the

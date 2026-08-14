@@ -15,9 +15,9 @@ Real decision analyses from real projects — not neutral feature matrices. Each
 
 | Topic | Verdict (for that context) | Facts verified | Read |
 |---|---|---|---|
-| **ZFS vs Ceph** — storage engine for a small (1–3 node) self-hosted cluster | ZFS on Proxmox VE | 2026-07 · add. 2026-08 (×3) | 🇬🇧 [English](zfs-vs-ceph/README.md) · 🇨🇿 [Čeština](zfs-vs-ceph/README.cs.md) |
+| **ZFS vs Ceph** — storage engine for a small (1–3 node) self-hosted cluster | ZFS on Proxmox VE | 2026-07 · add. ×4, last 2026-08-14 | 🇬🇧 [English](zfs-vs-ceph/README.md) · 🇨🇿 [Čeština](zfs-vs-ceph/README.cs.md) |
 | **Storage replication** — incremental replication between two clusters: ZFS `send`/`recv` vs Ceph RBD and CephFS mirroring | ZFS `zfs send -i` | 2026-08-13 | 🇬🇧 [English](storage-replication/README.md) · 🇨🇿 [Čeština](storage-replication/README.cs.md) |
-| **Smartwatch platforms** — Garmin vs Apple vs Samsung, as input to an iPhone 15 Pro vs 16 Pro purchase decision | ⏳ in progress | 2026-08 | 🇨🇿 [Čeština](smartwatch-platforms/README.cs.md) |
+| **Smartwatch platforms** — Garmin vs Apple vs Samsung, as input to an iPhone 15 Pro vs 16 Pro purchase decision | ⏳ in progress | 2026-08-09 (partial) | 🇨🇿 [Čeština](smartwatch-platforms/README.cs.md) |
 
 ## Languages
 

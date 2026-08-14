@@ -1,7 +1,7 @@
 # ZFS vs Ceph: choosing the storage engine for a small self-hosted cluster
 
 - **Verdict:** ⭐ **ZFS on Proxmox VE** — valid for the context described below
-- **Facts verified:** July 2026 · addenda 2026-08-01/06 (the Linux snapshot layer §2.5–2.6; reliability profiles incl. the Ceph and ZFS corruption-bug timelines §15) · **2026-08-13 (growing one disk at a time, EC 2+2 vs RAIDZ2 §16 — including two corrections to earlier claims)** · **2026-08-14 (the snapshot automount layer rewritten upstream but still unreleased — §17; the eight objections keeping the decision open, with a pre-registered measurement rule — §18; **correction: `zfs rewrite` exists and four claims were wrong** — §19; encoding is bound to the vdev in ZFS and to the pool in Ceph — §20; what ZFS fixes permanently at creation, and how to decide each — §21; the object model those two assume — §22; resizing a ZVOL under a Proxmox VM, and why discard is usually the real answer — §23)**
+- **Facts verified:** July 2026 · addenda 2026-08-01/06 (the Linux snapshot layer §2.5–2.6; reliability profiles incl. the Ceph and ZFS corruption-bug timelines §15) · **2026-08-13 (growing one disk at a time, EC 2+2 vs RAIDZ2 §16 — including two corrections to earlier claims)** · **2026-08-14 (the snapshot automount layer rewritten upstream but still unreleased — §17; the eight objections keeping the decision open, with a pre-registered measurement rule — §18; *correction: `zfs rewrite` exists and four claims were wrong* — §19; encoding is bound to the vdev in ZFS and to the pool in Ceph — §20; what ZFS fixes permanently at creation, and how to decide each — §21; the object model those two assume — §22; resizing a ZVOL under a Proxmox VM, and why discard is usually the real answer — §23)**
 - **Language:** 🇬🇧 English (canonical) · 🇨🇿 [Čeština — original](README.cs.md)
 - **Author:** Petr Kratochvíl — [krato.cz](https://krato.cz)
 
@@ -446,7 +446,7 @@ Two mitigations:
 1. **CephFS supports multiple data pools.** New data can be directed into a wider pool through a layout (`setfattr -n ceph.dir.layout -v pool=ec42 /ceph/logs`) without copying the old data; both pools share the same OSDs.
 2. **Pool Migration is in the works.** The developer documentation describes a proposal targeting the **Umbrella** release, intended to *"change the erasure code profile (and in particular the choice of K and M) non-disruptively"* as well as *"Converting between replica and erasure coded pools"*, with no outage. It is a **proposal, not a feature**: the first release will require an empty target pool, will offer no cancel or suspend, and will require every client and daemon to be upgraded.
 
-### 16.5 Correction: on growth, capacity is a draw
+### 16.5 Correction (2026-08-13): on growth, capacity is a draw
 
 ⚠️ **The second and more consequential correction.** It is tempting to say "EC is locked at 50 % while RAIDZ2 grows to 67 %". That is unfair twice over: CephFS lets you add a second pool with a wider profile (§16.4), so "locked forever" is false — and, more importantly, **RAIDZ expansion has exactly the property I would be holding against Ceph**: old data keeps its original ratio, so the pool as a whole does not become more efficient under ZFS either.
 
@@ -529,7 +529,7 @@ And Ceph does not escape per-device encryption: *"Logical volumes can be encrypt
 
 True, and the strongest of the eight. Inside a RAIDZ vdev, usable capacity per disk is set by the smallest member, so a 40 TB disk bought into a pool of 30 TB disks contributes 30 TB. Two ZFS answers exist before reaching for Ceph. **Mirror vdevs**: add and replace two at a time, and with `autoexpand=on` replacing both halves of one mirror yields the space immediately — at 50 % efficiency instead of RAIDZ2's 75 %, which at a 150 TiB target is a large number of extra drives. **Whole vdevs**: `raidz2` of 4×30 TB and a later `raidz2` of 4×40 TB coexist in one pool, at the cost of buying four at a time.
 
-Ceph handles this natively through CRUSH weights, and that is a genuine, durable advantage. It is also the advantage that §18.9 mostly cancels.
+Ceph handles this natively through CRUSH weights, and that is a genuine, durable advantage. It is also the advantage that §18.8 mostly cancels.
 
 ### 18.4 Defragmentation (objection 4)
 
@@ -687,7 +687,7 @@ These are not permanent, and since `zfs rewrite` (§19) the old data can be brou
 - **One pool or several** (§20). *Corrected the same day, after this section first overstated it:* **adding** a pool later is always possible — it only needs new disks, and nothing blocks it. What cannot be done is **splitting** an existing pool, because freeing its disks means removing a vdev, and a RAIDZ vdev can never be removed. With **mirror** vdevs it can: *"A mirrored top-level device (log or data) can be removed"*, and *"the specified device will be evacuated by copying all allocated space from it to the other devices in the pool"* — at the cost of a permanent mapping table in RAM, which `zpool remove -n` will estimate first.
 
   So vdev type and pool count are one decision, not two: RAIDZ sets the layout in concrete, mirrors keep it negotiable. And it is not a decision made once — it recurs at every expansion, since each new batch of disks can either extend the existing pool or start another. Splitting costs no capacity either way: three 8-disk RAIDZ2 pools use the same 24 disks and 6 parity as one pool holding three such vdevs. What it buys is migration granularity; what it costs is siloed free space and no striping between pools.
-- **Dataset boundaries.** `send`/`recv` replicates whole datasets, so the dataset layout *is* the replication layout — the point §12 of the sibling `storage-replication` analysis makes. A tree that will be replicated on a different schedule, or not at all, needs to be its own dataset from the start.
+- **Dataset boundaries.** `send`/`recv` replicates whole datasets, so the dataset layout *is* the replication layout — the point [storage-replication §12](../storage-replication/README.md) makes. A tree that will be replicated on a different schedule, or not at all, needs to be its own dataset from the start.
 
 ### 21.5 The short version
 
@@ -810,7 +810,7 @@ Shrinking `volsize` earns its risk only on a **thick** ZVOL, where the point is 
 
 ## References
 
-External sources (verified July 2026; snapshot/ACL addenda verified 2026-08-01):
+External sources (block verified to 2026-08-14; per-entry dates given where they differ):
 
 - RAIDZ Expansion: [The Register](https://www.theregister.com/2025/01/23/openzfs_23_raid_expansion/), [FreeBSD Foundation](https://freebsdfoundation.org/blog/raid-z-expansion-feature-for-zfs/), [the parity-ratio caveat](https://louwrentius.com/zfs-raidz-expansion-is-awesome-but-has-a-small-caveat.html)
 - Encoding granularity (§20): [zpool-attach(8) — RAIDZ expansion keeps the parity level](https://openzfs.github.io/openzfs-docs/man/master/8/zpool-attach.8.html), [zpool-remove(8) — no removal with a top-level raidz](https://openzfs.github.io/openzfs-docs/man/master/8/zpool-remove.8.html), [Ceph — Erasure code profiles are immutable](https://docs.ceph.com/en/latest/rados/operations/erasure-code/) (verified 2026-08-14)
@@ -831,6 +831,6 @@ External sources (verified July 2026; snapshot/ACL addenda verified 2026-08-01):
 
 ---
 
-*Researched and written in collaboration with Claude (Anthropic); facts verified against the sources above as of July 2026, with the addenda (snapshot layer, reliability profiles, corruption-bug timelines) verified 1–6 August 2026 the growth addendum verified 13 August 2026, and the automount update, the objections section, the `zfs rewrite` correction the encoding-granularity section, the creation-time checklist, the object-model section and the ZVOL-resize section 14 August 2026. This document is a dated snapshot and is not continuously updated.*
+*Researched and written in collaboration with Claude (Anthropic); facts verified against the sources above as of July 2026, with the addenda (snapshot layer, reliability profiles, corruption-bug timelines) verified 1–6 August 2026, the growth addendum verified 13 August 2026, and the automount update, the objections section, the `zfs rewrite` correction, the encoding-granularity section, the creation-time checklist, the object-model section and the ZVOL-resize section verified 14 August 2026. This document is a dated snapshot and is not continuously updated.*
 
 *© 2026 Petr Kratochvíl · Licensed under [CC BY 4.0](../LICENSE)*

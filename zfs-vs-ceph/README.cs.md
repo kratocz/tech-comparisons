@@ -1,7 +1,7 @@
 # ZFS vs Ceph — volba storage enginu pro malý self-hosted cluster
 
 - **Verdikt:** ⭐ **ZFS na Proxmox VE** — platí pro kontext popsaný níže
-- **Fakta ověřena:** červenec 2026 · doplňky 2026-08-01/06 (snapshot vrstva §2.5–2.6; spolehlivostní profily vč. timelines korupčních bugů Ceph i ZFS §15) · **2026-08-13 (růst po jednom disku, EC 2+2 vs RAIDZ2 §16 — vč. dvou oprav dřívějších tvrzení)** · **2026-08-14 (přepis snapshot automount vrstvy upstreamem, zatím nevydaný — §17; osm námitek držících rozhodnutí otevřené, s předem sepsaným měřicím pravidlem — §18; **oprava: `zfs rewrite` existuje a čtyři tvrzení byla chybná** — §19; kódování je v ZFS vázané na vdev a v Cephu na pool — §20; co ZFS zafixuje napevno při vytvoření a jak o tom rozhodnout — §21; objektový model, který obě předpokládají — §22; změna velikosti ZVOLu pod Proxmox VM a proč je skutečnou odpovědí obvykle discard — §23)**
+- **Fakta ověřena:** červenec 2026 · doplňky 2026-08-01/06 (snapshot vrstva §2.5–2.6; spolehlivostní profily vč. timelines korupčních bugů Ceph i ZFS §15) · **2026-08-13 (růst po jednom disku, EC 2+2 vs RAIDZ2 §16 — vč. dvou oprav dřívějších tvrzení)** · **2026-08-14 (přepis snapshot automount vrstvy upstreamem, zatím nevydaný — §17; osm námitek držících rozhodnutí otevřené, s předem sepsaným měřicím pravidlem — §18; *oprava: `zfs rewrite` existuje a čtyři tvrzení byla chybná* — §19; kódování je v ZFS vázané na vdev a v Cephu na pool — §20; co ZFS zafixuje napevno při vytvoření a jak o tom rozhodnout — §21; objektový model, který obě předpokládají — §22; změna velikosti ZVOLu pod Proxmox VM a proč je skutečnou odpovědí obvykle discard — §23)**
 - **Jazyk:** 🇨🇿 čeština (originál) · 🇬🇧 [English version](README.md)
 - **Autor:** Petr Kratochvíl — [krato.cz](https://krato.cz)
 
@@ -446,7 +446,7 @@ Dvě zmírnění:
 1. **CephFS umí víc datových poolů.** Nová data lze nasměrovat do širšího poolu přes layout (`setfattr -n ceph.dir.layout -v pool=ec42 /ceph/logs`) bez kopírování těch starých; oba pooly sdílejí tytéž OSD.
 2. **Pool Migration je v přípravě.** Vývojová dokumentace popisuje návrh cílený na release **Umbrella**, který má umožnit *„change the erasure code profile (and in particular the choice of K and M) non-disruptively“* i *„Converting between replica and erasure coded pools“*, a to bez výpadku. Zatím je to **návrh, ne funkce**: první verze bude vyžadovat prázdný cílový pool, nepůjde ji zrušit ani pozastavit a bude chtít upgradované všechny klienty i démony.
 
-### 16.5 Oprava: kapacitně jsou při růstu na remíze
+### 16.5 Oprava (2026-08-13): kapacitně jsou při růstu na remíze
 
 ⚠️ **Druhá a podstatnější oprava.** Nabízelo se říct „EC je zamčené na 50 %, zatímco RAIDZ2 roste na 67 %“. To je nefér ve dvou směrech: u CephFS lze přidat druhý pool se širším profilem (§16.4), takže „zamčeno navždy“ neplatí — a hlavně **RAIDZ expansion má úplně tutéž vlastnost, kterou bych Cephu vyčítal**: stará data si nesou původní poměr, takže ani u ZFS se pool jako celek na vyšší efektivitu nepřepočítá.
 
@@ -687,7 +687,7 @@ Tyhle trvalé nejsou a od `zfs rewrite` (§19) jde stará data dorovnat i bez dr
 - **Jeden pool, nebo víc** (§20). *Opraveno týž den, protože tahle sekce to nejprve přehnala:* **přidat** pool později jde vždycky — potřebuje to jen nové disky a nic tomu nebrání. Co nejde, je **rozdělit** existující pool, protože uvolnit z něj disky znamená odebrat vdev, a RAIDZ vdev odebrat nelze nikdy. U **mirror** vdevů to jde: *"A mirrored top-level device (log or data) can be removed"* a *"the specified device will be evacuated by copying all allocated space from it to the other devices in the pool"* — za cenu trvalé mapovací tabulky v RAM, jejíž velikost napřed odhadne `zpool remove -n`.
 
   Typ vdevu a počet poolů jsou tedy jedno rozhodnutí, ne dvě: RAIDZ zalije rozvržení do betonu, mirrory ho nechají vyjednatelné. A nedělá se jednou — opakuje se při každém rozšíření, protože každá nová dávka disků může buď rozšířit stávající pool, nebo založit další. Rozdělení nestojí kapacitu tak jako tak: tři osmidiskové RAIDZ2 pooly použijí týchž 24 disků a šest parity jako jeden pool se třemi takovými vdevy. Kupuje granularitu migrace; stojí volné místo v silech a chybějící striping mezi pooly.
-- **Hranice datasetů.** `send`/`recv` replikuje celé datasety, takže rozvržení datasetů **je** rozvržením replikace — přesně ten bod, který dělá §12 sourozenecké analýzy `storage-replication`. Strom, který se bude replikovat jinak často nebo vůbec, musí být vlastním datasetem od začátku.
+- **Hranice datasetů.** `send`/`recv` replikuje celé datasety, takže rozvržení datasetů **je** rozvržením replikace — přesně ten bod, který dělá [storage-replication §12](../storage-replication/README.cs.md). Strom, který se bude replikovat jinak často nebo vůbec, musí být vlastním datasetem od začátku.
 
 ### 21.5 Zkrácená verze
 
@@ -810,7 +810,7 @@ Zmenšení `volsize` si své riziko zaslouží jen u **thick** ZVOLu, kde jde o 
 
 ## Reference
 
-Externí zdroje (ověřeno 2026-07; snapshot/ACL doplňky ověřeny 2026-08-01):
+Externí zdroje (blok ověřen k 2026-08-14; dílčí data uvedena tam, kde se liší):
 
 - RAIDZ Expansion: [The Register](https://www.theregister.com/2025/01/23/openzfs_23_raid_expansion/), [FreeBSD Foundation](https://freebsdfoundation.org/blog/raid-z-expansion-feature-for-zfs/), [caveat parity ratio](https://louwrentius.com/zfs-raidz-expansion-is-awesome-but-has-a-small-caveat.html)
 - Granularita kódování (§20): [zpool-attach(8) — rozšíření RAIDZ zachovává úroveň parity](https://openzfs.github.io/openzfs-docs/man/master/8/zpool-attach.8.html), [zpool-remove(8) — s top-level raidz nelze odstraňovat](https://openzfs.github.io/openzfs-docs/man/master/8/zpool-remove.8.html), [Ceph — EC profily jsou neměnné](https://docs.ceph.com/en/latest/rados/operations/erasure-code/) (ověřeno 2026-08-14)
@@ -831,6 +831,6 @@ Externí zdroje (ověřeno 2026-07; snapshot/ACL doplňky ověřeny 2026-08-01):
 
 ---
 
-*Vzniklo ve spolupráci s Claude (Anthropic); fakta ověřena proti uvedeným zdrojům k červenci 2026, doplňky (snapshot vrstva, spolehlivostní profily, timelines korupčních bugů) k 1.–6. srpnu 2026 doplněk o růstu po jednom disku k 13. srpnu 2026 a aktualizace automount vrstvy, sekce o námitkách, oprava k `zfs rewrite` sekce o granularitě kódování, checklist rozhodnutí při vytvoření, sekce o objektovém modelu i sekce o změně velikosti ZVOLu k 14. srpnu 2026. Dokument je datovaný snapshot a průběžně se neaktualizuje.*
+*Vzniklo ve spolupráci s Claude (Anthropic); fakta ověřena proti uvedeným zdrojům k červenci 2026, doplňky (snapshot vrstva, spolehlivostní profily, timelines korupčních bugů) k 1.–6. srpnu 2026, doplněk o růstu po jednom disku k 13. srpnu 2026, a aktualizace automount vrstvy, sekce o námitkách, oprava k `zfs rewrite`, sekce o granularitě kódování, checklist rozhodnutí při vytvoření, sekce o objektovém modelu i sekce o změně velikosti ZVOLu k 14. srpnu 2026. Dokument je datovaný snapshot a průběžně se neaktualizuje.*
 
 *© 2026 Petr Kratochvíl · Licence [CC BY 4.0](../LICENSE)*
