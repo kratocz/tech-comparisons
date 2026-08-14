@@ -1,7 +1,7 @@
 # ZFS vs Ceph: choosing the storage engine for a small self-hosted cluster
 
 - **Verdict:** ⭐ **ZFS on Proxmox VE** — valid for the context described below
-- **Facts verified:** July 2026 · addenda 2026-08-01/06 (the Linux snapshot layer §2.5–2.6; reliability profiles incl. the Ceph and ZFS corruption-bug timelines §15) · **2026-08-13 (growing one disk at a time, EC 2+2 vs RAIDZ2 §16 — including two corrections to earlier claims)** · **2026-08-14 (the snapshot automount layer rewritten upstream but still unreleased — §17; the eight objections keeping the decision open, with a pre-registered measurement rule — §18; **correction: `zfs rewrite` exists and four claims were wrong** — §19; encoding is bound to the vdev in ZFS and to the pool in Ceph — §20; what ZFS fixes permanently at creation, and how to decide each — §21)**
+- **Facts verified:** July 2026 · addenda 2026-08-01/06 (the Linux snapshot layer §2.5–2.6; reliability profiles incl. the Ceph and ZFS corruption-bug timelines §15) · **2026-08-13 (growing one disk at a time, EC 2+2 vs RAIDZ2 §16 — including two corrections to earlier claims)** · **2026-08-14 (the snapshot automount layer rewritten upstream but still unreleased — §17; the eight objections keeping the decision open, with a pre-registered measurement rule — §18; **correction: `zfs rewrite` exists and four claims were wrong** — §19; encoding is bound to the vdev in ZFS and to the pool in Ceph — §20; what ZFS fixes permanently at creation, and how to decide each — §21; the object model those two assume — §22)**
 - **Language:** 🇬🇧 English (canonical) · 🇨🇿 [Čeština — original](README.cs.md)
 - **Author:** Petr Kratochvíl — [krato.cz](https://krato.cz)
 
@@ -693,6 +693,74 @@ These are not permanent, and since `zfs rewrite` (§19) the old data can be brou
 
 If only four of these get real thought before the first `zpool create`, make them: **`ashift`** (12), **vdev type and parity**, **whether a `special` vdev is wanted**, and **the encryption model**. Those four cannot be undone without emptying the pool. The number of pools is *not* a fifth — it is decided again at every expansion (§21.4), and how freely depends on the vdev type you picked, which is why that one carries more weight than it looks. Everything else in §21.3 can be repaired later with `zfs rewrite`, and everything in §21.2 can at least be fixed for a single dataset by recreating that dataset rather than the whole pool.
 
+## 22. The object model §20 and §21 assume (added 2026-08-14)
+
+Not a tutorial. §20 argues that encoding is bound to the vdev, and §21 lists what that makes permanent; both assume a structure that the rest of this document never spells out. Four facts in it are load-bearing, and each is marked where it is used.
+
+### 22.1 The physical layer
+
+```
+zpool "tank"  ← the allocation space everything is striped across
+ │
+ ├── top-level vdev 1  ─┐
+ ├── top-level vdev 2  ─┤  data spreads across all of them
+ └── top-level vdev 3  ─┘  losing ANY ONE of them loses the whole pool
+      │
+      └── redundancy lives inside a vdev, never between vdevs:
+          mirror / raidz1,2,3 / draid / a bare device
+           └── physical devices (whole disks or partitions)
+```
+
+**Load-bearing fact 1: there is no redundancy between top-level vdevs.** Each one provides its own internally. Lose one entirely and the pool is gone, however healthy the others are. This is why vdev types are not mixed, why adding a vdev is a serious act (§21.1), and why a wide pool is not automatically a safer pool.
+
+Auxiliary vdev classes attach to the pool alongside the data vdevs:
+
+| Class | Holds | Losing it means |
+|---|---|---|
+| `special` | metadata and, optionally, small blocks | ❌ **the pool is gone** |
+| `dedup` | the dedup table | ❌ **the pool is gone** |
+| `log` (SLOG) | the separate intent log for sync writes | ✅ practically nothing |
+| `cache` (L2ARC) | second-level read cache | ✅ nothing |
+| `spare` | hot spares | ✅ nothing |
+
+**Load-bearing fact 2: `special` and `dedup` are storage, not cache.** The first two rows are the ones people get wrong, because the other three are caches and the name suggests they all are. A `special` vdev holds real pool metadata, so it must be mirrored to the same standard as the data vdevs — the man page asks for exactly that: *"The redundancy of this device should match the redundancy of the other normal devices in the pool."* This is why §21.1 treats adding one as a permanent decision on a RAIDZ pool.
+
+### 22.2 The logical layer
+
+```
+tank                              ← the pool is itself the root dataset
+ ├── tank/media                     filesystem  (mountable, POSIX)
+ │    └── tank/media/photos         nested, inherits properties
+ ├── tank/vms
+ │    └── tank/vms/disk0            ZVOL  → /dev/zvol/tank/vms/disk0
+ └── tank/docs
+      ├── tank/docs@2026-08-14      snapshot (read-only point in time)
+      │    └── tank/docs-test       clone (writable, shares blocks)
+      └── tank/docs#anchor          bookmark (a marker, enough to send from)
+```
+
+Five dataset types, all drawing on the same free space:
+
+- **filesystem** — a mountable POSIX filesystem; the default type.
+- **volume (ZVOL)** — a block device, exposed under `/dev/zvol/…`, with `volsize` and the creation-time `volblocksize` (§21.2).
+- **snapshot** — `dataset@name`, read-only, costing only the blocks that have since diverged.
+- **clone** — a writable dataset made from a snapshot, sharing its blocks until written to.
+- **bookmark** — `dataset#name`, lighter still: it keeps just enough to serve as the source of an incremental `send`, which is what lets the underlying snapshot be deleted while the replication chain survives.
+
+**Load-bearing fact 3: filesystems are not sized.** You do not create `tank/media` as 50 TB. You create it, and it draws from the pool's single free-space pot. Limits are optional and applied afterwards — `quota` caps a dataset, `reservation` guarantees it space. This is the inverse of the LVM model, where a logical volume's size is decided up front and changing it is an operation. It is also why the dataset tree is a design decision rather than a bookkeeping one: properties are **inherited** down it, so `zfs set compression=zstd tank` reaches everything beneath unless overridden, and dataset boundaries double as replication boundaries (§21.4).
+
+ZVOLs are the exception to "not sized": they declare a `volsize`, though thin by default — `refreservation` is what makes the space guaranteed.
+
+### 22.3 Does a pool have a fixed size?
+
+**Load-bearing fact 4: it only grows.** Three routes:
+
+1. **`zpool add`** — a new top-level vdev. Immediate, and for RAIDZ irreversible (§21.1).
+2. **`zpool attach` on a raidz vdev** — RAIDZ expansion, since 2.3. It widens the vdev without touching its parity level, and pre-existing blocks keep their old data-to-parity ratio until rewritten (§2.1).
+3. **Replacing every disk in a vdev with a larger one**, one at a time with a resilver each. The new space appears only once the last one is done — *"device replacement within mirror/raidz groups requires all devices to be expanded before new space becomes available"* — automatically with `autoexpand=on`, since *"the pool will be resized according to the size of the expanded device"*, otherwise via `zpool online -e`. The `expandsize` property shows how much is waiting: *"Amount of uninitialized space within the pool or device that can be used to increase the total capacity of the pool."*
+
+Shrinking is the part that essentially does not exist. The only mechanism is removing a top-level vdev, which works for a mirror or a bare device but never where a RAIDZ vdev is present (§21.4). **A RAIDZ pool is one-way traffic** — and that single asymmetry is what §20 and §21 are both ultimately about.
+
 ## References
 
 External sources (verified July 2026; snapshot/ACL addenda verified 2026-08-01):
@@ -715,6 +783,6 @@ External sources (verified July 2026; snapshot/ACL addenda verified 2026-08-01):
 
 ---
 
-*Researched and written in collaboration with Claude (Anthropic); facts verified against the sources above as of July 2026, with the addenda (snapshot layer, reliability profiles, corruption-bug timelines) verified 1–6 August 2026 the growth addendum verified 13 August 2026, and the automount update, the objections section, the `zfs rewrite` correction the encoding-granularity section and the creation-time checklist 14 August 2026. This document is a dated snapshot and is not continuously updated.*
+*Researched and written in collaboration with Claude (Anthropic); facts verified against the sources above as of July 2026, with the addenda (snapshot layer, reliability profiles, corruption-bug timelines) verified 1–6 August 2026 the growth addendum verified 13 August 2026, and the automount update, the objections section, the `zfs rewrite` correction the encoding-granularity section, the creation-time checklist and the object-model section 14 August 2026. This document is a dated snapshot and is not continuously updated.*
 
 *© 2026 Petr Kratochvíl · Licensed under [CC BY 4.0](../LICENSE)*

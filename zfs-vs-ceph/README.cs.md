@@ -1,7 +1,7 @@
 # ZFS vs Ceph — volba storage enginu pro malý self-hosted cluster
 
 - **Verdikt:** ⭐ **ZFS na Proxmox VE** — platí pro kontext popsaný níže
-- **Fakta ověřena:** červenec 2026 · doplňky 2026-08-01/06 (snapshot vrstva §2.5–2.6; spolehlivostní profily vč. timelines korupčních bugů Ceph i ZFS §15) · **2026-08-13 (růst po jednom disku, EC 2+2 vs RAIDZ2 §16 — vč. dvou oprav dřívějších tvrzení)** · **2026-08-14 (přepis snapshot automount vrstvy upstreamem, zatím nevydaný — §17; osm námitek držících rozhodnutí otevřené, s předem sepsaným měřicím pravidlem — §18; **oprava: `zfs rewrite` existuje a čtyři tvrzení byla chybná** — §19; kódování je v ZFS vázané na vdev a v Cephu na pool — §20; co ZFS zafixuje napevno při vytvoření a jak o tom rozhodnout — §21)**
+- **Fakta ověřena:** červenec 2026 · doplňky 2026-08-01/06 (snapshot vrstva §2.5–2.6; spolehlivostní profily vč. timelines korupčních bugů Ceph i ZFS §15) · **2026-08-13 (růst po jednom disku, EC 2+2 vs RAIDZ2 §16 — vč. dvou oprav dřívějších tvrzení)** · **2026-08-14 (přepis snapshot automount vrstvy upstreamem, zatím nevydaný — §17; osm námitek držících rozhodnutí otevřené, s předem sepsaným měřicím pravidlem — §18; **oprava: `zfs rewrite` existuje a čtyři tvrzení byla chybná** — §19; kódování je v ZFS vázané na vdev a v Cephu na pool — §20; co ZFS zafixuje napevno při vytvoření a jak o tom rozhodnout — §21; objektový model, který obě předpokládají — §22)**
 - **Jazyk:** 🇨🇿 čeština (originál) · 🇬🇧 [English version](README.md)
 - **Autor:** Petr Kratochvíl — [krato.cz](https://krato.cz)
 
@@ -693,6 +693,74 @@ Tyhle trvalé nejsou a od `zfs rewrite` (§19) jde stará data dorovnat i bez dr
 
 Pokud jich má před prvním `zpool create` dostat skutečnou pozornost jen čtvero, ať jsou to: **`ashift`** (12), **typ vdevu a parita**, **jestli chceš `special` vdev** a **model šifrování**. Tyhle čtyři nejde vzít zpět bez vyprázdnění poolu. Počet poolů *páté* není — rozhoduje se znovu při každém rozšíření (§21.4) a jak volně, to určuje zvolený typ vdevu, což je důvod, proč ten váží víc, než vypadá. Všechno z §21.3 jde později opravit přes `zfs rewrite` a všechno z §21.2 jde aspoň u jednoho datasetu spravit tím, že znovu vytvoříš ten dataset, ne celý pool.
 
+## 22. Objektový model, který §20 a §21 předpokládají (doplněno 2026-08-14)
+
+Není to tutoriál. §20 tvrdí, že kódování je vázané na vdev, a §21 vypisuje, co tím zůstane natrvalo; obě předpokládají strukturu, kterou zbytek dokumentu nikde nevypisuje. Čtyři fakta v ní jsou nosná a u každého je označeno, kde se používá.
+
+### 22.1 Fyzická vrstva
+
+```
+zpool "tank"  ← alokační prostor, přes který se všechno stripuje
+ │
+ ├── top-level vdev 1  ─┐
+ ├── top-level vdev 2  ─┤  data se rozprostírají přes všechny
+ └── top-level vdev 3  ─┘  ztráta KTERÉHOKOLI z nich = ztráta celého poolu
+      │
+      └── redundance žije uvnitř vdevu, nikdy mezi vdevy:
+          mirror / raidz1,2,3 / draid / holé zařízení
+           └── fyzická zařízení (celé disky nebo partitiony)
+```
+
+**Nosné fakt 1: mezi top-level vdevy není žádná redundance.** Každý si ji zajišťuje sám uvnitř. Ztratíš-li jeden celý, pool je pryč, ať jsou ostatní jakkoli zdravé. Proto se typy vdevů nemíchají, proto je přidání vdevu vážný akt (§21.1) a proto široký pool není automaticky bezpečnější pool.
+
+Vedle datových vdevů se na pool věší pomocné třídy:
+
+| Třída | Drží | Ztráta znamená |
+|---|---|---|
+| `special` | metadata a volitelně malé bloky | ❌ **pool je pryč** |
+| `dedup` | dedup tabulku | ❌ **pool je pryč** |
+| `log` (SLOG) | oddělený intent log pro sync zápisy | ✅ prakticky nic |
+| `cache` (L2ARC) | čtecí cache druhé úrovně | ✅ nic |
+| `spare` | hot spare disky | ✅ nic |
+
+**Nosné fakt 2: `special` a `dedup` jsou úložiště, ne cache.** První dva řádky jsou to, v čem se chybuje, protože zbylé tři cache jsou a název svádí k tomu myslet si, že jsou takové všechny. `special` vdev drží skutečná metadata poolu, takže musí být zrcadlený na stejné úrovni jako datové vdevy — man page si o to říká přesně: *"The redundancy of this device should match the redundancy of the other normal devices in the pool."* Proto §21.1 bere jeho přidání na RAIDZ poolu jako trvalé rozhodnutí.
+
+### 22.2 Logická vrstva
+
+```
+tank                              ← pool je zároveň kořenový dataset
+ ├── tank/media                     filesystem  (mountovatelný, POSIX)
+ │    └── tank/media/photos         vnořený, dědí properties
+ ├── tank/vms
+ │    └── tank/vms/disk0            ZVOL  → /dev/zvol/tank/vms/disk0
+ └── tank/docs
+      ├── tank/docs@2026-08-14      snapshot (read-only bod v čase)
+      │    └── tank/docs-test       clone (zapisovatelný, sdílí bloky)
+      └── tank/docs#kotva           bookmark (značka, stačí pro send)
+```
+
+Pět typů datasetů, všechny čerpají z téhož volného místa:
+
+- **filesystem** — mountovatelný POSIX filesystém, výchozí typ.
+- **volume (ZVOL)** — bloková zařízení vystavené pod `/dev/zvol/…`, s `volsize` a s `volblocksize` daným při vytvoření (§21.2).
+- **snapshot** — `dataset@jméno`, read-only, stojí jen ty bloky, které se od té doby rozešly.
+- **clone** — zapisovatelný dataset vytvořený ze snapshotu, sdílí s ním bloky, dokud se do nich nezapíše.
+- **bookmark** — `dataset#jméno`, ještě lehčí: drží jen tolik, aby posloužil jako zdroj inkrementálního `send`, což je právě to, co umožní smazat podkladový snapshot a nepřetrhnout replikační řetěz.
+
+**Nosné fakt 3: filesystémy se nedimenzují.** Nevytváříš `tank/media` o velikosti 50 TB. Vytvoříš ho a on si bere ze společného volného místa poolu. Omezení jsou volitelná a nasazují se až potom — `quota` je strop datasetu, `reservation` mu místo garantuje. Je to obrácený model proti LVM, kde se velikost logického svazku určí předem a měnit ji je operace. A je to zároveň důvod, proč je strom datasetů návrhové rozhodnutí a ne účetnictví: properties se po něm **dědí**, takže `zfs set compression=zstd tank` dosáhne na všechno pod tím, dokud to někde nepřebiješ, a hranice datasetů jsou zároveň hranicemi replikace (§21.4).
+
+Výjimkou z „nedimenzují se“ jsou ZVOLy: ty `volsize` deklarují, ve výchozím stavu ale thin — garantované místo z nich udělá až `refreservation`.
+
+### 22.3 Má pool pevnou velikost?
+
+**Nosné fakt 4: umí jen růst.** Třemi cestami:
+
+1. **`zpool add`** — nový top-level vdev. Okamžité a u RAIDZ nevratné (§21.1).
+2. **`zpool attach` na raidz vdev** — RAIDZ expansion, od 2.3. Rozšíří vdev, aniž by sáhl na úroveň parity, a existující bloky si drží starý poměr dat k paritě, dokud se nepřepíšou (§2.1).
+3. **Výměna všech disků ve vdevu za větší**, po jednom a s resilverem u každého. Nové místo se objeví, až když je hotový poslední — *"device replacement within mirror/raidz groups requires all devices to be expanded before new space becomes available"* —, s `autoexpand=on` automaticky, protože *"the pool will be resized according to the size of the expanded device"*, jinak přes `zpool online -e`. Kolik čeká, ukáže property `expandsize`: *"Amount of uninitialized space within the pool or device that can be used to increase the total capacity of the pool."*
+
+Zmenšování je ta část, která v podstatě neexistuje. Jediným mechanismem je odebrání top-level vdevu, což funguje u mirroru a holého zařízení, ale nikdy tam, kde je přítomný RAIDZ vdev (§21.4). **RAIDZ pool je jednosměrka** — a právě o téhle jediné asymetrii jsou §20 i §21 nakonec obě.
+
 ## Reference
 
 Externí zdroje (ověřeno 2026-07; snapshot/ACL doplňky ověřeny 2026-08-01):
@@ -715,6 +783,6 @@ Externí zdroje (ověřeno 2026-07; snapshot/ACL doplňky ověřeny 2026-08-01):
 
 ---
 
-*Vzniklo ve spolupráci s Claude (Anthropic); fakta ověřena proti uvedeným zdrojům k červenci 2026, doplňky (snapshot vrstva, spolehlivostní profily, timelines korupčních bugů) k 1.–6. srpnu 2026 doplněk o růstu po jednom disku k 13. srpnu 2026 a aktualizace automount vrstvy, sekce o námitkách, oprava k `zfs rewrite` sekce o granularitě kódování i checklist rozhodnutí při vytvoření k 14. srpnu 2026. Dokument je datovaný snapshot a průběžně se neaktualizuje.*
+*Vzniklo ve spolupráci s Claude (Anthropic); fakta ověřena proti uvedeným zdrojům k červenci 2026, doplňky (snapshot vrstva, spolehlivostní profily, timelines korupčních bugů) k 1.–6. srpnu 2026 doplněk o růstu po jednom disku k 13. srpnu 2026 a aktualizace automount vrstvy, sekce o námitkách, oprava k `zfs rewrite` sekce o granularitě kódování, checklist rozhodnutí při vytvoření i sekce o objektovém modelu k 14. srpnu 2026. Dokument je datovaný snapshot a průběžně se neaktualizuje.*
 
 *© 2026 Petr Kratochvíl · Licence [CC BY 4.0](../LICENSE)*
