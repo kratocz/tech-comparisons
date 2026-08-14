@@ -1,7 +1,7 @@
 # ZFS vs Ceph — volba storage enginu pro malý self-hosted cluster
 
 - **Verdikt:** ⭐ **ZFS na Proxmox VE** — platí pro kontext popsaný níže
-- **Fakta ověřena:** červenec 2026 · doplňky 2026-08-01/06 (snapshot vrstva §2.5–2.6; spolehlivostní profily vč. timelines korupčních bugů Ceph i ZFS §15) · **2026-08-13 (růst po jednom disku, EC 2+2 vs RAIDZ2 §16 — vč. dvou oprav dřívějších tvrzení)** · **2026-08-14 (přepis snapshot automount vrstvy upstreamem, zatím nevydaný — §17; osm námitek držících rozhodnutí otevřené, s předem sepsaným měřicím pravidlem — §18; *oprava: `zfs rewrite` existuje a čtyři tvrzení byla chybná* — §19; kódování je v ZFS vázané na vdev a v Cephu na pool — §20; co ZFS zafixuje napevno při vytvoření a jak o tom rozhodnout — §21; objektový model, který obě předpokládají — §22; změna velikosti ZVOLu pod Proxmox VM a proč je skutečnou odpovědí obvykle discard — §23) · **2026-08-15 (oprava: block cloning je defaultně zapnutý a cross-dataset funguje — §24; kolik doopravdy stojí malý soubor a proč to není řádek tabulky o zápisu 1 bajtu — §25)**
+- **Fakta ověřena:** červenec 2026 · doplňky 2026-08-01/06 (snapshot vrstva §2.5–2.6; spolehlivostní profily vč. timelines korupčních bugů Ceph i ZFS §15) · **2026-08-13 (růst po jednom disku, EC 2+2 vs RAIDZ2 §16 — vč. dvou oprav dřívějších tvrzení)** · **2026-08-14 (přepis snapshot automount vrstvy upstreamem, zatím nevydaný — §17; osm námitek držících rozhodnutí otevřené, s předem sepsaným měřicím pravidlem — §18; *oprava: `zfs rewrite` existuje a čtyři tvrzení byla chybná* — §19; kódování je v ZFS vázané na vdev a v Cephu na pool — §20; co ZFS zafixuje napevno při vytvoření a jak o tom rozhodnout — §21; objektový model, který obě předpokládají — §22; změna velikosti ZVOLu pod Proxmox VM a proč je skutečnou odpovědí obvykle discard — §23) · **2026-08-15 (oprava: block cloning je defaultně zapnutý a cross-dataset funguje — §24; kolik doopravdy stojí malý soubor a proč to není řádek tabulky o zápisu 1 bajtu — §25; volba `ashift` a oprava k §21.1 — §26)**
 - **Jazyk:** 🇨🇿 čeština (originál) · 🇬🇧 [English version](README.md)
 - **Autor:** Petr Kratochvíl — [krato.cz](https://krato.cz)
 
@@ -655,7 +655,7 @@ Parita je jen ten případ, který napadne první. Táž tuhost platí pro **jak
 
 | Rozhodnutí | Proč je trvalé | Jak se rozhodnout |
 |---|---|---|
-| **`ashift`** | Nastavuje se per top-level vdev při `zpool create` / `add`; property na pozdější změnu neexistuje | **Použij 12 (4 KiB), pokud neumíš doložit opak.** Příliš nízká hodnota na 4Kn disku znamená trvalý read-modify-write při každém malém zápisu; příliš vysoká jen mrhá trochou místa u malých souborů. Nikdy nespoléhej na autodetekci u poolu, který přežije své první disky — disky o velikosti sektoru lžou |
+| **`ashift`** | Property na poolu řídí následné `add`/`attach`/`replace`, ale *"Changing this value will not modify any existing vdev, not even on disk replacement"* (§26) | **Použij 12 (4 KiB), pokud neumíš doložit opak.** Příliš nízká hodnota na 4Kn disku znamená trvalý read-modify-write při každém malém zápisu; příliš vysoká jen mrhá trochou místa u malých souborů. Nikdy nespoléhej na autodetekci u poolu, který přežije své první disky — disky o velikosti sektoru lžou |
 | **Úroveň parity** (raidz1/2/3) | *"Expansion does not change the number of failures that can be tolerated without data loss"* | RAIDZ2 do zhruba deseti disků; RAIDZ3 nad to, nebo tam, kde se okno resilveru protahuje na týdny (SMR, hodně plné pooly). §16 i výpočet kolem resilveru říkají, že pro tenhle profil vyhrává RAIDZ2 s měsíčním scrubem |
 | **Typ vdevu** (mirror / raidz / draid) | Konverze neexistuje ani jedním směrem — a rozhoduje o tom, jestli *rozvržení* poolu vůbec zůstane vyjednatelné (§21.4) | Mirrory kupují IOPS škálující s počtem vdevů, růst po dvou discích a odebratelný vdev, za 50 % efektivity. RAIDZ kupuje kapacitu kolem 75 %, ale jeden vdev dodá náhodné IOPS zhruba jednoho disku a nikdy ho nedostaneš ven |
 | **Přidání RAIDZ vdevu** | Nikdy ho nejde odebrat: odstranění vyžaduje, aby *"the primary pool storage does not contain a top-level raidz or draid vdev"* | Ber každé `zpool add` raidz vdevu jako nevratné. Undo neexistuje, jen přestavba |
@@ -877,6 +877,38 @@ Mění to dvě páky a obě jsou rozhodnutí z §21, ne věci k pozdějšímu do
 
 Což je ten praktický závěr: **pokud dataset ponese miliony malých souborů, patří ta informace do návrhu poolu, ne do property, kterou nastavíš potom.**
 
+## 26. Volba `ashift` (doplněno 2026-08-15)
+
+§21 uvádí `ashift` jako první z rozhodnutí, která pool nevezme zpět, a §25 dodává jediný argument, který táhne opačně. Tahle sekce je úvaha za tím doporučením — a opravuje, jak §21 popsala mechanismus.
+
+### 26.1 Default je autodetekce a její vlastní implementace přiznává, že spolehlivá není
+
+*"Pool sector size exponent, to the power of 2 (internally referred to as ashift). Values from 9 to 16, inclusive, are valid; also, the value 0 (the default) means to auto-detect using the kernel's block layer and a ZFS internal exception list."*
+
+Ta výjimková listina je celý argument v kostce. Existuje proto, že disky o velikosti svého sektoru lžou, takže si ZFS vede vlastní registr zařízení, jejichž odpovědím se nevěří. Autodetekce je default a její vlastní návrh připouští, že se dá obelstít.
+
+### 26.2 Doporučení stojí na tom, že chyba je asymetrická
+
+Ne na tom, že by 12 byla optimální, ale na tom, že ty dva způsoby, jak se splést, stojí nesrovnatelně různě.
+
+**Příliš nízko** na disku se 4KiB fyzickými sektory promění každý podsektorový zápis v read-modify-write uvnitř disku, a to na celou životnost vdevu. Dokumentace doporučuje `ashift=12` právě pro tenhle případ — disky, které používají 4KiB sektory, ale operačnímu systému hlásí 512 B.
+
+**Příliš vysoko** na skutečně 512bajtovém zařízení stojí nějaké místo u malých bloků. To je cena, kterou vyčísluje §25, a je to cena, ne selhání.
+
+**A argument, který převažuje nad obojím: náhradní disky.** Pool postavený s `ashift=9` narazí ve chvíli, kdy vadný disk nahradíš 4Kn kusem, a nové disky jsou čím dál častěji 4Kn. Poznámka man page o nekompatibilních zařízeních je k tomu kompromisu suchá: *"this will probably result in bad performance but at the same time could prevent loss of data"*. Pool přežije svou první sadu disků; `ashift` druhou šanci na volbu nedostane.
+
+### 26.3 Kdy je obhajitelné něco jiného
+
+**`ashift=9`** jen na opravdu 512bajtových zařízeních, která nikdy nenahradí 4Kn disk — okno, které se každým rokem zužuje. Jediné, co pro to mluví, je malosouborová aritmetika z §25, kde se všechna čísla dělí osmi. U datasetu s miliony drobných souborů na hardwaru, který je jistě 512n a jistě nahraditelný stejným, je to reálný kompromis; jinde je to past.
+
+**`ashift=13`** (8 KiB) se často navrhuje pro NVMe s vnitřní stránkou větší než 4 KiB. Zaznamenáno tu jako **komunitní praxe, ne doporučení dokumentace**: man page uvádí platný rozsah 9–16 a doporučuje pouze dvanáctku. Kdo se po té cestě vydá, měl by to brát jako neověřenou optimalizaci — a počítat s tím, že to malosouborovou režii z §25 znovu zdvojnásobí.
+
+### 26.4 Oprava k §21.1
+
+§21.1 tvrdila, že `ashift` se *„nastavuje se per top-level vdev při `zpool create` / `add`; property na pozdější změnu neexistuje“*. Druhá polovina je chybná. Property na poolu existuje a řídí následné operace — `add`, `attach` i `replace` ji berou. Co neumí, je sáhnout zpětně: *"Changing this value will not modify any existing vdev, not even on disk replacement."*
+
+Praktický závěr §21 to nemění — `ashift` existujícího vdevu je daný na celou jeho životnost, a právě proto ta property patří na seznam nevratných. Chybný byl jen popis mechanismu a je opraven na místě.
+
 ## Reference
 
 Externí zdroje (blok ověřen k 2026-08-14; dílčí data uvedena tam, kde se liší):
@@ -886,6 +918,7 @@ Externí zdroje (blok ověřen k 2026-08-14; dílčí data uvedena tam, kde se l
 - Device removal / shrink limity: [OpenZFS zpool-remove](https://openzfs.github.io/openzfs-docs/man/v2.0/8/zpool-remove.8.html), [cr0x.net](https://cr0x.net/en/zfs-vdev-removal-limits/)
 - SMR: [xda-developers](https://www.xda-developers.com/smr-hdds-are-fine-for-your-nas-until-you-try-to-resilver/), [vermaden](https://vermaden.wordpress.com/2024/05/29/zfs-resilver-smr-drives/), [OpenZFS #18132](https://github.com/openzfs/zfs/issues/18132)
 - Fragmentace / defrag: [OpenZFS #3582](https://github.com/openzfs/zfs/issues/3582), [zfs-rewrite(8)](https://openzfs.github.io/openzfs-docs/man/master/8/zfs-rewrite.8.html), [#17246 — zavedení `zfs rewrite`](https://github.com/openzfs/zfs/pull/17246), [zpoolprops(7) — property `fragmentation`](https://openzfs.github.io/openzfs-docs/man/master/7/zpoolprops.7.html) (ověřeno 2026-08-14)
+- `ashift` (§26): [zpoolprops(7) — property `ashift`](https://openzfs.github.io/openzfs-docs/man/master/7/zpoolprops.7.html) (ověřeno 2026-08-15)
 - Malé soubory (§25): [zfsprops(7) — `recordsize`](https://openzfs.github.io/openzfs-docs/man/master/7/zfsprops.7.html), [zpool-features(7) — `embedded_data`](https://openzfs.github.io/openzfs-docs/man/master/7/zpool-features.7.html), [Btrfs — `max_inline`](https://btrfs.readthedocs.io/en/latest/Administration.html) (ověřeno 2026-08-15)
 - Block cloning (§24): [zfs(4) — `zfs_bclone_enabled`](https://openzfs.github.io/openzfs-docs/man/master/4/zfs.4.html), [zpool-features(7) — `block_cloning`](https://openzfs.github.io/openzfs-docs/man/master/7/zpool-features.7.html) (ověřeno 2026-08-15 proti větvím 2.2, 2.3 a master)
 - Fast Dedup: [Klara Systems](https://klarasystems.com/articles/introducing-openzfs-fast-dedup/), [despairlabs](https://despairlabs.com/blog/posts/2024-10-27-openzfs-dedup-is-good-dont-use-it/)
@@ -902,6 +935,6 @@ Externí zdroje (blok ověřen k 2026-08-14; dílčí data uvedena tam, kde se l
 
 ---
 
-*Vzniklo ve spolupráci s Claude (Anthropic); fakta ověřena proti uvedeným zdrojům k červenci 2026, doplňky (snapshot vrstva, spolehlivostní profily, timelines korupčních bugů) k 1.–6. srpnu 2026, doplněk o růstu po jednom disku k 13. srpnu 2026, a aktualizace automount vrstvy, sekce o námitkách, oprava k `zfs rewrite`, sekce o granularitě kódování, checklist rozhodnutí při vytvoření, sekce o objektovém modelu i sekce o změně velikosti ZVOLu k 14. srpnu 2026 a oprava k block cloningu i sekce o malých souborech k 15. srpnu 2026. Dokument je datovaný snapshot a průběžně se neaktualizuje.*
+*Vzniklo ve spolupráci s Claude (Anthropic); fakta ověřena proti uvedeným zdrojům k červenci 2026, doplňky (snapshot vrstva, spolehlivostní profily, timelines korupčních bugů) k 1.–6. srpnu 2026, doplněk o růstu po jednom disku k 13. srpnu 2026, a aktualizace automount vrstvy, sekce o námitkách, oprava k `zfs rewrite`, sekce o granularitě kódování, checklist rozhodnutí při vytvoření, sekce o objektovém modelu i sekce o změně velikosti ZVOLu k 14. srpnu 2026 a oprava k block cloningu sekce o malých souborech i sekce o `ashift` k 15. srpnu 2026. Dokument je datovaný snapshot a průběžně se neaktualizuje.*
 
 *© 2026 Petr Kratochvíl · Licence [CC BY 4.0](../LICENSE)*

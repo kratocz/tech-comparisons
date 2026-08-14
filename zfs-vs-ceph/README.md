@@ -1,7 +1,7 @@
 # ZFS vs Ceph: choosing the storage engine for a small self-hosted cluster
 
 - **Verdict:** ⭐ **ZFS on Proxmox VE** — valid for the context described below
-- **Facts verified:** July 2026 · addenda 2026-08-01/06 (the Linux snapshot layer §2.5–2.6; reliability profiles incl. the Ceph and ZFS corruption-bug timelines §15) · **2026-08-13 (growing one disk at a time, EC 2+2 vs RAIDZ2 §16 — including two corrections to earlier claims)** · **2026-08-14 (the snapshot automount layer rewritten upstream but still unreleased — §17; the eight objections keeping the decision open, with a pre-registered measurement rule — §18; *correction: `zfs rewrite` exists and four claims were wrong* — §19; encoding is bound to the vdev in ZFS and to the pool in Ceph — §20; what ZFS fixes permanently at creation, and how to decide each — §21; the object model those two assume — §22; resizing a ZVOL under a Proxmox VM, and why discard is usually the real answer — §23) · **2026-08-15 (correction: block cloning is on by default and cross-dataset works — §24; what a small file actually costs, and why it is not the table's 1-byte-write row — §25)**
+- **Facts verified:** July 2026 · addenda 2026-08-01/06 (the Linux snapshot layer §2.5–2.6; reliability profiles incl. the Ceph and ZFS corruption-bug timelines §15) · **2026-08-13 (growing one disk at a time, EC 2+2 vs RAIDZ2 §16 — including two corrections to earlier claims)** · **2026-08-14 (the snapshot automount layer rewritten upstream but still unreleased — §17; the eight objections keeping the decision open, with a pre-registered measurement rule — §18; *correction: `zfs rewrite` exists and four claims were wrong* — §19; encoding is bound to the vdev in ZFS and to the pool in Ceph — §20; what ZFS fixes permanently at creation, and how to decide each — §21; the object model those two assume — §22; resizing a ZVOL under a Proxmox VM, and why discard is usually the real answer — §23) · **2026-08-15 (correction: block cloning is on by default and cross-dataset works — §24; what a small file actually costs, and why it is not the table's 1-byte-write row — §25; choosing `ashift`, and a correction to §21.1 — §26)**
 - **Language:** 🇬🇧 English (canonical) · 🇨🇿 [Čeština — original](README.cs.md)
 - **Author:** Petr Kratochvíl — [krato.cz](https://krato.cz)
 
@@ -655,7 +655,7 @@ Parity is only the instance that comes to mind first. The same rigidity applies 
 
 | Decision | Why it is permanent | How to decide |
 |---|---|---|
-| **`ashift`** | Set per top-level vdev by `zpool create` / `add`; there is no property to change it later | **Use 12 (4 KiB) unless you can prove otherwise.** Too low on a 4Kn drive is permanent read-modify-write on every small write; too high merely wastes a little space on small files. Never rely on auto-detection for a pool that will outlive its first drives — drives lie about their sector size |
+| **`ashift`** | The pool property governs later `add`/`attach`/`replace`, but *"Changing this value will not modify any existing vdev, not even on disk replacement"* (§26) | **Use 12 (4 KiB) unless you can prove otherwise.** Too low on a 4Kn drive is permanent read-modify-write on every small write; too high merely wastes a little space on small files. Never rely on auto-detection for a pool that will outlive its first drives — drives lie about their sector size |
 | **Parity level** (raidz1/2/3) | *"Expansion does not change the number of failures that can be tolerated without data loss"* | RAIDZ2 up to ~10-wide; RAIDZ3 beyond that, or where resilver windows run into weeks (SMR, very full pools). §16 and the resilver arithmetic say RAIDZ2 plus monthly scrubs beats RAIDZ3 for this profile |
 | **vdev type** (mirror / raidz / draid) | No conversion exists in either direction — and it decides whether the pool's *layout* stays negotiable at all (§21.4) | Mirrors buy IOPS that scale with vdev count, growth two disks at a time, and a removable vdev, at 50 % efficiency. RAIDZ buys capacity at ~75 %, but one vdev delivers the random IOPS of roughly one disk and can never be taken back out |
 | **Adding a RAIDZ vdev** | It can never be removed: removal requires that *"the primary pool storage does not contain a top-level raidz or draid vdev"* | Treat every `zpool add` of a raidz vdev as irreversible. There is no undo, only a rebuild |
@@ -877,6 +877,38 @@ Two levers change it, and both are decisions from §21 rather than things to tun
 
 Which is the practical conclusion: **if a dataset will hold millions of small files, that fact belongs in the pool design, not in a property you set afterwards.**
 
+## 26. Choosing `ashift` (added 2026-08-15)
+
+§21 lists `ashift` first among the decisions a pool cannot take back, and §25 gives the one argument that pulls the other way. This section is the reasoning behind the recommendation, and it corrects how §21 described the mechanism.
+
+### 26.1 The default is auto-detection, and its own implementation admits detection is unreliable
+
+*"Pool sector size exponent, to the power of 2 (internally referred to as ashift). Values from 9 to 16, inclusive, are valid; also, the value 0 (the default) means to auto-detect using the kernel's block layer and a ZFS internal exception list."*
+
+That exception list is the argument in miniature. It exists because drives misreport their sector size, so ZFS maintains its own register of devices whose answers are not to be trusted. Auto-detection is the default, and its own design concedes it can be fooled.
+
+### 26.2 The recommendation rests on the error being asymmetric
+
+Not on 12 being optimal, but on the two ways of being wrong costing wildly different amounts.
+
+**Too low** on a drive with 4 KiB physical sectors turns every sub-sector write into a read-modify-write inside the drive, for the life of the vdev. The documentation recommends `ashift=12` for exactly this case — disks that use 4 KiB sectors but report 512 B to the OS.
+
+**Too high** on a genuinely 512-byte device costs some space on small blocks. That is the cost §25 quantifies, and it is a cost, not a failure.
+
+**And the argument that outweighs both: replacement drives.** A pool built at `ashift=9` meets trouble the day a failed disk is replaced by a 4Kn one, and new drives are increasingly 4Kn. The man page's note on incompatible devices is dry about the trade being made: *"this will probably result in bad performance but at the same time could prevent loss of data"*. A pool outlives its first set of disks; `ashift` does not get a second chance to be chosen.
+
+### 26.3 When something else is defensible
+
+**`ashift=9`** only on genuinely 512-byte-native devices that will never be replaced by a 4Kn drive — a window that narrows every year. The only argument for it is the small-file arithmetic in §25, where every figure divides by eight. For a dataset of millions of tiny files on hardware that is certainly 512n and certainly replaceable in kind, it is a real trade; otherwise it is a trap.
+
+**`ashift=13`** (8 KiB) is often suggested for NVMe devices whose internal page size is larger than 4 KiB. Recorded here as **community practice, not documented guidance**: the man page states the valid range 9–16 and recommends only 12. Anyone taking that route should treat it as an unverified optimisation, and note that it multiplies §25's small-file overhead by two again.
+
+### 26.4 Correction to §21.1
+
+§21.1 said `ashift` is *"set per top-level vdev by `zpool create` / `add`; there is no property to change it later"*. The second half is wrong. The pool property does exist and does govern later operations — subsequent `add`, `attach` and `replace` all take it. What it cannot do is reach backwards: *"Changing this value will not modify any existing vdev, not even on disk replacement."*
+
+§21's practical conclusion is unaffected — an existing vdev's `ashift` is fixed for its life, and that is why the property belongs on the irreversible list. Only the description of the mechanism was wrong, and it is corrected in place.
+
 ## References
 
 External sources (block verified to 2026-08-14; per-entry dates given where they differ):
@@ -886,6 +918,7 @@ External sources (block verified to 2026-08-14; per-entry dates given where they
 - Device removal / shrink limits: [OpenZFS zpool-remove](https://openzfs.github.io/openzfs-docs/man/v2.0/8/zpool-remove.8.html), [cr0x.net](https://cr0x.net/en/zfs-vdev-removal-limits/)
 - SMR: [xda-developers](https://www.xda-developers.com/smr-hdds-are-fine-for-your-nas-until-you-try-to-resilver/), [vermaden](https://vermaden.wordpress.com/2024/05/29/zfs-resilver-smr-drives/), [OpenZFS #18132](https://github.com/openzfs/zfs/issues/18132)
 - Fragmentation / defrag: [OpenZFS #3582](https://github.com/openzfs/zfs/issues/3582), [zfs-rewrite(8)](https://openzfs.github.io/openzfs-docs/man/master/8/zfs-rewrite.8.html), [#17246 — introduce `zfs rewrite`](https://github.com/openzfs/zfs/pull/17246), [zpoolprops(7) — the `fragmentation` property](https://openzfs.github.io/openzfs-docs/man/master/7/zpoolprops.7.html) (verified 2026-08-14)
+- `ashift` (§26): [zpoolprops(7) — the `ashift` property](https://openzfs.github.io/openzfs-docs/man/master/7/zpoolprops.7.html) (verified 2026-08-15)
 - Small files (§25): [zfsprops(7) — `recordsize`](https://openzfs.github.io/openzfs-docs/man/master/7/zfsprops.7.html), [zpool-features(7) — `embedded_data`](https://openzfs.github.io/openzfs-docs/man/master/7/zpool-features.7.html), [Btrfs — `max_inline`](https://btrfs.readthedocs.io/en/latest/Administration.html) (verified 2026-08-15)
 - Block cloning (§24): [zfs(4) — `zfs_bclone_enabled`](https://openzfs.github.io/openzfs-docs/man/master/4/zfs.4.html), [zpool-features(7) — `block_cloning`](https://openzfs.github.io/openzfs-docs/man/master/7/zpool-features.7.html) (verified 2026-08-15 against the 2.2, 2.3 and master branches)
 - Fast Dedup: [Klara Systems](https://klarasystems.com/articles/introducing-openzfs-fast-dedup/), [despairlabs](https://despairlabs.com/blog/posts/2024-10-27-openzfs-dedup-is-good-dont-use-it/)
@@ -902,6 +935,6 @@ External sources (block verified to 2026-08-14; per-entry dates given where they
 
 ---
 
-*Researched and written in collaboration with Claude (Anthropic); facts verified against the sources above as of July 2026, with the addenda (snapshot layer, reliability profiles, corruption-bug timelines) verified 1–6 August 2026, the growth addendum verified 13 August 2026, and the automount update, the objections section, the `zfs rewrite` correction, the encoding-granularity section, the creation-time checklist, the object-model section and the ZVOL-resize section verified 14 August 2026, and the block-cloning correction and the small-file section verified 15 August 2026. This document is a dated snapshot and is not continuously updated.*
+*Researched and written in collaboration with Claude (Anthropic); facts verified against the sources above as of July 2026, with the addenda (snapshot layer, reliability profiles, corruption-bug timelines) verified 1–6 August 2026, the growth addendum verified 13 August 2026, and the automount update, the objections section, the `zfs rewrite` correction, the encoding-granularity section, the creation-time checklist, the object-model section and the ZVOL-resize section verified 14 August 2026, and the block-cloning correction the small-file section and the `ashift` section verified 15 August 2026. This document is a dated snapshot and is not continuously updated.*
 
 *© 2026 Petr Kratochvíl · Licensed under [CC BY 4.0](../LICENSE)*
