@@ -1,7 +1,7 @@
 # ZFS vs Ceph: choosing the storage engine for a small self-hosted cluster
 
 - **Verdict:** ⭐ **ZFS on Proxmox VE** — valid for the context described below
-- **Facts verified:** July 2026 · addenda 2026-08-01/06 (the Linux snapshot layer §2.5–2.6; reliability profiles incl. the Ceph and ZFS corruption-bug timelines §15) · **2026-08-13 (growing one disk at a time, EC 2+2 vs RAIDZ2 §16 — including two corrections to earlier claims)** · **2026-08-14 (the snapshot automount layer rewritten upstream but still unreleased — §17; the eight objections keeping the decision open, with a pre-registered measurement rule — §18; **correction: `zfs rewrite` exists and four claims were wrong** — §19)**
+- **Facts verified:** July 2026 · addenda 2026-08-01/06 (the Linux snapshot layer §2.5–2.6; reliability profiles incl. the Ceph and ZFS corruption-bug timelines §15) · **2026-08-13 (growing one disk at a time, EC 2+2 vs RAIDZ2 §16 — including two corrections to earlier claims)** · **2026-08-14 (the snapshot automount layer rewritten upstream but still unreleased — §17; the eight objections keeping the decision open, with a pre-registered measurement rule — §18; **correction: `zfs rewrite` exists and four claims were wrong** — §19; encoding is bound to the vdev in ZFS and to the pool in Ceph — §20)**
 - **Language:** 🇬🇧 English (canonical) · 🇨🇿 [Čeština — original](README.cs.md)
 - **Author:** Petr Kratochvíl — [krato.cz](https://krato.cz)
 
@@ -612,11 +612,47 @@ It also runs under load — *"protected by normal range locks, it can be done un
 
 **Net effect on objection 4 (§18.4):** it drops from "no tool exists" to "a tool exists, and it stops helping precisely when the pool is too full — which is when you reach for it". It is weaker than stated, but it does not disappear — and neither does the conclusion that Ceph is not the answer to it, since BlueStore fragments as well and a full Ceph pool stops accepting writes where a full ZFS pool merely slows down.
 
+## 20. Encoding lives in the vdev: what ZFS binds and Ceph decouples (added 2026-08-14)
+
+§18 concluded that Ceph answers one of eight objections. This section adds a structural point in Ceph's favour that §18 did not grant, because it did not come up: **the granularity at which a redundancy scheme can be changed**, and the free space that change costs.
+
+**In ZFS there is no piecewise path.** Two independent restrictions close it, both documented. Widening a RAIDZ vdev does not touch its parity level: *"Expansion does not change the number of failures that can be tolerated without data loss (e.g. a RAID-Z2 is still a RAID-Z2 even after expansion)."* And a RAIDZ vdev cannot be retired, because removing a top-level vdev requires that *"the primary pool storage does not contain a top-level raidz or draid vdev"*. So the obvious workaround — add a RAIDZ3 vdev alongside, drain the old one, remove it — is not available either. A single-vdev pool must be emptied **in full** before it can be destroyed and rebuilt, because the vdev *is* the storage.
+
+**Ceph's equivalent operation is per pool.** The EC profile is equally immutable (§18.8), but pools are logical objects sharing the same OSDs, so a pool can be migrated to a new profile while the rest of the cluster stays put. The free space required is that of the largest pool, not of everything.
+
+| | Ceph | ZFS |
+|---|---|---|
+| Where the encoding lives | in the **pool** (a logical object) | in the **vdev** (a physical group of disks) |
+| Do the units share disks? | ✅ yes, all pools over the same OSDs | ❌ no, each pool has its own disks |
+| Migration granularity | one pool | the whole pool |
+| Free space needed | the largest pool | all used data |
+
+That is the same architectural property that produces Ceph's advantage on heterogeneous disks (§18.3): **Ceph decouples logical layout from physical layout, ZFS binds them.** It is durable, it is not an implementation detail, and it is the strongest single structural point Ceph has in this comparison.
+
+### 20.1 The granularity can be bought in ZFS, and it is cheaper than it looks
+
+Nothing forces one pool. Built as `tank-media-1`, `tank-media-2`, `tank-vms` on separate disk groups, ZFS gives exactly the model being praised in Ceph: migrate one at a time, and free space equal to the largest pool suffices.
+
+The surprise is the price. One pool with three 8-disk RAIDZ2 vdevs uses 24 disks and 6 of them for parity. Three pools with one 8-disk RAIDZ2 vdev each also use 24 disks and 6 for parity. **Splitting costs no capacity at all.** What it costs is elsewhere: free space becomes siloed — one pool can be full while another is empty — and writes no longer stripe across all vdevs, so aggregate throughput drops. For a bulk media library, where the dominant pattern is sequential access to one large file at a time, the second cost is smaller than it first appears.
+
+### 20.2 Two things that move the balance back
+
+**The DR replica is the free space.** This architecture already keeps a second copy at the other site (§4, and the sibling `storage-replication` analysis). A geometry change therefore does not need new hardware: destroy the pool, rebuild it with the intended layout, send the data back. The catch is bandwidth — pushing the full dataset back across a metered residential WAN is not viable, so this route works on a LAN or by physically moving the disks, not over the link.
+
+**And Ceph's elegance is unavailable at this node count.** EC 2+3 requires `k+m` = five CRUSH failure domains, six by the documentation's own recommendation (§18.8). On one to three nodes the destination pool cannot be created at all. The per-pool migration advantage is real and it is genuinely Ceph's — it simply does not exist below roughly five nodes, which is where this profile will sit for years.
+
+### 20.3 The general form of the objection
+
+Parity is only the instance that comes to mind first. The same rigidity applies to **any** future change of geometry: a different `ashift` chosen wrongly at creation, a wider vdev for better efficiency, or migrating off SMR drives. In every case ZFS's answer is the same — evacuate the pool completely and rebuild — while Ceph's is to migrate the affected pool. Stated in that general form the objection is stronger than the parity version of it, and it is the version worth carrying.
+
+**What it does not change:** the verdict, or §18's tally. This is not one of the eight objections; it is a ninth consideration, and the answer to it is not Ceph but **deciding the pool layout deliberately at build time**, while it is still free. Pool design is migration design, in the same way §12 of the sibling analysis observes that dataset design is replication design.
+
 ## References
 
 External sources (verified July 2026; snapshot/ACL addenda verified 2026-08-01):
 
 - RAIDZ Expansion: [The Register](https://www.theregister.com/2025/01/23/openzfs_23_raid_expansion/), [FreeBSD Foundation](https://freebsdfoundation.org/blog/raid-z-expansion-feature-for-zfs/), [the parity-ratio caveat](https://louwrentius.com/zfs-raidz-expansion-is-awesome-but-has-a-small-caveat.html)
+- Encoding granularity (§20): [zpool-attach(8) — RAIDZ expansion keeps the parity level](https://openzfs.github.io/openzfs-docs/man/master/8/zpool-attach.8.html), [zpool-remove(8) — no removal with a top-level raidz](https://openzfs.github.io/openzfs-docs/man/master/8/zpool-remove.8.html), [Ceph — Erasure code profiles are immutable](https://docs.ceph.com/en/latest/rados/operations/erasure-code/) (verified 2026-08-14)
 - Device removal / shrink limits: [OpenZFS zpool-remove](https://openzfs.github.io/openzfs-docs/man/v2.0/8/zpool-remove.8.html), [cr0x.net](https://cr0x.net/en/zfs-vdev-removal-limits/)
 - SMR: [xda-developers](https://www.xda-developers.com/smr-hdds-are-fine-for-your-nas-until-you-try-to-resilver/), [vermaden](https://vermaden.wordpress.com/2024/05/29/zfs-resilver-smr-drives/), [OpenZFS #18132](https://github.com/openzfs/zfs/issues/18132)
 - Fragmentation / defrag: [OpenZFS #3582](https://github.com/openzfs/zfs/issues/3582), [zfs-rewrite(8)](https://openzfs.github.io/openzfs-docs/man/master/8/zfs-rewrite.8.html), [#17246 — introduce `zfs rewrite`](https://github.com/openzfs/zfs/pull/17246), [zpoolprops(7) — the `fragmentation` property](https://openzfs.github.io/openzfs-docs/man/master/7/zpoolprops.7.html) (verified 2026-08-14)
@@ -633,6 +669,6 @@ External sources (verified July 2026; snapshot/ACL addenda verified 2026-08-01):
 
 ---
 
-*Researched and written in collaboration with Claude (Anthropic); facts verified against the sources above as of July 2026, with the addenda (snapshot layer, reliability profiles, corruption-bug timelines) verified 1–6 August 2026 the growth addendum verified 13 August 2026, and the automount update, the objections section and the `zfs rewrite` correction 14 August 2026. This document is a dated snapshot and is not continuously updated.*
+*Researched and written in collaboration with Claude (Anthropic); facts verified against the sources above as of July 2026, with the addenda (snapshot layer, reliability profiles, corruption-bug timelines) verified 1–6 August 2026 the growth addendum verified 13 August 2026, and the automount update, the objections section, the `zfs rewrite` correction and the encoding-granularity section 14 August 2026. This document is a dated snapshot and is not continuously updated.*
 
 *© 2026 Petr Kratochvíl · Licensed under [CC BY 4.0](../LICENSE)*

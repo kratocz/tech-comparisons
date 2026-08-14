@@ -1,7 +1,7 @@
 # ZFS vs Ceph — volba storage enginu pro malý self-hosted cluster
 
 - **Verdikt:** ⭐ **ZFS na Proxmox VE** — platí pro kontext popsaný níže
-- **Fakta ověřena:** červenec 2026 · doplňky 2026-08-01/06 (snapshot vrstva §2.5–2.6; spolehlivostní profily vč. timelines korupčních bugů Ceph i ZFS §15) · **2026-08-13 (růst po jednom disku, EC 2+2 vs RAIDZ2 §16 — vč. dvou oprav dřívějších tvrzení)** · **2026-08-14 (přepis snapshot automount vrstvy upstreamem, zatím nevydaný — §17; osm námitek držících rozhodnutí otevřené, s předem sepsaným měřicím pravidlem — §18; **oprava: `zfs rewrite` existuje a čtyři tvrzení byla chybná** — §19)**
+- **Fakta ověřena:** červenec 2026 · doplňky 2026-08-01/06 (snapshot vrstva §2.5–2.6; spolehlivostní profily vč. timelines korupčních bugů Ceph i ZFS §15) · **2026-08-13 (růst po jednom disku, EC 2+2 vs RAIDZ2 §16 — vč. dvou oprav dřívějších tvrzení)** · **2026-08-14 (přepis snapshot automount vrstvy upstreamem, zatím nevydaný — §17; osm námitek držících rozhodnutí otevřené, s předem sepsaným měřicím pravidlem — §18; **oprava: `zfs rewrite` existuje a čtyři tvrzení byla chybná** — §19; kódování je v ZFS vázané na vdev a v Cephu na pool — §20)**
 - **Jazyk:** 🇨🇿 čeština (originál) · 🇬🇧 [English version](README.md)
 - **Autor:** Petr Kratochvíl — [krato.cz](https://krato.cz)
 
@@ -612,11 +612,47 @@ Běží navíc za provozu — *"protected by normal range locks, it can be done 
 
 **Čistý dopad na námitku 4 (§18.4):** klesá z „nástroj neexistuje“ na „nástroj existuje a přestává pomáhat právě ve chvíli, kdy je pool moc plný — tedy když po něm sáhneš“. Je slabší, než jak byla formulovaná, ale nemizí — a nemizí ani závěr, že odpovědí na ni není Ceph, protože BlueStore fragmentuje také a plný Ceph pool přestane přijímat zápisy tam, kde plný ZFS pool jen zpomalí.
 
+## 20. Kódování žije ve vdevu: co ZFS svazuje a Ceph odděluje (doplněno 2026-08-14)
+
+§18 uzavřela, že Ceph odpovídá na jednu z osmi námitek. Tahle sekce přidává strukturální bod v jeho prospěch, který §18 nedala, protože nepřišel na řadu: **granularitu, ve které jde měnit schéma redundance**, a kolik volného místa ta změna stojí.
+
+**V ZFS cesta po částech neexistuje.** Uzavírají ji dvě nezávislá omezení, obě zdokumentovaná. Rozšíření RAIDZ vdevu se parity nedotkne: *"Expansion does not change the number of failures that can be tolerated without data loss (e.g. a RAID-Z2 is still a RAID-Z2 even after expansion)."* A RAIDZ vdev nejde vyřadit, protože odstranění top-level vdevu vyžaduje, aby *"the primary pool storage does not contain a top-level raidz or draid vdev"*. Takže ani nasnadě ležící obejití — přidat vedle RAIDZ3 vdev, přelít data a starý odebrat — k dispozici není. Jednovdevový pool je nutné vyprázdnit **celý**, než ho lze zničit a postavit znovu, protože ten vdev **je** to úložiště.
+
+**Cephova obdobná operace je po poolech.** EC profil je stejně neměnný (§18.8), ale pooly jsou logické objekty sdílející tytéž OSD, takže jeden pool jde přemigrovat na nový profil, zatímco zbytek clusteru zůstane stát. Potřebné volné místo je velikost největšího poolu, ne všeho.
+
+| | Ceph | ZFS |
+|---|---|---|
+| Kde žije kódování | v **poolu** (logický objekt) | ve **vdevu** (fyzická skupina disků) |
+| Sdílejí ty jednotky disky? | ✅ ano, všechny pooly nad týmiž OSD | ❌ ne, každý pool má vlastní disky |
+| Granularita migrace | jeden pool | celý pool |
+| Potřebné volné místo | největší pool | všechna použitá data |
+
+Je to táž architektonická vlastnost, ze které plyne Cephova výhoda u heterogenních disků (§18.3): **Ceph odděluje logický layout od fyzického, ZFS je svazuje.** Je to durable, není to detail implementace a je to nejsilnější jednotlivý strukturální bod, který Ceph v tomhle srovnání má.
+
+### 20.1 Granularitu si v ZFS koupit lze, a je levnější, než vypadá
+
+Nic nenutí mít jeden pool. Postavené jako `tank-media-1`, `tank-media-2`, `tank-vms` na oddělených skupinách disků dá ZFS přesně ten model, který se na Cephu chválí: migrovat po jednom a vystačit s volným místem velikosti největšího poolu.
+
+Překvapení je v ceně. Jeden pool se třemi osmidiskovými RAIDZ2 vdevy použije 24 disků a šest z nich na paritu. Tři pooly s jedním osmidiskovým RAIDZ2 vdevem každý použijí rovněž 24 disků a šest na paritu. **Rozdělení nestojí kapacitu vůbec.** Stojí něco jiného: volné místo se rozdělí do silos — jeden pool může být plný, zatímco druhý prázdný — a zápisy už se nestripují napříč všemi vdevy, takže celková propustnost klesne. U knihovny médií, kde převládá sekvenční přístup k jednomu velkému souboru, je ta druhá ztráta menší, než se na první pohled zdá.
+
+### 20.2 Dvě věci, které váhy vracejí zpátky
+
+**Tou volnou kapacitou je DR replika.** Tahle architektura už druhou kopii v druhé lokalitě drží (§4 a sourozenecká analýza `storage-replication`). Změna geometrie tedy nepotřebuje nový hardware: zrušit pool, postavit ho se zamýšleným rozvržením, poslat data zpátky. Háček je v propustnosti — protlačit celý dataset zpět přes měřenou rezidenční WAN není reálné, takže tahle cesta funguje na LAN nebo fyzickým převozem disků, ne po lince.
+
+**A Cephova elegance při tomhle počtu uzlů není k dispozici.** EC 2+3 vyžaduje `k+m` = pět CRUSH failure domén, podle vlastního doporučení dokumentace šest (§18.8). Na jednom až třech uzlech cílový pool prostě nevytvoříš. Výhoda migrace po poolech je reálná a je skutečně Cephova — jen neexistuje zhruba pod pěti uzly, což je počet, na kterém tenhle profil bude roky sedět.
+
+### 20.3 Obecný tvar té námitky
+
+Parita je jen ten případ, který napadne první. Táž tuhost platí pro **jakoukoli** budoucí změnu geometrie: špatně zvolený `ashift` při vytvoření, širší vdev kvůli efektivitě, nebo útěk ze SMR disků. Ve všech případech je odpověď ZFS stejná — vyprázdnit pool a postavit znovu —, zatímco Cephova je přemigrovat dotčený pool. V tomhle obecném tvaru je námitka silnější než její paritní verze a je to verze, kterou stojí za to si pamatovat.
+
+**Co to nemění:** verdikt ani skóre z §18. Tohle není jedna z osmi námitek, je to devátá úvaha — a odpovědí na ni není Ceph, ale **rozhodnout rozvržení poolů vědomě při stavbě**, dokud je to zadarmo. Návrh poolů je návrhem migrace, stejně jako §12 sourozenecké analýzy pozoruje, že návrh datasetů je návrhem replikace.
+
 ## Reference
 
 Externí zdroje (ověřeno 2026-07; snapshot/ACL doplňky ověřeny 2026-08-01):
 
 - RAIDZ Expansion: [The Register](https://www.theregister.com/2025/01/23/openzfs_23_raid_expansion/), [FreeBSD Foundation](https://freebsdfoundation.org/blog/raid-z-expansion-feature-for-zfs/), [caveat parity ratio](https://louwrentius.com/zfs-raidz-expansion-is-awesome-but-has-a-small-caveat.html)
+- Granularita kódování (§20): [zpool-attach(8) — rozšíření RAIDZ zachovává úroveň parity](https://openzfs.github.io/openzfs-docs/man/master/8/zpool-attach.8.html), [zpool-remove(8) — s top-level raidz nelze odstraňovat](https://openzfs.github.io/openzfs-docs/man/master/8/zpool-remove.8.html), [Ceph — EC profily jsou neměnné](https://docs.ceph.com/en/latest/rados/operations/erasure-code/) (ověřeno 2026-08-14)
 - Device removal / shrink limity: [OpenZFS zpool-remove](https://openzfs.github.io/openzfs-docs/man/v2.0/8/zpool-remove.8.html), [cr0x.net](https://cr0x.net/en/zfs-vdev-removal-limits/)
 - SMR: [xda-developers](https://www.xda-developers.com/smr-hdds-are-fine-for-your-nas-until-you-try-to-resilver/), [vermaden](https://vermaden.wordpress.com/2024/05/29/zfs-resilver-smr-drives/), [OpenZFS #18132](https://github.com/openzfs/zfs/issues/18132)
 - Fragmentace / defrag: [OpenZFS #3582](https://github.com/openzfs/zfs/issues/3582), [zfs-rewrite(8)](https://openzfs.github.io/openzfs-docs/man/master/8/zfs-rewrite.8.html), [#17246 — zavedení `zfs rewrite`](https://github.com/openzfs/zfs/pull/17246), [zpoolprops(7) — property `fragmentation`](https://openzfs.github.io/openzfs-docs/man/master/7/zpoolprops.7.html) (ověřeno 2026-08-14)
@@ -633,6 +669,6 @@ Externí zdroje (ověřeno 2026-07; snapshot/ACL doplňky ověřeny 2026-08-01):
 
 ---
 
-*Vzniklo ve spolupráci s Claude (Anthropic); fakta ověřena proti uvedeným zdrojům k červenci 2026, doplňky (snapshot vrstva, spolehlivostní profily, timelines korupčních bugů) k 1.–6. srpnu 2026 doplněk o růstu po jednom disku k 13. srpnu 2026 a aktualizace automount vrstvy, sekce o námitkách i oprava k `zfs rewrite` k 14. srpnu 2026. Dokument je datovaný snapshot a průběžně se neaktualizuje.*
+*Vzniklo ve spolupráci s Claude (Anthropic); fakta ověřena proti uvedeným zdrojům k červenci 2026, doplňky (snapshot vrstva, spolehlivostní profily, timelines korupčních bugů) k 1.–6. srpnu 2026 doplněk o růstu po jednom disku k 13. srpnu 2026 a aktualizace automount vrstvy, sekce o námitkách, oprava k `zfs rewrite` i sekce o granularitě kódování k 14. srpnu 2026. Dokument je datovaný snapshot a průběžně se neaktualizuje.*
 
 *© 2026 Petr Kratochvíl · Licence [CC BY 4.0](../LICENSE)*
