@@ -1054,7 +1054,7 @@ Víc, než §13 naznačuje, protože při jednom uzlu je CRUSH failure doména *
 
 **A věta, která ten seznam přerámuje celý: nic z toho nepřežije ztrátu toho stroje.** Při jednom uzlu je failure doménou disk, takže Ceph chrání přesně proti tomu, proti čemu už chrání RAIDZ2. Všechno výše je pružnost **uvnitř** jedné bedny, koupená za cenu, kterou vypisuje §13 — žádná odolnost proti ztrátě hostu, `size=2` proti vlastnímu *"risks data loss … only temporarily"* Cephu, jediný monitor jako single point of failure, pět a víc démonů, ~4 GB RAM na OSD a CephFS, který na uzlu s OSD nesmíš mountovat kernel klientem.
 
-Jen dvě Cephovy výhody opravdu vyžadují víc uzlů: živá migrace VM a škálování.
+Jen dvě položky toho seznamu opravdu vyžadují víc uzlů: živá migrace VM a škálování. Výhoda, která je vyžaduje nejvíc, na seznamu vůbec není, protože při jednom uzlu neexistuje, aby šla vypsat — přežití ztráty toho stroje, což je celý důvod, proč je Ceph distribuovaný.
 
 ### 30.2 Co stojí tři uzly
 
@@ -1064,7 +1064,7 @@ Tři uzly jsou bod, kde Ceph konečně dodá to, kvůli čemu existuje — pře�
 
 - `size=3` dá **33 %** proti 75 % u RAIDZ2. Při cíli 150 TiB to jsou desítky disků.
 - **EC 2+2 na třech uzlech nejde** — potřebuje `k+m` = čtyři domény na úrovni hostů. Zbývá k=2,m=1: 67 %, ale **jediná parita**, tedy slabší redundance než dnešní RAIDZ2.
-- **Self-heal headroom**: obnova tří kopií po ztrátě uzlu vyžaduje, aby se data vešla na zbylé dva, takže pole nejde doplnit.
+- **Self-heal headroom** — *opraveno týž den, stejně jako §31.4*: přeneseno z §16, kde platí, a transplantaci nepřežilo. §16 měří jeden uzel s failure doménou na úrovni OSD, kde se data ztraceného disku opravdu re-replikují na sousedy. Při **třech uzlech se `size=3` a doménou na úrovni hostu není třetí host, kam kopii obnovit**, takže se nic nere-replikuje a cluster prostě běží `undersized+degraded`, dokud se uzel nevrátí. Požadavek na headroom platí od **čtyř hostů výš**, nebo tam, kde je failure doménou OSD. Tři uzly místo toho stojí to, že degradované okno nemá jiný konec než návrat uzlu.
 - **PLP SSD prakticky povinné** (fsync vzor BlueStore), **10GbE prakticky povinná**, **~4 GB RAM na OSD**.
 
 **Výkon**

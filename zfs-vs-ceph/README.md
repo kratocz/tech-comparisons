@@ -1054,7 +1054,7 @@ More than §13 implies, because at one node the CRUSH failure domain is the **OS
 
 **And the sentence that reframes the whole list: none of it survives losing the machine.** At one node the failure domain is the disk, so Ceph is protecting against exactly what RAIDZ2 already protects against. Every item above is flexibility *inside* one box, bought at the price §13 sets out — no host-failure tolerance, `size=2` against Ceph's own *"risks data loss … only temporarily"*, a single monitor as a single point of failure, five-plus daemons, ~4 GB RAM per OSD, and CephFS unmountable by the kernel client on the node running the OSDs.
 
-Only two of Ceph's advantages genuinely require more nodes: live VM migration, and scaling.
+Only two items on that list genuinely require more nodes: live VM migration, and scaling. The advantage that requires them most is not on the list at all, because at one node it does not exist to be enumerated — surviving the loss of the machine, which is the entire reason Ceph is distributed.
 
 ### 30.2 What three nodes costs
 
@@ -1064,7 +1064,7 @@ Three nodes is where Ceph finally delivers what it exists for — surviving the 
 
 - `size=3` gives **33 %** against RAIDZ2's 75 %. At a 150 TiB target that is tens of drives.
 - **EC 2+2 is impossible on three nodes** — it needs `k+m` = four host-level domains. What remains is k=2,m=1: 67 %, but a **single parity**, so weaker redundancy than the RAIDZ2 in place today.
-- **Self-heal headroom**: restoring three copies after losing a node requires the data to fit on the remaining two, so the array cannot be filled.
+- **Self-heal headroom** — *corrected the same day, the same way §31.4 was*: this was carried over from §16, where it is right, and it does not survive the transplant. §16 measures a single node with an OSD-level failure domain, where a lost disk's data really is re-replicated onto its neighbours. At **three nodes with `size=3` and a host-level domain there is no third host to restore the copy to**, so nothing is re-replicated and the cluster simply runs `undersized+degraded` until the node returns. The headroom requirement applies from **four hosts upward**, or wherever the failure domain is the OSD. What three nodes cost instead is that the degraded window has no end other than the node coming back.
 - **PLP SSDs near-mandatory** (BlueStore's fsync pattern), **10 GbE near-mandatory**, **~4 GB RAM per OSD**.
 
 **Performance**
