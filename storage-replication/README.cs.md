@@ -398,7 +398,7 @@ Externí zdroje ověřené 2026-08-13:
 - Přejmenování (§14): [`PeerReplayer.cc` — `propagate_deleted_entries()` / `cleanup_remote_dir()`](https://github.com/ceph/ceph/blob/main/src/tools/cephfs_mirror/PeerReplayer.cc), [manuál rsync 3.4.4 — `--fuzzy`](https://download.samba.org/pub/rsync/rsync.1)
 - Sparse oblasti (§5): [`PeerReplayer.cc` — `copy_to_remote()`](https://github.com/ceph/ceph/blob/main/src/tools/cephfs_mirror/PeerReplayer.cc), [CephFS — Differences from POSIX](https://docs.ceph.com/en/latest/cephfs/posix/)
 - Jednouzlový Ceph (§13): [cephadm — `--single-host-defaults`](https://docs.ceph.com/en/latest/cephadm/install/), [Ceph — Pools (doporučení `size`/`min_size`)](https://docs.ceph.com/en/latest/rados/operations/pools/), [Ceph — Monitor Config Reference](https://docs.ceph.com/en/latest/rados/configuration/mon-config-ref/), [tracker #1317 — deadlock, kernel klient na uzlu s OSD](https://tracker.ceph.com/issues/1317), [#3076](https://tracker.ceph.com/issues/3076), [#12648](https://tracker.ceph.com/issues/12648), [Red Hat — Mounting and Unmounting Ceph File Systems](https://docs.redhat.com/en/documentation/red_hat_ceph_storage/2/html/ceph_file_system_guide_technology_preview/mounting_and_unmounting_ceph_file_systems)
-- Navazující kontext: [ZFS vs Ceph — tento repozitář](../zfs-vs-ceph/README.cs.md) (§12 šifrování, §15 spolehlivostní profily a timelines tichých korupčních bugů)
+- Navazující kontext: [ZFS vs Ceph §12 — šifrování](../zfs-vs-ceph/README.cs.md) a [§15 — spolehlivostní profily](../zfs-vs-ceph/README.cs.md) (spolehlivostní profily a timelines tichých korupčních bugů)
 
 ---
 

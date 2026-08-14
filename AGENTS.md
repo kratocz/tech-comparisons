@@ -101,10 +101,11 @@ conclusion.
 - **An impossibility claim needs a primary source before it is written**, not
   after someone questions it. "There is no tool", "it cannot be changed", "never",
   "only via migration" — these are the claims a reader cannot check and the ones
-  this repo has had to walk back three times in a single day (`zfs rewrite`
-  existed; it does more than the correction first allowed; the pool count was not
-  irreversible). Each time the trigger was a reader's question rather than a
-  verification pass. Fetch the man page or the docs page *first*, then write the
+  this repo has had to walk back repeatedly — `zfs rewrite` existed, then did more
+  than the first correction allowed, then did less than the second claimed; the
+  pool count was not irreversible; the dRAID threshold was invented outright.
+  Nearly every time the trigger was a reader's question rather than a
+  verification pass, which is the part worth fixing. Fetch the man page or the docs page *first*, then write the
   sentence — and if the source is silent, say that instead of inferring the
   stronger claim. `scripts/check-comparison.py` warns about the subset of these
   that appear in comparison tables, which is a net, not a substitute.
@@ -218,10 +219,12 @@ scripts/check-comparison.py storage-replication
 
 **Errors** (these fail the run): a table whose rows disagree on cell count; a
 `§N` or `§N.M` that resolves to no section or sub-section in that file; numbered
-sections or ordered lists that are not consecutive; a relative link that does not
+sections that are not consecutive, or an ordered list whose numbers are out of
+order or repeated (a gap such as 1, 2, 4 passes); a relative link that does not
 resolve; a URL mangled by a bulk edit; the two language versions disagreeing on
 section count, table-row count, section numbers or sub-section numbers;
-unbalanced Czech quotes.
+unbalanced Czech quotes; a comparison directory with no row in the root README
+index; header metadata that is not a bullet list.
 
 **Warnings** (reported, never fatal): open `[OVĚŘIT]` / `[VERIFY]` tags, with or
 without text inside the brackets; a comparison directory with no English version;
@@ -250,6 +253,16 @@ for the same reason. Two places must then name the new section: the header's
 **Facts verified** bullet and the closing footer. They are the document's index
 of what was added when, and a section missing from either is invisible to a
 reader who starts at the top.
+
+A correction may also ride **inside a new addendum as its own sub-section**
+(`### 26.4 Correction to §21.1`) when the addendum is being written anyway and
+the correction belongs to its subject. That is how §26.4, §27.1–27.3 and §30.3
+were recorded, and it beats a standalone `## N. Correction` that would repeat
+the addendum's context.
+
+Three places index an addendum, not two: the header's **Facts verified** bullet,
+the closing **footer**, and the **References** block, whose intro date and
+per-entry dates both go stale if only the first two are updated.
 
 **Exception — a correction to a section published the same day** may be recorded
 inline, as a dated parenthetical inside that section, rather than as its own

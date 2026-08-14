@@ -13,8 +13,9 @@ skill mechanises.
 ## Steps
 
 1. **Establish the current state.** Do not assume it. Read the last `## N.`
-   heading in `<dir>/README.md` to get the next number, and read the header
-   line 4 and the footer paragraph verbatim — both accumulate across edits and
+   heading in `<dir>/README.md` to get the next number, and read the
+   **Facts verified** bullet in the header (its line number varies by document)
+   and the footer paragraph verbatim — both accumulate across edits and
    their exact wording changes every time a section is added.
 
 2. **Decide correction vs addition.**
@@ -39,15 +40,24 @@ skill mechanises.
 5. **Insert before `## References`** (EN) / `## Reference` (CS) — never at the
    end of the file, which would put the section after the references.
 
-6. **Update the three indexes**, all of which the audit has caught out of date:
+6. **Update the five indexes**, every one of which an audit has caught out of date:
    - header **Facts verified** bullet — name the new section
-   - closing footer paragraph — same list, matching punctuation
-   - `## References` — add the sources with their verification date
+   - closing footer paragraph — same list, matching punctuation. **Re-read this
+     sentence end to end afterwards**: it is a single long sentence that
+     accumulates clauses, and dropped commas have survived two rounds of edits
+   - `## References` — add the sources with the date each claim was checked
+   - the References block's **intro line**, whose "verified to …" date goes stale
+   - the **root `README.md` index row**, whose "Facts verified" column does too
 
-7. **Validate.** `scripts/check-comparison.py <dir>` must exit 0. Warnings are
+7. **Check the date with `date`.** Do not infer it from context, from a greeting
+   or from the previous section's heading. In a repository whose documents are
+   dated snapshots the date is load-bearing, and it has already been wrong by a
+   day for eight sections at once.
+
+8. **Validate.** `scripts/check-comparison.py <dir>` must exit 0. Warnings are
    informational; errors are not.
 
-8. **Commit and push.** Pre-authorised for this repo's documents. The message
+9. **Commit and push.** Pre-authorised for this repo's documents. The message
    states what was verified and what changed, not just that a section was
    added.
 

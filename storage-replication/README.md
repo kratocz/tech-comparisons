@@ -398,7 +398,7 @@ External sources verified 2026-08-13:
 - Renames (§14): [`PeerReplayer.cc` — `propagate_deleted_entries()` / `cleanup_remote_dir()`](https://github.com/ceph/ceph/blob/main/src/tools/cephfs_mirror/PeerReplayer.cc), [rsync 3.4.4 manual — `--fuzzy`](https://download.samba.org/pub/rsync/rsync.1)
 - Sparse handling (§5): [`PeerReplayer.cc` — `copy_to_remote()`](https://github.com/ceph/ceph/blob/main/src/tools/cephfs_mirror/PeerReplayer.cc), [CephFS — Differences from POSIX](https://docs.ceph.com/en/latest/cephfs/posix/)
 - Single-node Ceph (§13): [cephadm — `--single-host-defaults`](https://docs.ceph.com/en/latest/cephadm/install/), [Ceph — Pools (`size`/`min_size` guidance)](https://docs.ceph.com/en/latest/rados/operations/pools/), [Ceph — Monitor Config Reference](https://docs.ceph.com/en/latest/rados/configuration/mon-config-ref/), [tracker #1317 — deadlock, kclient on an OSD node](https://tracker.ceph.com/issues/1317), [#3076](https://tracker.ceph.com/issues/3076), [#12648](https://tracker.ceph.com/issues/12648), [Red Hat — Mounting and Unmounting Ceph File Systems](https://docs.redhat.com/en/documentation/red_hat_ceph_storage/2/html/ceph_file_system_guide_technology_preview/mounting_and_unmounting_ceph_file_systems)
-- Related context: [ZFS vs Ceph — this repository](../zfs-vs-ceph/README.md) (§12 encryption, §15 reliability profiles and the silent-corruption timelines)
+- Related context: [ZFS vs Ceph §12 — encryption](../zfs-vs-ceph/README.md) and [§15 — reliability profiles](../zfs-vs-ceph/README.md) (reliability profiles and the silent-corruption timelines)
 
 ---
 

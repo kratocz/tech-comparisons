@@ -1,7 +1,7 @@
 # ZFS vs Ceph: choosing the storage engine for a small self-hosted cluster
 
 - **Verdict:** ⭐ **ZFS on Proxmox VE** — valid for the context described below
-- **Facts verified:** July 2026 · addenda 2026-08-01/06 (the Linux snapshot layer §2.5–2.6; reliability profiles incl. the Ceph and ZFS corruption-bug timelines §15) · **2026-08-13 (growing one disk at a time, EC 2+2 vs RAIDZ2 §16 — including two corrections to earlier claims)** · **2026-08-14 (the snapshot automount layer rewritten upstream but still unreleased — §17; the eight objections keeping the decision open, with a pre-registered measurement rule — §18; *correction: `zfs rewrite` exists and four claims were wrong* — §19; encoding is bound to the vdev in ZFS and to the pool in Ceph — §20; what ZFS fixes permanently at creation, and how to decide each — §21; the object model those two assume — §22; resizing a ZVOL under a Proxmox VM, and why discard is usually the real answer — §23) · **2026-08-15 (correction: block cloning is on by default and cross-dataset works — §24; what a small file actually costs, and why it is not the table's 1-byte-write row — §25; choosing `ashift`, and a correction to §21.1 — §26; the rest of §21 swept the same way, including one fabricated figure — §27; `zfs rewrite` does not apply `recordsize`, and how to change it — §28; a glossary of the vocabulary the tables use, for all three columns — §29; how the trade differs at one node versus three, with a scope correction — §30; why stretching a Ceph cluster across the internet fails, for a concrete shape — §31)**
+- **Facts verified:** July 2026 · addenda 2026-08-01/06 (the Linux snapshot layer §2.5–2.6; reliability profiles incl. the Ceph and ZFS corruption-bug timelines §15) · **2026-08-13 (growing one disk at a time, EC 2+2 vs RAIDZ2 §16 — including two corrections to earlier claims)** · **2026-08-14 (the snapshot automount layer rewritten upstream but still unreleased — §17; the eight objections keeping the decision open, with a pre-registered measurement rule — §18; *correction: `zfs rewrite` exists and four claims were wrong* — §19; encoding is bound to the vdev in ZFS and to the pool in Ceph — §20; what ZFS fixes permanently at creation, and how to decide each — §21; the object model those two assume — §22; resizing a ZVOL under a Proxmox VM, and why discard is usually the real answer — §23) · **2026-08-14 (correction: block cloning is on by default and cross-dataset works — §24; what a small file actually costs, and why it is not the table's 1-byte-write row — §25; choosing `ashift`, and a correction to §21.1 — §26; the rest of §21 swept the same way, including one fabricated figure — §27; `zfs rewrite` does not apply `recordsize`, and how to change it — §28; a glossary of the vocabulary the tables use, for all three columns — §29; how the trade differs at one node versus three, with a scope correction — §30; why stretching a Ceph cluster across the internet fails, for a concrete shape — §31)**
 - **Language:** 🇬🇧 English (canonical) · 🇨🇿 [Čeština — original](README.cs.md)
 - **Author:** Petr Kratochvíl — [krato.cz](https://krato.cz)
 
@@ -21,7 +21,7 @@ This is not a generic "which one is better" comparison. It is a real decision an
 1. ⭐ **Recommendation: ZFS on Proxmox VE, not Ceph** — for the profile "1–3 nodes, solo admin, cost-conscious, bulk + a few services, phased growth", ZFS wins almost everywhere it actually matters here: **full value from a single node** (Ceph on one node is an anti-pattern), **an order of magnitude less RAM** (a direct saving amid the DDR4 crunch), simpler operations, clean DR via `send`/`recv`, better capacity efficiency at small scale (RAIDZ2 75 % vs Ceph `size=3` 33 %).
 2. **Four of my six original objections to ZFS dissolved** (§2): mixed-size disks (→ add a new vdev), "slowness" (→ SMR + a full pool, not ZFS itself), shrink (→ true for the **pool**, not for **ZVOLs**), silent corruption (→ ZFS handles it natively; the existing mdadm+Btrfs stack could only catch up by adding a `dm-integrity` layer). **Two confirmed ones remain** (§2.5): browsing snapshots = a separate mount per snapshot (the design never changed) and a snapshot-automount panic bug — the upstream fix only landed 12/2025 (PR #17943) and is still missing from the 2.3.x LTS line as of 8/2026. The mitigations are simple (`snapdir=hidden` is the default, `zfs diff`/clone), but it is the weakest part of ZFS on Linux.
 3. **HA depends on node count, not on the engine** (§4). With one node there is no HA with anything (not even Ceph). ZFS HA is handled by **Proxmox ZFS replication + HA manager + an arbiter** (orchestrated failover, RPO ~1 min) — sufficient for this use case. Across a WAN, no engine gives you real-time HA.
-4. **Ceph keeps a real edge in only three things** (§7, §9): distributed/shared storage (live VM migration, **K8s RWX PVs**), native **S3/RGW**, and automatic self-healing across nodes. **Both relevant items were examined (§14) and neither requires Ceph** — monitoring HA (Zabbix/Grafana/Loki) is solved app-level + RWO, and Kopia backups don't need S3 → **the decision went to ZFS**.
+4. **Ceph keeps a real edge in only three things** (§7, §9; §30.1 enumerates what the single-node case adds): distributed/shared storage (live VM migration, **K8s RWX PVs**), native **S3/RGW**, and automatic self-healing across nodes. **Both relevant items were examined (§14) and neither requires Ceph** — monitoring HA (Zabbix/Grafana/Loki) is solved app-level + RWO, and Kopia backups don't need S3 → **the decision went to ZFS**.
 5. **The ZFS→Ceph migration trap is real but optional** (§10): it only exists if Ceph is the destination. Staying on ZFS the whole way (1 node → +2 nodes + replication) removes it — node 1 is never wiped.
 6. **The reliability deep research (§15) favours ZFS.** ZFS has the most mature integrity track record — serious bugs are rare and fixed (dirty dnode 2023; encryption send/recv closed in 2025), and **the LUKS path is untouched by them**. Ceph's risks sit exactly where this project was headed: **CephFS snapshots + multi-MDS** (incidents spanning 2021→2025), **operator error** (the main source of real-world loss; solo admin), and **practically mandatory PLP SSDs** (the planned NVMe drives are consumer-class).
 
@@ -91,7 +91,7 @@ Of Ceph's wins, only **two actually concern this project — K8s RWX PVs and nat
 
 The trigger was the idea of **building just one node for now** and scaling later (RAM and HDD prices high in 2026, DDR4 ECC EOL). That exposed a fundamental conflict:
 
-- **"A 1-node Ceph cluster" is a contradiction in terms.** Ceph derives its value from distribution and self-healing *across nodes*; on a single node (`size=1`) you pay its full complexity (MON/MGR/OSD, ~4 GB RAM per OSD, tuning) and get nothing ZFS wouldn't give you more simply — the properties Ceph exists for vanish on one node.
+- **A 1-node Ceph cluster gives up what Ceph is for.** *(Corrected 2026-08-14: this read "is a contradiction in terms" with `size=1`. Upstream supports single-host via `--single-host-defaults`, which sets `size=2`, and §30.1 enumerates seven things it does provide — the objection is that none of them survives losing the machine, not that the configuration is impossible.)* Ceph derives its value from distribution and self-healing *across nodes*; on a single node (`size=2`, failure domain OSD) you pay its full complexity (MON/MGR/OSD, ~4 GB RAM per OSD, tuning) and get nothing ZFS wouldn't give you more simply — the properties Ceph exists for vanish on one node.
 - **ZFS, by contrast, is single-node by design** and scales out via replication → it fits phasing 1 → 2 → 3 nodes with no intermediate step.
 
 That turned the question "how to phase Ceph" into **"do you need Ceph at all, or is it over-engineering for your context?"**
@@ -326,7 +326,7 @@ ZFS and Ceph are incompatible worlds — there is no conversion, only copying (l
 The fill ceiling is similar for both (~80 %), so **by itself it doesn't move the needle much** — the main capacity difference is replication overhead (see "Comparison at a glance", the capacity-efficiency row).
 
 - **ZFS:** ~80 % for performance/fragmentation reasons (CoW); beyond that it slows down (no data loss), beyond ~95 % badly. Practice (45Drives) puts the real ceiling closer to ~90 %; above 90 %, though, there is even a reported case of `zpool import` failing after a power loss ([#18041](https://github.com/openzfs/zfs/issues/18041)) — the 80 % ceiling thus has a healthy margin.
-- **Ceph:** thresholds `nearfull` 85 %, `backfillfull` 90 %, `full` 95 % (writes stop). Plus a **self-heal reserve** — an OSD/node failure must fit onto the survivors → practically ~75–80 %, **less on few nodes** (losing 1 of 3 = 33 % must fit somewhere). ZFS needs no such reserve.
+- **Ceph:** thresholds `nearfull` 85 %, `backfillfull` 90 %, `full` 95 % (writes stop). Plus a **self-heal reserve** — an OSD/node failure must fit onto the survivors → practically ~75–80 %. *(Corrected 2026-08-14, see §30.2: this holds where a placement exists — an OSD-level failure domain, or four hosts and up. At exactly three hosts with `size=3` there is no third host to restore to, so nothing is re-replicated and the cluster runs degraded instead.)* On few nodes (losing 1 of 3 = 33 % must fit somewhere). ZFS needs no such reserve.
 
 **Actually usable out of every 100 TB of purchased disks** (usable × 80 % fill):
 
@@ -671,7 +671,7 @@ Parity is only the instance that comes to mind first. The same rigidity applies 
 | **`casesensitivity`** | *"This property cannot be changed after the file system is created."* | Default `sensitive` for Linux. `insensitive` only for a dataset dedicated to SMB clients that need it |
 | **`normalization`** | *"This property cannot be changed after the file system is created."* | `formD` if macOS clients will ever write here over SMB or NFS — macOS decomposes accented characters, and without normalization the same filename can exist twice. Cannot be fixed later |
 | **`utf8only`** | *"This property cannot be changed after the file system is created."* | Implied by setting `normalization`. Rejecting invalid UTF-8 is usually what you want; it will reject the occasional legacy filename |
-| **`volblocksize`** (ZVOLs) | *"The blocksize cannot be changed once the volume has been written."* | Match the guest's write pattern. Too small costs metadata overhead; too large multiplies every small guest write into the increment as well as onto the disk (§4 of the sibling replication analysis) |
+| **`volblocksize`** (ZVOLs) | *"The blocksize cannot be changed once the volume has been written."* | Match the guest's write pattern. Too small costs metadata overhead; too large multiplies every small guest write into the increment as well as onto the disk ([storage-replication §4](../storage-replication/README.md)) |
 
 ### 21.3 Changeable, but the old data does not follow
 
@@ -691,7 +691,7 @@ These are not permanent, and for `compression`, `checksum`, `dedup` and `copies`
 
 ### 21.5 The short version
 
-If only four of these get real thought before the first `zpool create`, make them: **`ashift`** (12), **vdev type and parity**, **whether a `special` vdev is wanted**, and **the encryption model**. Those four cannot be undone without emptying the pool. The number of pools is *not* a fifth — it is decided again at every expansion (§21.4), and how freely depends on the vdev type you picked, which is why that one carries more weight than it looks. Everything else in §21.3 can be repaired later with `zfs rewrite`, and everything in §21.2 can at least be fixed for a single dataset by recreating that dataset rather than the whole pool.
+If only four of these get real thought before the first `zpool create`, make them: **`ashift`** (12), **vdev type and parity**, **whether a `special` vdev is wanted**, and **the encryption model**. Those four cannot be undone without emptying the pool. The number of pools is *not* a fifth — it is decided again at every expansion (§21.4), and how freely depends on the vdev type you picked, which is why that one carries more weight than it looks. Everything else in §21.3 except `recordsize` can be repaired later with `zfs rewrite` (§28), and everything in §21.2 can at least be fixed for a single dataset by recreating that dataset rather than the whole pool.
 
 ## 22. The object model §20 and §21 assume (added 2026-08-14)
 
@@ -820,7 +820,7 @@ So for a VM disk on a ZVOL, three things §19 and §21.3 offer are unavailable, 
 
 Two smaller ZVOL facts worth having alongside: a volume snapshot exists like any other (`zfs snapshot tank/vms/disk0@name`), but its device node does not appear until you ask — *"Controls whether the volume snapshot devices under /dev/zvol/⟨pool⟩ are hidden or visible. The default value is hidden."* And there is no meaningful size ceiling, so a 20 TB ZVOL is possible; whether it is wise is a different question, because a volume that large makes ZFS blind to its contents — no per-file snapshots, no `zfs rewrite`, and replication retention granularity of the whole volume. For bulk data a filesystem dataset shared over SMB or NFS keeps all three; ZVOLs earn their place for actual VM system disks.
 
-## 24. Correction (2026-08-15): block cloning is on by default, and cross-dataset works
+## 24. Correction (2026-08-14): block cloning is on by default, and cross-dataset works
 
 The comparison table rated `cp --reflink` for ZFS as *"block cloning (2.2+), default off, no cross-dataset"*. Two of those three clauses were wrong, and wrong when written rather than merely stale — they describe the brief window after the 2.2.0 corruption incident, not any version you would install.
 
@@ -834,11 +834,11 @@ The comparison table rated `cp --reflink` for ZFS as *"block cloning (2.2+), def
 
 **Corrected in place:** the reflink row of the comparison table, and §15's closing lesson, which used "block cloning is off by default anyway" as reassurance it could not provide.
 
-**The CephFS column was re-checked on 2026-08-15, this time properly.** Yesterday's ❌ rested on a single empty code search, which is not evidence. It now rests on three: `FICLONE`, `FICLONERANGE` and `reflink` each return **zero** occurrences across the whole `ceph/ceph` tree, while `copy_file_range` returns five; the kernel's CephFS documentation mentions no reflink, `FICLONE` or block-sharing capability anywhere; and what it does document is the `nocopyfrom` mount option — *"Don't use the RADOS 'copy-from' operation to perform remote object copies. Currently, it's only used in `copy_file_range`…"*
+**The CephFS column was re-checked on 2026-08-14, this time properly.** Yesterday's ❌ rested on a single empty code search, which is not evidence. It now rests on three: `FICLONE`, `FICLONERANGE` and `reflink` each return **zero** occurrences across the whole `ceph/ceph` tree, while `copy_file_range` returns five; the kernel's CephFS documentation mentions no reflink, `FICLONE` or block-sharing capability anywhere; and what it does document is the `nocopyfrom` mount option — *"Don't use the RADOS 'copy-from' operation to perform remote object copies. Currently, it's only used in `copy_file_range`…"*
 
 That distinction is the whole point of the row. RADOS `copy-from` moves the copy off the client and saves the network round-trip, but it **allocates new objects**: no shared blocks, no space saved. So on CephFS `cp --reflink=always` fails outright and `--reflink=auto` silently degrades to a full copy — which is exactly the outcome a reflink exists to avoid. Btrfs reflinks remain the mature reference case, which is why `cp --reflink` is the canonical example of the feature.
 
-## 25. What a small file actually costs (added 2026-08-15)
+## 25. What a small file actually costs (added 2026-08-14)
 
 The comparison table has a row for **CoW granularity (1-byte write)**, and it is easy to read it as answering a question it does not ask. Two different things get confused here, and the difference is a factor of thirty:
 
@@ -877,7 +877,7 @@ Two levers change it, and both are decisions from §21 rather than things to tun
 
 Which is the practical conclusion: **if a dataset will hold millions of small files, that fact belongs in the pool design, not in a property you set afterwards.**
 
-## 26. Choosing `ashift` (added 2026-08-15)
+## 26. Choosing `ashift` (added 2026-08-14)
 
 §21 lists `ashift` first among the decisions a pool cannot take back, and §25 gives the one argument that pulls the other way. This section is the reasoning behind the recommendation, and it corrects how §21 described the mechanism.
 
@@ -909,7 +909,7 @@ Not on 12 being optimal, but on the two ways of being wrong costing wildly diffe
 
 §21's practical conclusion is unaffected — an existing vdev's `ashift` is fixed for its life, and that is why the property belongs on the irreversible list. Only the description of the mechanism was wrong, and it is corrected in place.
 
-## 27. The rest of §21, checked (added 2026-08-15)
+## 27. The rest of §21, checked (added 2026-08-14)
 
 §26 exists because a one-line justification in §21 did not survive being asked about. That is a poor reason for the other one-liners to go unchecked, so they were swept the same way: each terse "why it is permanent" claim taken back to a primary source. Three needed changing, and one of the three was invented rather than merely imprecise.
 
@@ -946,7 +946,7 @@ That is the citation the claim was missing. It is sound, and it now points at th
 - **vdev type conversion** — an absence, argued two ways rather than assumed: the `zpool` subcommand list contains no conversion or reshape operation, and expansion is documented as preserving the parity level. Checked with a positive control, since an empty search is not a source.
 - **All five §21.2 dataset properties** — each already carried the documented wording; none moved.
 
-## 28. Changing `recordsize` in practice — and what `zfs rewrite` does not do (added 2026-08-15)
+## 28. Changing `recordsize` in practice — and what `zfs rewrite` does not do (added 2026-08-14)
 
 §21.3 listed `recordsize` among the properties that are *"not permanent, and since `zfs rewrite` (§19) the old data can be brought into line without a second pool"*. That is wrong for `recordsize` specifically, and the man page says so in one sentence: *"Changes to properties that affect the size of a logical block, like **recordsize**, will have no effect."*
 
@@ -986,7 +986,7 @@ For `compression`, `checksum`, `dedup` and `copies`, `zfs rewrite` is the in-pla
 - **Prune snapshots first.** Rewriting blocks shared with a snapshot creates second copies rather than replacing the originals, so space grows before it shrinks.
 - And none of it reaches a **ZVOL** at all (§23.4).
 
-## 29. Vocabulary the tables use (added 2026-08-15)
+## 29. Vocabulary the tables use (added 2026-08-14)
 
 §22 explains ZFS's object model because §20 and §21 depend on it. The comparison tables have the same problem across the other two columns and it went unaddressed: `MDS` appears twenty times in this document, `OSD` ten, `RADOS` nine, `BlueStore` nine, `RGW` eight, `CRUSH` five — and none of them is defined anywhere. A row rating Ceph on "MDS trims with snapshots" is unreadable to a reader who does not already know what an MDS is, which defeats the point of writing the row.
 
@@ -1036,13 +1036,13 @@ This is a glossary of terms **this document actually uses**, not an introduction
 | **Inline extent** | Small file contents stored inside the metadata b-tree rather than as a data block, bounded by `max_inline` (§25) |
 | **Profile** | The per-chunk redundancy setting (`single`, `dup`, `raid1`, `raid10`, `raid5/6`), chosen separately for data and metadata — which is how the incumbent stack runs metadata `dup` over mdadm |
 
-## 30. The trade at one node and at three (added 2026-08-15)
+## 30. The trade at one node and at three (added 2026-08-14)
 
 The comparison table is rated for "1–3 nodes" as a single profile, which hides that the trade changes shape between the two ends of that range. This section separates them. Nothing here is newly verified; it is the document's own findings sorted by node count.
 
 ### 30.1 What Ceph gives at one node
 
-More than §13 implies, because at one node the CRUSH failure domain is the **OSD**, not the host (`osd_crush_chooseleaf_type = 0`). Everything that needs *several failure domains* is therefore satisfiable by several disks in one box:
+More than [storage-replication §13](../storage-replication/README.md) implies, because at one node the CRUSH failure domain is the **OSD**, not the host (`osd_crush_chooseleaf_type = 0`). Everything that needs *several failure domains* is therefore satisfiable by several disks in one box:
 
 - **Heterogeneous disks** absorbed by CRUSH weights, where RAIDZ discards the difference (§18.3).
 - **Self-healing without a replacement disk** — an `out` OSD's data is re-replicated onto the remaining ones if there is room. ZFS degrades and waits, unless a hot spare was configured.
@@ -1052,7 +1052,7 @@ More than §13 implies, because at one node the CRUSH failure domain is the **OS
 - **Native S3 via RGW**, and **RWX for Kubernetes** through CephFS without an NFS re-export.
 - **Snapshot browsing** without a mount per snapshot, which is ZFS's weakest area on Linux (§2.5, §17).
 
-**And the sentence that reframes the whole list: none of it survives losing the machine.** At one node the failure domain is the disk, so Ceph is protecting against exactly what RAIDZ2 already protects against. Every item above is flexibility *inside* one box, bought at the price §13 sets out — no host-failure tolerance, `size=2` against Ceph's own *"risks data loss … only temporarily"*, a single monitor as a single point of failure, five-plus daemons, ~4 GB RAM per OSD, and CephFS unmountable by the kernel client on the node running the OSDs.
+**And the sentence that reframes the whole list: none of it survives losing the machine.** At one node the failure domain is the disk, so Ceph is protecting against exactly what RAIDZ2 already protects against. Every item above is flexibility *inside* one box, bought at the price [storage-replication §13](../storage-replication/README.md) sets out — no host-failure tolerance, `size=2` against Ceph's own *"risks data loss … only temporarily"*, a single monitor as a single point of failure, five-plus daemons, ~4 GB RAM per OSD, and CephFS unmountable by the kernel client on the node running the OSDs.
 
 Only two items on that list genuinely require more nodes: live VM migration, and scaling. The advantage that requires them most is not on the list at all, because at one node it does not exist to be enumerated — surviving the loss of the machine, which is the entire reason Ceph is distributed.
 
@@ -1103,7 +1103,7 @@ Of §30.1, only three could plausibly decide anything for this profile, and all 
 
 Of §30.2, three are severe enough to stand alone: the **capacity arithmetic**, where the only three-node alternative to 33 % gives weaker redundancy than the array already has; **CephFS snapshots**, which is the fragile area of the system this architecture leans on hardest; and **cross-site replication**, where file granularity with no size estimate meets a hard monthly cap.
 
-## 31. Stretching a Ceph cluster across the internet (added 2026-08-15)
+## 31. Stretching a Ceph cluster across the internet (added 2026-08-14)
 
 §4 dismisses geo-HA across a WAN in one cell — *async DR only, sync is a showstopper*. That is the right conclusion and too short to be useful, because "put one of the three nodes at the other site" is an idea that keeps coming back. This section is why it does not work, for a concrete shape: two or three nodes, at least one behind `[ISP, internet, ISP]`, roughly 250 Mbps, with occasional link and node outages.
 
@@ -1132,9 +1132,9 @@ The cost is real but arrives later and from a different mechanism. When the node
 
 A second effect compounds it on a small cluster: PG logs keep growing while PGs are not `active+clean`, so a long degraded period costs OSD memory at the same time — on nodes already budgeted at ~4 GB per OSD.
 
-The arithmetic settles it. 250 Mbps is 31.25 MB/s, so **≈2.7 TB per day** at full saturation with no client traffic at all. A remote node holding 50 TB re-replicates in **≈18 days**; at this project's 150 TiB target any real recovery event is measured in weeks, spent degraded. Both assumptions — a saturated link and an idle cluster — are optimistic, so the real figure is worse.
+The arithmetic settles it. 250 Mbps is 31.25 MB/s, so **≈2.7 TB per day** at full saturation with no client traffic at all. A remote node whose 50 TB has to be backfilled on return moves it in **≈18 days**; at this project's 150 TiB target any real recovery event is measured in weeks, spent degraded. Both assumptions — a saturated link and an idle cluster — are optimistic, so the real figure is worse.
 
-With only two or three nodes there is often nowhere to re-replicate *to*, so the cluster instead sits degraded for the duration. That is less destructive and no more comfortable: it means every outage leaves the data one failure from loss.
+And because at three nodes nothing is re-replicated during the outage at all, the cluster simply runs degraded for its whole duration — less destructive than a rebalance storm, and no more comfortable, because it means every outage leaves the data one failure from loss.
 
 ### 31.5 The rest
 
@@ -1152,19 +1152,21 @@ The one part of the original idea worth keeping is the instinct behind it — th
 
 ## References
 
-External sources (block verified to 2026-08-14; per-entry dates given where they differ):
+External sources (block verified to 2026-08-14; per-entry dates given where they differ). Every entry below carries the date its claim was checked, not the date it was added:
 
 - RAIDZ Expansion: [The Register](https://www.theregister.com/2025/01/23/openzfs_23_raid_expansion/), [FreeBSD Foundation](https://freebsdfoundation.org/blog/raid-z-expansion-feature-for-zfs/), [the parity-ratio caveat](https://louwrentius.com/zfs-raidz-expansion-is-awesome-but-has-a-small-caveat.html)
 - Encoding granularity (§20): [zpool-attach(8) — RAIDZ expansion keeps the parity level](https://openzfs.github.io/openzfs-docs/man/master/8/zpool-attach.8.html), [zpool-remove(8) — no removal with a top-level raidz](https://openzfs.github.io/openzfs-docs/man/master/8/zpool-remove.8.html), [Ceph — Erasure code profiles are immutable](https://docs.ceph.com/en/latest/rados/operations/erasure-code/) (verified 2026-08-14)
 - Device removal / shrink limits: [OpenZFS zpool-remove](https://openzfs.github.io/openzfs-docs/man/v2.0/8/zpool-remove.8.html), [cr0x.net](https://cr0x.net/en/zfs-vdev-removal-limits/)
 - SMR: [xda-developers](https://www.xda-developers.com/smr-hdds-are-fine-for-your-nas-until-you-try-to-resilver/), [vermaden](https://vermaden.wordpress.com/2024/05/29/zfs-resilver-smr-drives/), [OpenZFS #18132](https://github.com/openzfs/zfs/issues/18132)
 - Fragmentation / defrag: [OpenZFS #3582](https://github.com/openzfs/zfs/issues/3582), [zfs-rewrite(8)](https://openzfs.github.io/openzfs-docs/man/master/8/zfs-rewrite.8.html), [#17246 — introduce `zfs rewrite`](https://github.com/openzfs/zfs/pull/17246), [zpoolprops(7) — the `fragmentation` property](https://openzfs.github.io/openzfs-docs/man/master/7/zpoolprops.7.html) (verified 2026-08-14)
-- Recovery vs backfill (§31.4): [Ceph — Log Based PG](https://docs.ceph.com/en/latest/dev/osd_internals/log_based_pg/), [IBM — backfill vs recovery vs peering](https://www.ibm.com/support/pages/ibm-storage-ceph-what-are-differences-between-backfill-and-recovery-what-peering) (verified 2026-08-15)
-- Stretch clusters (§31): [Ceph — Stretch Mode](https://docs.ceph.com/en/latest/rados/operations/stretch-mode/), [Ceph — Monitor/OSD interaction](https://docs.ceph.com/en/latest/rados/configuration/mon-osd-interaction/), [Red Hat Ceph Storage 8 — Stretch clusters](https://docs.redhat.com/en/documentation/red_hat_ceph_storage/8/html/administration_guide/stretch-clusters-for-ceph-storage), [IBM Storage Ceph — Stretch clusters](https://www.ibm.com/docs/en/storage-ceph/8.0.0?topic=administration-stretch-clusters-ceph-storage) (verified 2026-08-15; the 10 ms RTT figure is the vendors', upstream states none)
-- Glossary (§29): [Ceph — Architecture](https://docs.ceph.com/en/latest/architecture/) (verified 2026-08-15)
-- `ashift` (§26): [zpoolprops(7) — the `ashift` property](https://openzfs.github.io/openzfs-docs/man/master/7/zpoolprops.7.html) (verified 2026-08-15)
-- Small files (§25): [zfsprops(7) — `recordsize`](https://openzfs.github.io/openzfs-docs/man/master/7/zfsprops.7.html), [zpool-features(7) — `embedded_data`](https://openzfs.github.io/openzfs-docs/man/master/7/zpool-features.7.html), [Btrfs — `max_inline`](https://btrfs.readthedocs.io/en/latest/Administration.html) (verified 2026-08-15)
-- Block cloning (§24): [zfs(4) — `zfs_bclone_enabled`](https://openzfs.github.io/openzfs-docs/man/master/4/zfs.4.html), [zpool-features(7) — `block_cloning`](https://openzfs.github.io/openzfs-docs/man/master/7/zpool-features.7.html) (verified 2026-08-15 against the 2.2, 2.3 and master branches)
+- Recovery vs backfill (§31.4): [Ceph — Log Based PG](https://docs.ceph.com/en/latest/dev/osd_internals/log_based_pg/), [IBM — backfill vs recovery vs peering](https://www.ibm.com/support/pages/ibm-storage-ceph-what-are-differences-between-backfill-and-recovery-what-peering) (verified 2026-08-14)
+- Stretch clusters (§31): [Ceph — Stretch Mode](https://docs.ceph.com/en/latest/rados/operations/stretch-mode/), [Ceph — Monitor/OSD interaction](https://docs.ceph.com/en/latest/rados/configuration/mon-osd-interaction/), [Red Hat Ceph Storage 8 — Stretch clusters](https://docs.redhat.com/en/documentation/red_hat_ceph_storage/8/html/administration_guide/stretch-clusters-for-ceph-storage), [IBM Storage Ceph — Stretch clusters](https://www.ibm.com/docs/en/storage-ceph/8.0.0?topic=administration-stretch-clusters-ceph-storage) (verified 2026-08-14; the 10 ms RTT figure is the vendors', upstream states none)
+- §21 sweep (§27): [zpool-features(7) — feature states and read-only compatibility](https://openzfs.github.io/openzfs-docs/man/master/7/zpool-features.7.html), [zpoolconcepts(7) — dRAID geometry and its IOPS formula](https://openzfs.github.io/openzfs-docs/man/master/7/zpoolconcepts.7.html) (verified 2026-08-14)
+- `recordsize` (§28): [zfs-rewrite(8) — "Changes to properties that affect the size of a logical block … will have no effect"](https://openzfs.github.io/openzfs-docs/man/master/8/zfs-rewrite.8.html), [zfsprops(7) — `recordsize`](https://openzfs.github.io/openzfs-docs/man/master/7/zfsprops.7.html) (verified 2026-08-14)
+- Glossary (§29): [Ceph — Architecture](https://docs.ceph.com/en/latest/architecture/) (verified 2026-08-14)
+- `ashift` (§26): [zpoolprops(7) — the `ashift` property](https://openzfs.github.io/openzfs-docs/man/master/7/zpoolprops.7.html) (verified 2026-08-14)
+- Small files (§25): [zfsprops(7) — `recordsize`](https://openzfs.github.io/openzfs-docs/man/master/7/zfsprops.7.html), [zpool-features(7) — `embedded_data`](https://openzfs.github.io/openzfs-docs/man/master/7/zpool-features.7.html), [Btrfs — `max_inline`](https://btrfs.readthedocs.io/en/latest/Administration.html) (verified 2026-08-14)
+- Block cloning (§24): [zfs(4) — `zfs_bclone_enabled`](https://openzfs.github.io/openzfs-docs/man/master/4/zfs.4.html), [zpool-features(7) — `block_cloning`](https://openzfs.github.io/openzfs-docs/man/master/7/zpool-features.7.html) (verified 2026-08-14 against the 2.2, 2.3 and master branches)
 - Fast Dedup: [Klara Systems](https://klarasystems.com/articles/introducing-openzfs-fast-dedup/), [despairlabs](https://despairlabs.com/blog/posts/2024-10-27-openzfs-dedup-is-good-dont-use-it/)
 - Ceph dedup: [Ceph docs — Deduplication (experimental)](https://docs.ceph.com/en/latest/dev/deduplication/), [RGW Object Dedup](https://docs.ceph.com/en/latest/radosgw/s3_objects_dedup/)
 - ZVOL resize (§23): [zfsprops(7) — `volsize`](https://openzfs.github.io/openzfs-docs/man/master/7/zfsprops.7.html), [Proxmox `qm(1)` — resize does not shrink](https://pve.proxmox.com/pve-docs/qm.1.html) (verified 2026-08-14)
@@ -1179,6 +1181,6 @@ External sources (block verified to 2026-08-14; per-entry dates given where they
 
 ---
 
-*Researched and written in collaboration with Claude (Anthropic); facts verified against the sources above as of July 2026, with the addenda (snapshot layer, reliability profiles, corruption-bug timelines) verified 1–6 August 2026, the growth addendum verified 13 August 2026, and the automount update, the objections section, the `zfs rewrite` correction, the encoding-granularity section, the creation-time checklist, the object-model section and the ZVOL-resize section verified 14 August 2026, and the block-cloning correction the small-file section, the `ashift` section the §21 sweep, the `recordsize` correction, the glossary, the node-count section and the stretch-cluster section verified 15 August 2026. This document is a dated snapshot and is not continuously updated.*
+*Researched and written in collaboration with Claude (Anthropic); facts verified against the sources above as of July 2026, with the addenda (snapshot layer, reliability profiles, corruption-bug timelines) verified 1–6 August 2026, the growth addendum verified 13 August 2026, and the automount update, the objections section, the `zfs rewrite` correction, the encoding-granularity section, the creation-time checklist, the object-model section and the ZVOL-resize section verified 14 August 2026, and the block-cloning correction, the small-file section, the `ashift` section, the §21 sweep, the `recordsize` correction, the glossary, the node-count section and the stretch-cluster section verified 14 August 2026. This document is a dated snapshot and is not continuously updated.*
 
 *© 2026 Petr Kratochvíl · Licensed under [CC BY 4.0](../LICENSE)*

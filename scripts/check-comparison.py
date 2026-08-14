@@ -65,12 +65,14 @@ def check_tables(rel: str, lines: list[str]) -> None:
             err(f"{rel}:{start}", f"table rows disagree on cell count — {detail}")
 
 
-# Phrases that assert something is impossible rather than merely bad. These are
-# the claims that need a primary source, because they are the ones a reader
-# cannot check and the ones this repo has had to walk back.
+# Phrases asserting something is impossible rather than merely bad — the claims
+# a reader cannot check, and the ones this repo keeps having to walk back.
+# Deliberately phrases and not modal verbs: "cannot" and its Czech equivalent
+# "nelze" are far too common to carry signal, and having one without the other
+# made the two languages behave differently on the same table.
 ABSOLUTE = re.compile(
     r"(no tool|not possible|impossible|no way to|"
-    r"neexistuje|nelze|nejde to|bez nástroje)", re.I)
+    r"neexistuje|nejde to|bez nástroje|neumí to)", re.I)
 
 # A row counts as sourced if it links out, points at a section, or quotes
 # documentation verbatim — the citation is usually in a neighbouring cell.
@@ -80,11 +82,11 @@ CITED = ("](", "§", '*"', '"*', "`")
 def check_absolute_claims(rel: str, lines: list[str]) -> None:
     """Flag impossibility claims in table rows that carry no citation.
 
-    Deliberately narrow. Of the three overstatements this repo shipped on
-    2026-08-14 this would have caught one ("no tool, CoW-safe"); the other two
-    were a wrong number and a prose sentence, which no lint of this shape can
-    see. It is a cheap net over the highest-traffic spot, not a guarantee —
-    the rule in AGENTS.md is what actually does the work.
+    Deliberately narrow, and it catches a minority of what it is aimed at: of
+    the overstatements shipped on 2026-08-14 this would have seen "no tool,
+    CoW-safe" and missed a fabricated number, a prose sentence and several
+    claims made outside a table. A cheap net over the highest-traffic spot, not
+    a guarantee — the rule in AGENTS.md is what actually does the work.
     """
     for start, block in table_blocks(lines):
         for offset, row in enumerate(block):
@@ -116,12 +118,16 @@ def check_section_refs(rel: str, text: str) -> None:
 
     # A sibling document named near a bare §N means the reference will be
     # resolved against the wrong file — it needs a relative link.
+    # Only flag a genuine cross-document reference: the sibling's name immediately
+    # before the §, or a "§N of <sibling>" construction. A local §N that merely
+    # shares a sentence with a document name is not one, and flagging it trained
+    # us to ignore the warning.
     SIBLINGS = r"zfs-vs-ceph|storage-replication|smartwatch-platforms"
-    for pat in (rf"({SIBLINGS})[^\n§]{{0,60}}§(\d+)",     # "storage-replication §12"
-                rf"§(\d+)[^\n§]{{0,60}}({SIBLINGS})"):     # "§12 of the sibling storage-replication"
+    for pat in (rf"({SIBLINGS})[\s`*]{{0,3}}§(\d+)",              # "storage-replication §12"
+                rf"§(\d+)\s+(?:of|in|v|ve)\b[^§\n]{{0,25}}({SIBLINGS})"):  # "§12 of the sibling storage-replication"
         for m in re.finditer(pat, local):
-            warn(rel, "a §-reference sits next to a sibling document's name but carries no "
-                      "relative link — it will resolve against this file instead")
+            warn(rel, "a §-reference names a sibling document but carries no relative link "
+                      "— it will resolve against this file instead")
             break
 
     # Consecutive, no gaps or repeats. A draft may open with a `## 0.` status
