@@ -1,7 +1,7 @@
 # ZFS vs Ceph: choosing the storage engine for a small self-hosted cluster
 
 - **Verdict:** ⭐ **ZFS on Proxmox VE** — valid for the context described below
-- **Facts verified:** July 2026 · addenda 2026-08-01/06 (the Linux snapshot layer §2.5–2.6; reliability profiles incl. the Ceph and ZFS corruption-bug timelines §15) · **2026-08-13 (growing one disk at a time, EC 2+2 vs RAIDZ2 §16 — including two corrections to earlier claims)** · **2026-08-14 (the snapshot automount layer rewritten upstream but still unreleased — §17; the eight objections keeping the decision open, with a pre-registered measurement rule — §18; *correction: `zfs rewrite` exists and four claims were wrong* — §19; encoding is bound to the vdev in ZFS and to the pool in Ceph — §20; what ZFS fixes permanently at creation, and how to decide each — §21; the object model those two assume — §22; resizing a ZVOL under a Proxmox VM, and why discard is usually the real answer — §23) · **2026-08-15 (correction: block cloning is on by default and cross-dataset works — §24; what a small file actually costs, and why it is not the table's 1-byte-write row — §25; choosing `ashift`, and a correction to §21.1 — §26; the rest of §21 swept the same way, including one fabricated figure — §27; `zfs rewrite` does not apply `recordsize`, and how to change it — §28)**
+- **Facts verified:** July 2026 · addenda 2026-08-01/06 (the Linux snapshot layer §2.5–2.6; reliability profiles incl. the Ceph and ZFS corruption-bug timelines §15) · **2026-08-13 (growing one disk at a time, EC 2+2 vs RAIDZ2 §16 — including two corrections to earlier claims)** · **2026-08-14 (the snapshot automount layer rewritten upstream but still unreleased — §17; the eight objections keeping the decision open, with a pre-registered measurement rule — §18; *correction: `zfs rewrite` exists and four claims were wrong* — §19; encoding is bound to the vdev in ZFS and to the pool in Ceph — §20; what ZFS fixes permanently at creation, and how to decide each — §21; the object model those two assume — §22; resizing a ZVOL under a Proxmox VM, and why discard is usually the real answer — §23) · **2026-08-15 (correction: block cloning is on by default and cross-dataset works — §24; what a small file actually costs, and why it is not the table's 1-byte-write row — §25; choosing `ashift`, and a correction to §21.1 — §26; the rest of §21 swept the same way, including one fabricated figure — §27; `zfs rewrite` does not apply `recordsize`, and how to change it — §28; a glossary of the vocabulary the tables use, for all three columns — §29)**
 - **Language:** 🇬🇧 English (canonical) · 🇨🇿 [Čeština — original](README.cs.md)
 - **Author:** Petr Kratochvíl — [krato.cz](https://krato.cz)
 
@@ -986,6 +986,56 @@ For `compression`, `checksum`, `dedup` and `copies`, `zfs rewrite` is the in-pla
 - **Prune snapshots first.** Rewriting blocks shared with a snapshot creates second copies rather than replacing the originals, so space grows before it shrinks.
 - And none of it reaches a **ZVOL** at all (§23.4).
 
+## 29. Vocabulary the tables use (added 2026-08-15)
+
+§22 explains ZFS's object model because §20 and §21 depend on it. The comparison tables have the same problem across the other two columns and it went unaddressed: `MDS` appears twenty times in this document, `OSD` ten, `RADOS` nine, `BlueStore` nine, `RGW` eight, `CRUSH` five — and none of them is defined anywhere. A row rating Ceph on "MDS trims with snapshots" is unreadable to a reader who does not already know what an MDS is, which defeats the point of writing the row.
+
+This is a glossary of terms **this document actually uses**, not an introduction to the three systems. Where a definition is not obvious it is quoted rather than paraphrased.
+
+### 29.1 Ceph
+
+| Term | What it is |
+|---|---|
+| **RADOS** | The object store everything else sits on: *"a reliable, distributed storage service that uses the intelligence in each of its nodes to secure the data it stores and to provide that data to clients"* |
+| **OSD** | The daemon owning one storage device. *"A Ceph OSD Daemon checks its own state and the state of other OSDs and reports back to monitors."* Roughly "one disk, one OSD", which is why RAM is counted per OSD (§15) |
+| **MON** | *"Ceph Monitors maintain the master copy of the cluster map, which they provide to Ceph clients."* Quorum lives here — one monitor is a single point of failure (§13) |
+| **MGR** | *"A Ceph Manager serves as an endpoint for monitoring, orchestration, and plug-in modules."* |
+| **MDS** | *"A Ceph Metadata Server (MDS) manages file metadata when CephFS is used to provide file services."* Only CephFS needs it — and it is where CephFS's fragility with snapshots lives (§15) |
+| **RGW** | *"The Ceph Object Storage daemon, `radosgw`, is a FastCGI service that provides a RESTful HTTP API to store objects and metadata."* The S3 endpoint of §7 |
+| **RBD** | A block device striped *"over multiple objects in the Ceph Storage Cluster"* — the VM-disk layer, and the ZVOL's counterpart |
+| **CephFS** | *"a POSIX-compliant filesystem as a service that is layered on top of the object-based Ceph Storage Cluster"* |
+| **BlueStore** | The OSD's storage back end: *"stores objects in a monolithic, database-like fashion"*, directly on the raw device. Its frequent fsyncs are why PLP SSDs are near-mandatory (§15) |
+| **CRUSH** | The placement algorithm deciding which OSDs hold which data, from weights and a failure-domain topology. Those weights are what let Ceph absorb heterogeneous disks (§18.3) |
+| **Failure domain** | The level CRUSH keeps replicas apart at — OSD, host, rack. Erasure coding needs `k+m` of them (§18.8), the constraint that forces node counts |
+| **Placement group (PG)** | The unit CRUSH actually maps: objects go to a PG, PGs to OSDs. An indirection layer that keeps the map small |
+| **EC profile** | The `k`/`m` and failure-domain settings of an erasure-coded pool, fixed at creation (§20) |
+| **Pool** | A logical partition of RADOS with its own replication or EC settings. Unlike a ZFS pool it does not own disks — all pools share the OSDs, which is §20's whole point |
+
+### 29.2 ZFS terms §22 does not cover
+
+§22 covers pool, vdev, dataset, filesystem, ZVOL, snapshot, clone, bookmark and the auxiliary vdev classes. These appear in the document too:
+
+| Term | What it is |
+|---|---|
+| **ARC** | The in-RAM read cache — Adaptive Replacement Cache, balancing recently- against frequently-used blocks rather than plain LRU. It is why ZFS appears to consume all memory, and why a starved ARC makes ZFS feel slow (§18.6) |
+| **L2ARC** | The `cache` vdev: a second-level read cache on SSD. Its index costs RAM, so a large L2ARC on a small-memory machine makes things worse |
+| **SLOG** | The `log` vdev: a separate device for the ZFS Intent Log, serving only *synchronous* writes. The one place PLP genuinely matters for ZFS |
+| **DDT** | The deduplication table. `zpool ddtprune` prunes it; nothing removes it (§18.5) |
+| **BRT** | The block reference table behind block cloning (§24) |
+| **dnode** | ZFS's inode equivalent — the per-object metadata structure |
+| **Ditto blocks** | Extra copies of metadata written to separate locations, independent of vdev redundancy. Why metadata costs more than its nominal size (§25) |
+| **txg** | Transaction group: writes accumulate and commit in batches, which is why most ZFS writes are asynchronous and PLP is not the issue it is for Ceph |
+
+### 29.3 Btrfs
+
+| Term | What it is |
+|---|---|
+| **Subvolume** | An independently snapshottable tree inside one filesystem — the closest analogue to a ZFS dataset, though it shares the filesystem's space rather than a pool's |
+| **Reflink** | A copy sharing the original's extents until written to; what `cp --reflink` creates. ZFS's block cloning is the equivalent (§24) |
+| **Extent** | Btrfs's variable-length allocation unit, in place of ZFS's fixed record |
+| **Inline extent** | Small file contents stored inside the metadata b-tree rather than as a data block, bounded by `max_inline` (§25) |
+| **Profile** | The per-chunk redundancy setting (`single`, `dup`, `raid1`, `raid10`, `raid5/6`), chosen separately for data and metadata — which is how the incumbent stack runs metadata `dup` over mdadm |
+
 ## References
 
 External sources (block verified to 2026-08-14; per-entry dates given where they differ):
@@ -995,6 +1045,7 @@ External sources (block verified to 2026-08-14; per-entry dates given where they
 - Device removal / shrink limits: [OpenZFS zpool-remove](https://openzfs.github.io/openzfs-docs/man/v2.0/8/zpool-remove.8.html), [cr0x.net](https://cr0x.net/en/zfs-vdev-removal-limits/)
 - SMR: [xda-developers](https://www.xda-developers.com/smr-hdds-are-fine-for-your-nas-until-you-try-to-resilver/), [vermaden](https://vermaden.wordpress.com/2024/05/29/zfs-resilver-smr-drives/), [OpenZFS #18132](https://github.com/openzfs/zfs/issues/18132)
 - Fragmentation / defrag: [OpenZFS #3582](https://github.com/openzfs/zfs/issues/3582), [zfs-rewrite(8)](https://openzfs.github.io/openzfs-docs/man/master/8/zfs-rewrite.8.html), [#17246 — introduce `zfs rewrite`](https://github.com/openzfs/zfs/pull/17246), [zpoolprops(7) — the `fragmentation` property](https://openzfs.github.io/openzfs-docs/man/master/7/zpoolprops.7.html) (verified 2026-08-14)
+- Glossary (§29): [Ceph — Architecture](https://docs.ceph.com/en/latest/architecture/) (verified 2026-08-15)
 - `ashift` (§26): [zpoolprops(7) — the `ashift` property](https://openzfs.github.io/openzfs-docs/man/master/7/zpoolprops.7.html) (verified 2026-08-15)
 - Small files (§25): [zfsprops(7) — `recordsize`](https://openzfs.github.io/openzfs-docs/man/master/7/zfsprops.7.html), [zpool-features(7) — `embedded_data`](https://openzfs.github.io/openzfs-docs/man/master/7/zpool-features.7.html), [Btrfs — `max_inline`](https://btrfs.readthedocs.io/en/latest/Administration.html) (verified 2026-08-15)
 - Block cloning (§24): [zfs(4) — `zfs_bclone_enabled`](https://openzfs.github.io/openzfs-docs/man/master/4/zfs.4.html), [zpool-features(7) — `block_cloning`](https://openzfs.github.io/openzfs-docs/man/master/7/zpool-features.7.html) (verified 2026-08-15 against the 2.2, 2.3 and master branches)
@@ -1012,6 +1063,6 @@ External sources (block verified to 2026-08-14; per-entry dates given where they
 
 ---
 
-*Researched and written in collaboration with Claude (Anthropic); facts verified against the sources above as of July 2026, with the addenda (snapshot layer, reliability profiles, corruption-bug timelines) verified 1–6 August 2026, the growth addendum verified 13 August 2026, and the automount update, the objections section, the `zfs rewrite` correction, the encoding-granularity section, the creation-time checklist, the object-model section and the ZVOL-resize section verified 14 August 2026, and the block-cloning correction the small-file section, the `ashift` section the §21 sweep and the `recordsize` correction verified 15 August 2026. This document is a dated snapshot and is not continuously updated.*
+*Researched and written in collaboration with Claude (Anthropic); facts verified against the sources above as of July 2026, with the addenda (snapshot layer, reliability profiles, corruption-bug timelines) verified 1–6 August 2026, the growth addendum verified 13 August 2026, and the automount update, the objections section, the `zfs rewrite` correction, the encoding-granularity section, the creation-time checklist, the object-model section and the ZVOL-resize section verified 14 August 2026, and the block-cloning correction the small-file section, the `ashift` section the §21 sweep, the `recordsize` correction and the glossary verified 15 August 2026. This document is a dated snapshot and is not continuously updated.*
 
 *© 2026 Petr Kratochvíl · Licensed under [CC BY 4.0](../LICENSE)*

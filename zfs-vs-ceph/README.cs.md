@@ -1,7 +1,7 @@
 # ZFS vs Ceph — volba storage enginu pro malý self-hosted cluster
 
 - **Verdikt:** ⭐ **ZFS na Proxmox VE** — platí pro kontext popsaný níže
-- **Fakta ověřena:** červenec 2026 · doplňky 2026-08-01/06 (snapshot vrstva §2.5–2.6; spolehlivostní profily vč. timelines korupčních bugů Ceph i ZFS §15) · **2026-08-13 (růst po jednom disku, EC 2+2 vs RAIDZ2 §16 — vč. dvou oprav dřívějších tvrzení)** · **2026-08-14 (přepis snapshot automount vrstvy upstreamem, zatím nevydaný — §17; osm námitek držících rozhodnutí otevřené, s předem sepsaným měřicím pravidlem — §18; *oprava: `zfs rewrite` existuje a čtyři tvrzení byla chybná* — §19; kódování je v ZFS vázané na vdev a v Cephu na pool — §20; co ZFS zafixuje napevno při vytvoření a jak o tom rozhodnout — §21; objektový model, který obě předpokládají — §22; změna velikosti ZVOLu pod Proxmox VM a proč je skutečnou odpovědí obvykle discard — §23) · **2026-08-15 (oprava: block cloning je defaultně zapnutý a cross-dataset funguje — §24; kolik doopravdy stojí malý soubor a proč to není řádek tabulky o zápisu 1 bajtu — §25; volba `ashift` a oprava k §21.1 — §26; zbytek §21 projetý stejným sítem, včetně jednoho vymyšleného čísla — §27; `zfs rewrite` neaplikuje `recordsize` a jak ho tedy měnit — §28)**
+- **Fakta ověřena:** červenec 2026 · doplňky 2026-08-01/06 (snapshot vrstva §2.5–2.6; spolehlivostní profily vč. timelines korupčních bugů Ceph i ZFS §15) · **2026-08-13 (růst po jednom disku, EC 2+2 vs RAIDZ2 §16 — vč. dvou oprav dřívějších tvrzení)** · **2026-08-14 (přepis snapshot automount vrstvy upstreamem, zatím nevydaný — §17; osm námitek držících rozhodnutí otevřené, s předem sepsaným měřicím pravidlem — §18; *oprava: `zfs rewrite` existuje a čtyři tvrzení byla chybná* — §19; kódování je v ZFS vázané na vdev a v Cephu na pool — §20; co ZFS zafixuje napevno při vytvoření a jak o tom rozhodnout — §21; objektový model, který obě předpokládají — §22; změna velikosti ZVOLu pod Proxmox VM a proč je skutečnou odpovědí obvykle discard — §23) · **2026-08-15 (oprava: block cloning je defaultně zapnutý a cross-dataset funguje — §24; kolik doopravdy stojí malý soubor a proč to není řádek tabulky o zápisu 1 bajtu — §25; volba `ashift` a oprava k §21.1 — §26; zbytek §21 projetý stejným sítem, včetně jednoho vymyšleného čísla — §27; `zfs rewrite` neaplikuje `recordsize` a jak ho tedy měnit — §28; slovník pojmů, které tabulky používají, pro všechny tři sloupce — §29)**
 - **Jazyk:** 🇨🇿 čeština (originál) · 🇬🇧 [English version](README.md)
 - **Autor:** Petr Kratochvíl — [krato.cz](https://krato.cz)
 
@@ -986,6 +986,56 @@ U `compression`, `checksum`, `dedup` a `copies` je `zfs rewrite` tou cestou na m
 - **Nejdřív promazat snapshoty.** Přepis bloků sdílených se snapshotem vytvoří druhé kopie místo aby nahradil originály, takže místo napřed naroste, než se zmenší.
 - A na **ZVOL** nedosáhne nic z toho (§23.4).
 
+## 29. Slovník, který tabulky používají (doplněno 2026-08-15)
+
+§22 vysvětluje objektový model ZFS, protože na něm §20 a §21 stojí. Srovnávací tabulky mají týž problém u zbylých dvou sloupců a ten zůstal nedořešený: `MDS` se v dokumentu vyskytuje dvacetkrát, `OSD` desetkrát, `RADOS` devětkrát, `BlueStore` devětkrát, `RGW` osmkrát, `CRUSH` pětkrát — a ani jeden není nikde vysvětlený. Řádek hodnotící Ceph na „MDS trims with snapshots“ je pro čtenáře, který neví, co je MDS, nečitelný, čímž ztrácí smysl ho psát.
+
+Tohle je slovník pojmů, které **dokument opravdu používá**, ne úvod do tří systémů. Kde definice není zřejmá, je citovaná, ne parafrázovaná.
+
+### 29.1 Ceph
+
+| Pojem | Co to je |
+|---|---|
+| **RADOS** | Objektové úložiště, na kterém stojí všechno ostatní: *"a reliable, distributed storage service that uses the intelligence in each of its nodes to secure the data it stores and to provide that data to clients"* |
+| **OSD** | Démon vlastnící jedno úložné zařízení. *"A Ceph OSD Daemon checks its own state and the state of other OSDs and reports back to monitors."* Zhruba „jeden disk, jeden OSD“, proto se RAM počítá na OSD (§15) |
+| **MON** | *"Ceph Monitors maintain the master copy of the cluster map, which they provide to Ceph clients."* Tady žije kvórum — jeden monitor je single point of failure (§13) |
+| **MGR** | *"A Ceph Manager serves as an endpoint for monitoring, orchestration, and plug-in modules."* |
+| **MDS** | *"A Ceph Metadata Server (MDS) manages file metadata when CephFS is used to provide file services."* Potřebuje ho jen CephFS — a je to místo, kde žije jeho křehkost se snapshoty (§15) |
+| **RGW** | *"The Ceph Object Storage daemon, `radosgw`, is a FastCGI service that provides a RESTful HTTP API to store objects and metadata."* S3 endpoint z §7 |
+| **RBD** | Blokové zařízení rozprostřené *"over multiple objects in the Ceph Storage Cluster"* — vrstva disků VM a protějšek ZVOLu |
+| **CephFS** | *"a POSIX-compliant filesystem as a service that is layered on top of the object-based Ceph Storage Cluster"* |
+| **BlueStore** | Úložný backend OSD: *"stores objects in a monolithic, database-like fashion"*, přímo na syrovém zařízení. Jeho časté fsyncy jsou důvod, proč jsou PLP SSD prakticky povinné (§15) |
+| **CRUSH** | Algoritmus umístění, který z vah a topologie failure domén rozhoduje, které OSD drží která data. Ty váhy jsou to, co Cephu dovolí strávit různě velké disky (§18.3) |
+| **Failure domain** | Úroveň, na které CRUSH drží repliky od sebe — OSD, host, rack. Erasure coding jich potřebuje `k+m` (§18.8), a to je omezení vynucující počty uzlů |
+| **Placement group (PG)** | Jednotka, kterou CRUSH doopravdy mapuje: objekty jdou do PG, PG na OSD. Mezivrstva, díky které zůstává mapa malá |
+| **EC profil** | Nastavení `k`/`m` a failure domény erasure-coded poolu, fixní od vytvoření (§20) |
+| **Pool** | Logický oddíl RADOSu s vlastním nastavením replikace či EC. Na rozdíl od ZFS poolu **nevlastní disky** — všechny pooly sdílejí OSD, což je celý smysl §20 |
+
+### 29.2 Pojmy ZFS, které §22 nepokrývá
+
+§22 pokrývá pool, vdev, dataset, filesystem, ZVOL, snapshot, clone, bookmark a pomocné třídy vdevů. V dokumentu se objevují i tyhle:
+
+| Pojem | Co to je |
+|---|---|
+| **ARC** | Čtecí cache v RAM — Adaptive Replacement Cache, vyvažující nedávno a často používané bloky místo prostého LRU. Proto ZFS vypadá, že spotřebuje všechnu paměť, a proto vyhladovělý ARC dělá ZFS pomalým (§18.6) |
+| **L2ARC** | `cache` vdev: čtecí cache druhé úrovně na SSD. Její index stojí RAM, takže velký L2ARC na stroji s málo pamětí situaci zhorší |
+| **SLOG** | `log` vdev: samostatné zařízení pro ZFS Intent Log, obsluhující jen *synchronní* zápisy. Jediné místo, kde u ZFS na PLP opravdu záleží |
+| **DDT** | Deduplikační tabulka. `zpool ddtprune` ji prořezává, odstranit ji neumí nic (§18.5) |
+| **BRT** | Block reference table za block cloningem (§24) |
+| **dnode** | Obdoba inode v ZFS — metadatová struktura jednoho objektu |
+| **Ditto bloky** | Kopie metadat navíc, zapsané na oddělená místa, nezávisle na redundanci vdevu. Proto metadata stojí víc, než je jejich nominální velikost (§25) |
+| **txg** | Transaction group: zápisy se hromadí a commitují po dávkách, což je důvod, proč je většina zápisů ZFS asynchronní a PLP tu není problém jako u Cephu |
+
+### 29.3 Btrfs
+
+| Pojem | Co to je |
+|---|---|
+| **Subvolume** | Samostatně snapshotovatelný strom uvnitř jednoho filesystému — nejbližší obdoba ZFS datasetu, jen sdílí prostor filesystému, ne poolu |
+| **Reflink** | Kopie sdílející extenty originálu, dokud se do ní nezapíše; to, co vytváří `cp --reflink`. Block cloning v ZFS je ekvivalent (§24) |
+| **Extent** | Alokační jednotka Btrfs proměnné délky, na místě pevného recordu v ZFS |
+| **Inline extent** | Obsah malého souboru uložený uvnitř metadatového b-stromu místo v datovém bloku, omezený `max_inline` (§25) |
+| **Profil** | Nastavení redundance po chuncích (`single`, `dup`, `raid1`, `raid10`, `raid5/6`), volené zvlášť pro data a metadata — tak stávající stack jede metadata v `dup` nad mdadm |
+
 ## Reference
 
 Externí zdroje (blok ověřen k 2026-08-14; dílčí data uvedena tam, kde se liší):
@@ -995,6 +1045,7 @@ Externí zdroje (blok ověřen k 2026-08-14; dílčí data uvedena tam, kde se l
 - Device removal / shrink limity: [OpenZFS zpool-remove](https://openzfs.github.io/openzfs-docs/man/v2.0/8/zpool-remove.8.html), [cr0x.net](https://cr0x.net/en/zfs-vdev-removal-limits/)
 - SMR: [xda-developers](https://www.xda-developers.com/smr-hdds-are-fine-for-your-nas-until-you-try-to-resilver/), [vermaden](https://vermaden.wordpress.com/2024/05/29/zfs-resilver-smr-drives/), [OpenZFS #18132](https://github.com/openzfs/zfs/issues/18132)
 - Fragmentace / defrag: [OpenZFS #3582](https://github.com/openzfs/zfs/issues/3582), [zfs-rewrite(8)](https://openzfs.github.io/openzfs-docs/man/master/8/zfs-rewrite.8.html), [#17246 — zavedení `zfs rewrite`](https://github.com/openzfs/zfs/pull/17246), [zpoolprops(7) — property `fragmentation`](https://openzfs.github.io/openzfs-docs/man/master/7/zpoolprops.7.html) (ověřeno 2026-08-14)
+- Slovník (§29): [Ceph — Architecture](https://docs.ceph.com/en/latest/architecture/) (ověřeno 2026-08-15)
 - `ashift` (§26): [zpoolprops(7) — property `ashift`](https://openzfs.github.io/openzfs-docs/man/master/7/zpoolprops.7.html) (ověřeno 2026-08-15)
 - Malé soubory (§25): [zfsprops(7) — `recordsize`](https://openzfs.github.io/openzfs-docs/man/master/7/zfsprops.7.html), [zpool-features(7) — `embedded_data`](https://openzfs.github.io/openzfs-docs/man/master/7/zpool-features.7.html), [Btrfs — `max_inline`](https://btrfs.readthedocs.io/en/latest/Administration.html) (ověřeno 2026-08-15)
 - Block cloning (§24): [zfs(4) — `zfs_bclone_enabled`](https://openzfs.github.io/openzfs-docs/man/master/4/zfs.4.html), [zpool-features(7) — `block_cloning`](https://openzfs.github.io/openzfs-docs/man/master/7/zpool-features.7.html) (ověřeno 2026-08-15 proti větvím 2.2, 2.3 a master)
@@ -1012,6 +1063,6 @@ Externí zdroje (blok ověřen k 2026-08-14; dílčí data uvedena tam, kde se l
 
 ---
 
-*Vzniklo ve spolupráci s Claude (Anthropic); fakta ověřena proti uvedeným zdrojům k červenci 2026, doplňky (snapshot vrstva, spolehlivostní profily, timelines korupčních bugů) k 1.–6. srpnu 2026, doplněk o růstu po jednom disku k 13. srpnu 2026, a aktualizace automount vrstvy, sekce o námitkách, oprava k `zfs rewrite`, sekce o granularitě kódování, checklist rozhodnutí při vytvoření, sekce o objektovém modelu i sekce o změně velikosti ZVOLu k 14. srpnu 2026 a oprava k block cloningu sekce o malých souborech, sekce o `ashift` prohlídka §21 i oprava k `recordsize` k 15. srpnu 2026. Dokument je datovaný snapshot a průběžně se neaktualizuje.*
+*Vzniklo ve spolupráci s Claude (Anthropic); fakta ověřena proti uvedeným zdrojům k červenci 2026, doplňky (snapshot vrstva, spolehlivostní profily, timelines korupčních bugů) k 1.–6. srpnu 2026, doplněk o růstu po jednom disku k 13. srpnu 2026, a aktualizace automount vrstvy, sekce o námitkách, oprava k `zfs rewrite`, sekce o granularitě kódování, checklist rozhodnutí při vytvoření, sekce o objektovém modelu i sekce o změně velikosti ZVOLu k 14. srpnu 2026 a oprava k block cloningu sekce o malých souborech, sekce o `ashift` prohlídka §21, oprava k `recordsize` i slovník k 15. srpnu 2026. Dokument je datovaný snapshot a průběžně se neaktualizuje.*
 
 *© 2026 Petr Kratochvíl · Licence [CC BY 4.0](../LICENSE)*
