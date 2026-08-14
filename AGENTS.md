@@ -32,7 +32,11 @@ second bar in the workflow section below.
 - **Header metadata** as a bullet list (`- **Verdict:** …`, `- **Facts
   verified:** …`, `- **Language:** …`, `- **Author:** …`). The bullets are
   required, not cosmetic: CommonMark merges adjacent plain lines into a single
-  paragraph.
+  paragraph. **Read every date from the clock, never infer it** — not from the
+  time of day, not from a greeting, not from the section above. Dates here are
+  the document's whole claim to being checkable, and eight sections once
+  shipped dated a day into the future because "good morning" arrived shortly
+  before midnight.
 - **Context** section first — the concrete profile the verdict claims validity
   for, and nothing beyond it.
 - **Comparison at a glance** — a symbol table (✅ strength · 🟡 works with
@@ -263,6 +267,13 @@ the addendum's context.
 Three places index an addendum, not two: the header's **Facts verified** bullet,
 the closing **footer**, and the **References** block, whose intro date and
 per-entry dates both go stale if only the first two are updated.
+
+Keep the header bullet **short**: date groups with a phrase and a section range,
+never a title per section. Each heading already carries its own date and the
+footer already enumerates them, so the header only has to say what was verified
+when and roughly what it covered. Enumerating instead produced a 1 474-character
+line at sixteen addenda — a header nobody reads, which is a rule failing rather
+than a document growing.
 
 **Exception — a correction to a section published the same day** may be recorded
 inline, as a dated parenthetical inside that section, rather than as its own
