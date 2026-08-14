@@ -1,7 +1,7 @@
 # ZFS vs Ceph: choosing the storage engine for a small self-hosted cluster
 
 - **Verdict:** ⭐ **ZFS on Proxmox VE** — valid for the context described below
-- **Facts verified:** July 2026 · addenda 2026-08-01/06 (the Linux snapshot layer §2.5–2.6; reliability profiles incl. the Ceph and ZFS corruption-bug timelines §15) · **2026-08-13 (growing one disk at a time, EC 2+2 vs RAIDZ2 §16 — including two corrections to earlier claims)** · **2026-08-14 (the snapshot automount layer rewritten upstream but still unreleased — §17; the eight objections keeping the decision open, with a pre-registered measurement rule — §18; *correction: `zfs rewrite` exists and four claims were wrong* — §19; encoding is bound to the vdev in ZFS and to the pool in Ceph — §20; what ZFS fixes permanently at creation, and how to decide each — §21; the object model those two assume — §22; resizing a ZVOL under a Proxmox VM, and why discard is usually the real answer — §23) · **2026-08-15 (correction: block cloning is on by default and cross-dataset works — §24)**
+- **Facts verified:** July 2026 · addenda 2026-08-01/06 (the Linux snapshot layer §2.5–2.6; reliability profiles incl. the Ceph and ZFS corruption-bug timelines §15) · **2026-08-13 (growing one disk at a time, EC 2+2 vs RAIDZ2 §16 — including two corrections to earlier claims)** · **2026-08-14 (the snapshot automount layer rewritten upstream but still unreleased — §17; the eight objections keeping the decision open, with a pre-registered measurement rule — §18; *correction: `zfs rewrite` exists and four claims were wrong* — §19; encoding is bound to the vdev in ZFS and to the pool in Ceph — §20; what ZFS fixes permanently at creation, and how to decide each — §21; the object model those two assume — §22; resizing a ZVOL under a Proxmox VM, and why discard is usually the real answer — §23) · **2026-08-15 (correction: block cloning is on by default and cross-dataset works — §24; what a small file actually costs, and why it is not the table's 1-byte-write row — §25)**
 - **Language:** 🇬🇧 English (canonical) · 🇨🇿 [Čeština — original](README.cs.md)
 - **Author:** Petr Kratochvíl — [krato.cz](https://krato.cz)
 
@@ -838,6 +838,45 @@ The comparison table rated `cp --reflink` for ZFS as *"block cloning (2.2+), def
 
 That distinction is the whole point of the row. RADOS `copy-from` moves the copy off the client and saves the network round-trip, but it **allocates new objects**: no shared blocks, no space saved. So on CephFS `cp --reflink=always` fails outright and `--reflink=auto` silently degrades to a full copy — which is exactly the outcome a reflink exists to avoid. Btrfs reflinks remain the mature reference case, which is why `cp --reflink` is the canonical example of the feature.
 
+## 25. What a small file actually costs (added 2026-08-15)
+
+The comparison table has a row for **CoW granularity (1-byte write)**, and it is easy to read it as answering a question it does not ask. Two different things get confused here, and the difference is a factor of thirty:
+
+- **A 1-byte write into an existing file.** Copy-on-write means the whole record is rewritten, so with the default `recordsize` that is 128 KiB of write for one byte of change. This is what the table's row measures, and for ZFS it is correct.
+- **A 1-byte file.** That is not 128 KiB. `recordsize` is documented as *"a **suggested** block size for files in the file system"* — a ceiling, not a fixed unit. A file smaller than it gets a block sized to its contents, rounded up to one sector.
+
+The corroboration is in the `embedded_data` feature description, which states what embedding saves: *"the space of the block (**one sector, typically 512 B or 4 KiB**) is saved"*. If a tiny file occupied a full record, that sentence would say 128 KiB.
+
+### 25.1 With compression, possibly no data block at all
+
+*"Blocks whose contents can compress to 112 bytes or smaller can take advantage of this feature. … The contents of highly-compressible blocks are stored in the block 'pointer' itself (a misnomer in this case, as it contains the compressed data, rather than a pointer to its location on disk). Thus the space of the block … is saved, and no additional I/O is needed to read and write the data block."*
+
+A one-byte file compresses far below 112 bytes, so it is stored inside the block pointer and **no data block is allocated**. Btrfs does the same thing under a different name — `max_inline` defaults to `min(2048, page size)`, and for a 4 KiB sectorsize *"maximum size of inline data is about 3900 bytes"*. The ✅ in the Btrfs column of that table row is therefore not only about its 4 KiB block: it inlines small files too.
+
+### 25.2 The data block was never the whole bill
+
+Whatever the file's data costs, it still needs a dnode, a directory entry, and the indirect structure above them — and ZFS stores metadata in **ditto blocks**, that is, several copies, so metadata is multiplied before any vdev geometry is applied.
+
+Then geometry multiplies whatever was allocated:
+
+| vdev, `ashift=12` | one 4 KiB sector costs | overhead |
+|---|---|---|
+| mirror (2-way) | 8 KiB | 100 % |
+| RAIDZ2 | 12 KiB — one data + **two parity** sectors | 200 % |
+
+RAIDZ2's nominal overhead on a wide stripe is 25 %; on a single-sector block it is 200 %, because parity is per-stripe and a one-sector stripe still needs its full parity. RAIDZ additionally allocates in multiples of *parity + 1* sectors — allocator behaviour rather than a documented sentence, but it is why the effective cost never rounds down.
+
+### 25.3 What this actually decides
+
+Do not read a total out of this section. The number depends on the ditto count for the metadata involved and on the vdev geometry, and inventing one would be exactly the kind of unsourced precision §24 and the sourcing rules exist to prevent. The shape is what matters: **for a very small file the metadata dominates the data, and on RAIDZ the geometry dominates both.**
+
+Two levers change it, and both are decisions from §21 rather than things to tune later:
+
+- **`ashift`.** At `ashift=9` the sector is 512 B rather than 4 KiB, so every one of the numbers above divides by eight. §21.1 still recommends 12, for reasons that outweigh this — but a dataset of millions of tiny files is the one case that argues the other way, and the choice cannot be revisited.
+- **`special_small_blocks` with a mirrored `special` vdev** (§21.1, §22.1). Routing small blocks and metadata to mirrored SSD changes both multipliers at once: mirror geometry instead of RAIDZ parity, and the metadata IOPS leave the RAIDZ vdev entirely. For a tree of many small files this stops being a performance tweak and becomes a capacity one.
+
+Which is the practical conclusion: **if a dataset will hold millions of small files, that fact belongs in the pool design, not in a property you set afterwards.**
+
 ## References
 
 External sources (block verified to 2026-08-14; per-entry dates given where they differ):
@@ -847,6 +886,7 @@ External sources (block verified to 2026-08-14; per-entry dates given where they
 - Device removal / shrink limits: [OpenZFS zpool-remove](https://openzfs.github.io/openzfs-docs/man/v2.0/8/zpool-remove.8.html), [cr0x.net](https://cr0x.net/en/zfs-vdev-removal-limits/)
 - SMR: [xda-developers](https://www.xda-developers.com/smr-hdds-are-fine-for-your-nas-until-you-try-to-resilver/), [vermaden](https://vermaden.wordpress.com/2024/05/29/zfs-resilver-smr-drives/), [OpenZFS #18132](https://github.com/openzfs/zfs/issues/18132)
 - Fragmentation / defrag: [OpenZFS #3582](https://github.com/openzfs/zfs/issues/3582), [zfs-rewrite(8)](https://openzfs.github.io/openzfs-docs/man/master/8/zfs-rewrite.8.html), [#17246 — introduce `zfs rewrite`](https://github.com/openzfs/zfs/pull/17246), [zpoolprops(7) — the `fragmentation` property](https://openzfs.github.io/openzfs-docs/man/master/7/zpoolprops.7.html) (verified 2026-08-14)
+- Small files (§25): [zfsprops(7) — `recordsize`](https://openzfs.github.io/openzfs-docs/man/master/7/zfsprops.7.html), [zpool-features(7) — `embedded_data`](https://openzfs.github.io/openzfs-docs/man/master/7/zpool-features.7.html), [Btrfs — `max_inline`](https://btrfs.readthedocs.io/en/latest/Administration.html) (verified 2026-08-15)
 - Block cloning (§24): [zfs(4) — `zfs_bclone_enabled`](https://openzfs.github.io/openzfs-docs/man/master/4/zfs.4.html), [zpool-features(7) — `block_cloning`](https://openzfs.github.io/openzfs-docs/man/master/7/zpool-features.7.html) (verified 2026-08-15 against the 2.2, 2.3 and master branches)
 - Fast Dedup: [Klara Systems](https://klarasystems.com/articles/introducing-openzfs-fast-dedup/), [despairlabs](https://despairlabs.com/blog/posts/2024-10-27-openzfs-dedup-is-good-dont-use-it/)
 - Ceph dedup: [Ceph docs — Deduplication (experimental)](https://docs.ceph.com/en/latest/dev/deduplication/), [RGW Object Dedup](https://docs.ceph.com/en/latest/radosgw/s3_objects_dedup/)
@@ -862,6 +902,6 @@ External sources (block verified to 2026-08-14; per-entry dates given where they
 
 ---
 
-*Researched and written in collaboration with Claude (Anthropic); facts verified against the sources above as of July 2026, with the addenda (snapshot layer, reliability profiles, corruption-bug timelines) verified 1–6 August 2026, the growth addendum verified 13 August 2026, and the automount update, the objections section, the `zfs rewrite` correction, the encoding-granularity section, the creation-time checklist, the object-model section and the ZVOL-resize section verified 14 August 2026, and the block-cloning correction verified 15 August 2026. This document is a dated snapshot and is not continuously updated.*
+*Researched and written in collaboration with Claude (Anthropic); facts verified against the sources above as of July 2026, with the addenda (snapshot layer, reliability profiles, corruption-bug timelines) verified 1–6 August 2026, the growth addendum verified 13 August 2026, and the automount update, the objections section, the `zfs rewrite` correction, the encoding-granularity section, the creation-time checklist, the object-model section and the ZVOL-resize section verified 14 August 2026, and the block-cloning correction and the small-file section verified 15 August 2026. This document is a dated snapshot and is not continuously updated.*
 
 *© 2026 Petr Kratochvíl · Licensed under [CC BY 4.0](../LICENSE)*
