@@ -121,6 +121,23 @@ conclusion.
   across the whole tree *plus* `copy_file_range` returning five, which is what
   proves the search worked at all. And keep "the source is silent" distinct from
   "the source says no" — silence goes into the document as silence.
+- **A verified statement does not extend to cases the source never named.** This
+  one is harder to catch than the two above, because a source *was* fetched — it
+  simply answered a neighbouring question. In one day `zfs rewrite` was verified
+  to defragment and recompress, and that was then written as covering ZVOLs (the
+  synopsis takes `file|directory`), as repairing free-space fragmentation (it
+  allocates from the same free space), and as applying `recordsize` (*"Changes
+  to properties that affect the size of a logical block, like recordsize, will
+  have no effect"*). Three wrong claims from one correct one.
+
+  The tell is that sources state their own scope and it is easy to read as
+  incidental: the operand types in a SYNOPSIS, an enumeration like *"These
+  include checksum, compression, dedup and copies"*, a qualifier like "for
+  filesystem datasets". Those lists are usually exhaustive, not illustrative.
+  So before carrying a verified fact to a case the source did not mention,
+  treat the extension as a **new claim** and go back for its own scope line.
+  The question is not "is this true?" but "did the sentence I read say
+  anything about *this*?".
 - Findings from an earlier AI conversation are **hypotheses, not sources**.
   Verify them against primary sources before they enter a document, and correct
   the document plainly when they turn out to be wrong.
