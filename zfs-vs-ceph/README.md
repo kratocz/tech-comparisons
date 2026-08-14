@@ -1,7 +1,7 @@
 # ZFS vs Ceph: choosing the storage engine for a small self-hosted cluster
 
 - **Verdict:** ⭐ **ZFS on Proxmox VE** — valid for the context described below
-- **Facts verified:** July 2026 · addenda 2026-08-01/06 (the Linux snapshot layer §2.5–2.6; reliability profiles incl. the Ceph and ZFS corruption-bug timelines §15) · **2026-08-13 (growing one disk at a time, EC 2+2 vs RAIDZ2 §16 — including two corrections to earlier claims)** · **2026-08-14 (the snapshot automount layer rewritten upstream but still unreleased — §17; the eight objections keeping the decision open, with a pre-registered measurement rule — §18; *correction: `zfs rewrite` exists and four claims were wrong* — §19; encoding is bound to the vdev in ZFS and to the pool in Ceph — §20; what ZFS fixes permanently at creation, and how to decide each — §21; the object model those two assume — §22; resizing a ZVOL under a Proxmox VM, and why discard is usually the real answer — §23) · **2026-08-15 (correction: block cloning is on by default and cross-dataset works — §24; what a small file actually costs, and why it is not the table's 1-byte-write row — §25; choosing `ashift`, and a correction to §21.1 — §26)**
+- **Facts verified:** July 2026 · addenda 2026-08-01/06 (the Linux snapshot layer §2.5–2.6; reliability profiles incl. the Ceph and ZFS corruption-bug timelines §15) · **2026-08-13 (growing one disk at a time, EC 2+2 vs RAIDZ2 §16 — including two corrections to earlier claims)** · **2026-08-14 (the snapshot automount layer rewritten upstream but still unreleased — §17; the eight objections keeping the decision open, with a pre-registered measurement rule — §18; *correction: `zfs rewrite` exists and four claims were wrong* — §19; encoding is bound to the vdev in ZFS and to the pool in Ceph — §20; what ZFS fixes permanently at creation, and how to decide each — §21; the object model those two assume — §22; resizing a ZVOL under a Proxmox VM, and why discard is usually the real answer — §23) · **2026-08-15 (correction: block cloning is on by default and cross-dataset works — §24; what a small file actually costs, and why it is not the table's 1-byte-write row — §25; choosing `ashift`, and a correction to §21.1 — §26; the rest of §21 swept the same way, including one fabricated figure — §27)**
 - **Language:** 🇬🇧 English (canonical) · 🇨🇿 [Čeština — original](README.cs.md)
 - **Author:** Petr Kratochvíl — [krato.cz](https://krato.cz)
 
@@ -657,11 +657,11 @@ Parity is only the instance that comes to mind first. The same rigidity applies 
 |---|---|---|
 | **`ashift`** | The pool property governs later `add`/`attach`/`replace`, but *"Changing this value will not modify any existing vdev, not even on disk replacement"* (§26) | **Use 12 (4 KiB) unless you can prove otherwise.** Too low on a 4Kn drive is permanent read-modify-write on every small write; too high merely wastes a little space on small files. Never rely on auto-detection for a pool that will outlive its first drives — drives lie about their sector size |
 | **Parity level** (raidz1/2/3) | *"Expansion does not change the number of failures that can be tolerated without data loss"* | RAIDZ2 up to ~10-wide; RAIDZ3 beyond that, or where resilver windows run into weeks (SMR, very full pools). §16 and the resilver arithmetic say RAIDZ2 plus monthly scrubs beats RAIDZ3 for this profile |
-| **vdev type** (mirror / raidz / draid) | No conversion exists in either direction — and it decides whether the pool's *layout* stays negotiable at all (§21.4) | Mirrors buy IOPS that scale with vdev count, growth two disks at a time, and a removable vdev, at 50 % efficiency. RAIDZ buys capacity at ~75 %, but one vdev delivers the random IOPS of roughly one disk and can never be taken back out |
+| **vdev type** (mirror / raidz / draid) | No conversion exists in either direction — and it decides whether the pool's *layout* stays negotiable at all (§21.4) | Mirrors buy IOPS that scale with vdev count, growth two disks at a time, and a removable vdev, at 50 % efficiency. RAIDZ buys capacity at ~75 %, but one vdev delivers the random IOPS of roughly one disk — IOPS scale with redundancy groups, not spindles (§27.3) — and can never be taken back out |
 | **Adding a RAIDZ vdev** | It can never be removed: removal requires that *"the primary pool storage does not contain a top-level raidz or draid vdev"* | Treat every `zpool add` of a raidz vdev as irreversible. There is no undo, only a rebuild |
 | **`special` / `dedup` vdev on a RAIDZ pool** | Blocked by the same restriction — with a raidz present, nothing can be removed | Decide at build time whether small-file and metadata IOPS matter. And **mirror it**: it is pool storage, not cache, so losing it loses the pool |
-| **Pool feature flags** | `zpool upgrade` enables; nothing disables | Enable deliberately. Enabling a feature can make the pool unimportable by an older ZFS — which matters for recovery on a rescue system |
-| **draid geometry** (data / parity / spares / groups) | Fixed at creation like raidz | Only relevant above ~20 disks; below that RAIDZ is simpler |
+| **Pool feature flags** | *"Features cannot be disabled once they have been enabled"* | Enable deliberately. Note the states: merely *enabled* still lets older software import the pool; *active* is what needs support, and even then a read-only-compatible feature still permits a read-only import (§27.1) |
+| **draid geometry** (data / parity / spares / groups) | Fixed at creation like raidz | Buys sequential resilvering and distributed spares, at the cost of a fixed stripe width padded with zeros — good for large sequential data, poor for many small files (§25, §27.2) |
 
 ### 21.2 Dataset — fixed for the life of the dataset
 
@@ -909,6 +909,43 @@ Not on 12 being optimal, but on the two ways of being wrong costing wildly diffe
 
 §21's practical conclusion is unaffected — an existing vdev's `ashift` is fixed for its life, and that is why the property belongs on the irreversible list. Only the description of the mechanism was wrong, and it is corrected in place.
 
+## 27. The rest of §21, checked (added 2026-08-15)
+
+§26 exists because a one-line justification in §21 did not survive being asked about. That is a poor reason for the other one-liners to go unchecked, so they were swept the same way: each terse "why it is permanent" claim taken back to a primary source. Three needed changing, and one of the three was invented rather than merely imprecise.
+
+### 27.1 Pool feature flags — the claim was too strong
+
+§21.1 said enabling a feature *"can make the pool unimportable by an older ZFS"*. The first half of the row was right — *"Features cannot be disabled once they have been enabled."* The second half conflated two states that the documentation keeps apart:
+
+- **Enabled**: *"Administrator has marked it active, but on-disk format changes haven't yet taken effect; **older software can still import the pool**"*.
+- **Active**: the on-disk changes are in effect, and read-write support becomes mandatory — *"and read-only support is required unless the feature is read-only compatible"*.
+
+So enabling a feature does not cost importability at all; **activating** one does, and even then a read-only-compatible feature still permits a read-only import on an implementation that does not know it. `block_cloning`, for instance, is marked read-only compatible.
+
+The practical advice survives — enable deliberately, because you cannot go back — but the reason given for it was wrong, and the rescue case it implied (an older ZFS refusing the pool) is narrower than stated.
+
+### 27.2 draid geometry — the threshold was fabricated
+
+§21.1 said dRAID is *"only relevant above ~20 disks"*. **There is no such figure in the documentation, and none was ever checked.** It was a plausible-sounding number written as though it had a source, which is precisely the failure the sourcing rules exist to prevent, and it is worse than an overstatement because a reader has no way to see that it rests on nothing.
+
+What the documentation does provide is different and more useful. dRAID is *"a variant of raidz that provides integrated distributed hot spares, allowing for faster resilvering, while retaining the benefits of raidz"*, built from *"multiple internal raidz groups, each with D data devices and P parity devices"* distributed over all children, with `data` defaulting to 8 and a fixed stripe width *"(padding as necessary with zeros) to allow fully sequential resilvering"*. The nearest thing to a sizing rule is the general raidz guidance of *"between 3 and 9"* disks per group *"to help increase performance"*.
+
+The honest reformulation is therefore about shape rather than a count: dRAID buys **sequential resilvering and distributed spares** at the cost of a fixed stripe width that pads small blocks with zeros — which, read against §25, makes it a poor fit for many small files and a good one for large sequential data where resilver time is the dominating worry.
+
+### 27.3 The IOPS claim needed its citation, not a correction
+
+§21.1 states that one RAIDZ vdev *"delivers the random IOPS of roughly one disk"*. The documentation says nothing about raidz IOPS directly — but it gives dRAID's, and the formula makes the mechanism explicit: *"floor((N-S)/(D+P))*single_drive_IOPS"*. IOPS scale with the number of **redundancy groups**, not with the number of disks. A single raidz vdev is one group, which is why it performs as one drive, and why mirrors — one group each — scale with vdev count.
+
+That is the citation the claim was missing. It is sound, and it now points at the sentence that makes it legible.
+
+### 27.4 What held
+
+- **Parity level** — verbatim: *"Expansion does not change the number of failures that can be tolerated without data loss."*
+- **Adding a RAIDZ vdev** — verbatim: removal requires that *"the primary pool storage does not contain a top-level raidz or draid vdev"*.
+- **`special` / `dedup` vdev on a RAIDZ pool** — an inference, but a sound one: those types appear in the removable list, and the raidz restriction above gates all removal, so their presence in a RAIDZ pool is permanent.
+- **vdev type conversion** — an absence, argued two ways rather than assumed: the `zpool` subcommand list contains no conversion or reshape operation, and expansion is documented as preserving the parity level. Checked with a positive control, since an empty search is not a source.
+- **All five §21.2 dataset properties** — each already carried the documented wording; none moved.
+
 ## References
 
 External sources (block verified to 2026-08-14; per-entry dates given where they differ):
@@ -935,6 +972,6 @@ External sources (block verified to 2026-08-14; per-entry dates given where they
 
 ---
 
-*Researched and written in collaboration with Claude (Anthropic); facts verified against the sources above as of July 2026, with the addenda (snapshot layer, reliability profiles, corruption-bug timelines) verified 1–6 August 2026, the growth addendum verified 13 August 2026, and the automount update, the objections section, the `zfs rewrite` correction, the encoding-granularity section, the creation-time checklist, the object-model section and the ZVOL-resize section verified 14 August 2026, and the block-cloning correction the small-file section and the `ashift` section verified 15 August 2026. This document is a dated snapshot and is not continuously updated.*
+*Researched and written in collaboration with Claude (Anthropic); facts verified against the sources above as of July 2026, with the addenda (snapshot layer, reliability profiles, corruption-bug timelines) verified 1–6 August 2026, the growth addendum verified 13 August 2026, and the automount update, the objections section, the `zfs rewrite` correction, the encoding-granularity section, the creation-time checklist, the object-model section and the ZVOL-resize section verified 14 August 2026, and the block-cloning correction the small-file section, the `ashift` section and the §21 sweep verified 15 August 2026. This document is a dated snapshot and is not continuously updated.*
 
 *© 2026 Petr Kratochvíl · Licensed under [CC BY 4.0](../LICENSE)*

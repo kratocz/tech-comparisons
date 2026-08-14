@@ -1,7 +1,7 @@
 # ZFS vs Ceph — volba storage enginu pro malý self-hosted cluster
 
 - **Verdikt:** ⭐ **ZFS na Proxmox VE** — platí pro kontext popsaný níže
-- **Fakta ověřena:** červenec 2026 · doplňky 2026-08-01/06 (snapshot vrstva §2.5–2.6; spolehlivostní profily vč. timelines korupčních bugů Ceph i ZFS §15) · **2026-08-13 (růst po jednom disku, EC 2+2 vs RAIDZ2 §16 — vč. dvou oprav dřívějších tvrzení)** · **2026-08-14 (přepis snapshot automount vrstvy upstreamem, zatím nevydaný — §17; osm námitek držících rozhodnutí otevřené, s předem sepsaným měřicím pravidlem — §18; *oprava: `zfs rewrite` existuje a čtyři tvrzení byla chybná* — §19; kódování je v ZFS vázané na vdev a v Cephu na pool — §20; co ZFS zafixuje napevno při vytvoření a jak o tom rozhodnout — §21; objektový model, který obě předpokládají — §22; změna velikosti ZVOLu pod Proxmox VM a proč je skutečnou odpovědí obvykle discard — §23) · **2026-08-15 (oprava: block cloning je defaultně zapnutý a cross-dataset funguje — §24; kolik doopravdy stojí malý soubor a proč to není řádek tabulky o zápisu 1 bajtu — §25; volba `ashift` a oprava k §21.1 — §26)**
+- **Fakta ověřena:** červenec 2026 · doplňky 2026-08-01/06 (snapshot vrstva §2.5–2.6; spolehlivostní profily vč. timelines korupčních bugů Ceph i ZFS §15) · **2026-08-13 (růst po jednom disku, EC 2+2 vs RAIDZ2 §16 — vč. dvou oprav dřívějších tvrzení)** · **2026-08-14 (přepis snapshot automount vrstvy upstreamem, zatím nevydaný — §17; osm námitek držících rozhodnutí otevřené, s předem sepsaným měřicím pravidlem — §18; *oprava: `zfs rewrite` existuje a čtyři tvrzení byla chybná* — §19; kódování je v ZFS vázané na vdev a v Cephu na pool — §20; co ZFS zafixuje napevno při vytvoření a jak o tom rozhodnout — §21; objektový model, který obě předpokládají — §22; změna velikosti ZVOLu pod Proxmox VM a proč je skutečnou odpovědí obvykle discard — §23) · **2026-08-15 (oprava: block cloning je defaultně zapnutý a cross-dataset funguje — §24; kolik doopravdy stojí malý soubor a proč to není řádek tabulky o zápisu 1 bajtu — §25; volba `ashift` a oprava k §21.1 — §26; zbytek §21 projetý stejným sítem, včetně jednoho vymyšleného čísla — §27)**
 - **Jazyk:** 🇨🇿 čeština (originál) · 🇬🇧 [English version](README.md)
 - **Autor:** Petr Kratochvíl — [krato.cz](https://krato.cz)
 
@@ -657,11 +657,11 @@ Parita je jen ten případ, který napadne první. Táž tuhost platí pro **jak
 |---|---|---|
 | **`ashift`** | Property na poolu řídí následné `add`/`attach`/`replace`, ale *"Changing this value will not modify any existing vdev, not even on disk replacement"* (§26) | **Použij 12 (4 KiB), pokud neumíš doložit opak.** Příliš nízká hodnota na 4Kn disku znamená trvalý read-modify-write při každém malém zápisu; příliš vysoká jen mrhá trochou místa u malých souborů. Nikdy nespoléhej na autodetekci u poolu, který přežije své první disky — disky o velikosti sektoru lžou |
 | **Úroveň parity** (raidz1/2/3) | *"Expansion does not change the number of failures that can be tolerated without data loss"* | RAIDZ2 do zhruba deseti disků; RAIDZ3 nad to, nebo tam, kde se okno resilveru protahuje na týdny (SMR, hodně plné pooly). §16 i výpočet kolem resilveru říkají, že pro tenhle profil vyhrává RAIDZ2 s měsíčním scrubem |
-| **Typ vdevu** (mirror / raidz / draid) | Konverze neexistuje ani jedním směrem — a rozhoduje o tom, jestli *rozvržení* poolu vůbec zůstane vyjednatelné (§21.4) | Mirrory kupují IOPS škálující s počtem vdevů, růst po dvou discích a odebratelný vdev, za 50 % efektivity. RAIDZ kupuje kapacitu kolem 75 %, ale jeden vdev dodá náhodné IOPS zhruba jednoho disku a nikdy ho nedostaneš ven |
+| **Typ vdevu** (mirror / raidz / draid) | Konverze neexistuje ani jedním směrem — a rozhoduje o tom, jestli *rozvržení* poolu vůbec zůstane vyjednatelné (§21.4) | Mirrory kupují IOPS škálující s počtem vdevů, růst po dvou discích a odebratelný vdev, za 50 % efektivity. RAIDZ kupuje kapacitu kolem 75 %, ale jeden vdev dodá náhodné IOPS zhruba jednoho disku — IOPS škálují s redundančními skupinami, ne s vřeteny (§27.3) — a nikdy ho nedostaneš ven |
 | **Přidání RAIDZ vdevu** | Nikdy ho nejde odebrat: odstranění vyžaduje, aby *"the primary pool storage does not contain a top-level raidz or draid vdev"* | Ber každé `zpool add` raidz vdevu jako nevratné. Undo neexistuje, jen přestavba |
 | **`special` / `dedup` vdev na RAIDZ poolu** | Blokuje ho totéž omezení — je-li v poolu raidz, nejde odebrat nic | Rozhodni při stavbě, jestli ti záleží na IOPS metadat a malých souborů. A **zrcadli ho**: je to úložiště poolu, ne cache, takže jeho ztráta bere pool |
-| **Feature flagy poolu** | `zpool upgrade` zapíná, vypnout nejde nic | Zapínej vědomě. Zapnutá feature může udělat pool neimportovatelným pro starší ZFS — což se počítá při záchraně z rescue systému |
-| **Geometrie draid** (data / parita / spare / skupiny) | Fixní při vytvoření stejně jako raidz | Relevantní až nad zhruba dvaceti disky; pod tím je RAIDZ jednodušší |
+| **Feature flagy poolu** | *"Features cannot be disabled once they have been enabled"* | Zapínej vědomě. Pozor na stavy: pouhé *enabled* pool starším softwarem naimportovat pořád nechá; podporu vyžaduje až *active*, a i tehdy read-only kompatibilní featura dovolí read-only import (§27.1) |
+| **Geometrie draid** (data / parita / spare / skupiny) | Fixní při vytvoření stejně jako raidz | Kupuje sekvenční resilver a distribuované spare disky za cenu pevné šířky stripu dopadané nulami — dobré pro velká sekvenční data, špatné pro množství malých souborů (§25, §27.2) |
 
 ### 21.2 Dataset — napevno na celou životnost datasetu
 
@@ -909,6 +909,43 @@ Ne na tom, že by 12 byla optimální, ale na tom, že ty dva způsoby, jak se s
 
 Praktický závěr §21 to nemění — `ashift` existujícího vdevu je daný na celou jeho životnost, a právě proto ta property patří na seznam nevratných. Chybný byl jen popis mechanismu a je opraven na místě.
 
+## 27. Zbytek §21, přeověřený (doplněno 2026-08-15)
+
+§26 vznikla proto, že jednověté odůvodnění v §21 nesneslo dotaz. To je špatný důvod, proč by ostatní jednověté položky měly zůstat nezkontrolované, takže prošly stejným sítem: každé úsečné „proč je to trvalé“ dohledáno k primárnímu zdroji. Tři bylo potřeba změnit a jedna z těch tří byla vymyšlená, ne jen nepřesná.
+
+### 27.1 Feature flagy poolu — tvrzení bylo příliš silné
+
+§21.1 tvrdila, že zapnutí featury *"může udělat pool neimportovatelným pro starší ZFS"*. První polovina řádku platila — *"Features cannot be disabled once they have been enabled."* Druhá slila dva stavy, které dokumentace drží odděleně:
+
+- **Enabled**: *"Administrator has marked it active, but on-disk format changes haven't yet taken effect; **older software can still import the pool**"*.
+- **Active**: změny na disku jsou v platnosti a read-write podpora se stává povinnou — *"and read-only support is required unless the feature is read-only compatible"*.
+
+Zapnutí featury tedy importovatelnost nestojí vůbec; stojí ji **aktivace**, a i tehdy read-only kompatibilní featura pořád dovolí read-only import implementaci, která ji nezná. `block_cloning` je například jako read-only kompatibilní označený.
+
+Praktická rada přežívá — zapínej vědomě, protože zpátky to nejde —, ale důvod k ní byl chybný a záchranný scénář, který naznačovala (starší ZFS pool odmítne), je užší, než jak stál.
+
+### 27.2 Geometrie draid — ten práh byl vymyšlený
+
+§21.1 tvrdila, že dRAID je *"relevantní až nad zhruba dvaceti disky"*. **Žádné takové číslo v dokumentaci není a nikdy ověřované nebylo.** Bylo to věrohodně znějící číslo napsané, jako by mělo zdroj — což je přesně to selhání, kterému mají pravidla o zdrojích předcházet, a je horší než přehnané tvrzení, protože čtenář nemá jak poznat, že nestojí na ničem.
+
+Co dokumentace nabízí, je jiné a užitečnější. dRAID je *"a variant of raidz that provides integrated distributed hot spares, allowing for faster resilvering, while retaining the benefits of raidz"*, postavený z *"multiple internal raidz groups, each with D data devices and P parity devices"* rozprostřených přes všechny členy, s `data` defaultně 8 a pevnou šířkou stripu *"(padding as necessary with zeros) to allow fully sequential resilvering"*. Nejbližší věcí k pravidlu na velikost je obecné doporučení pro raidz skupiny *"between 3 and 9"* disků *"to help increase performance"*.
+
+Poctivá přeformulace je tedy o tvaru, ne o počtu: dRAID kupuje **sekvenční resilver a distribuované spare disky** za cenu pevné šířky stripu, která malé bloky dopadá nulami — což ve světle §25 z něj dělá špatnou volbu pro množství malých souborů a dobrou pro velká sekvenční data, kde je hlavní starostí doba resilveru.
+
+### 27.3 Tvrzení o IOPS potřebovalo citaci, ne opravu
+
+§21.1 uvádí, že jeden RAIDZ vdev *"dodá náhodné IOPS zhruba jednoho disku"*. Dokumentace o IOPS raidz přímo nemluví — ale uvádí je pro dRAID a ten vzorec mechanismus zviditelňuje: *"floor((N-S)/(D+P))*single_drive_IOPS"*. IOPS škálují s počtem **redundančních skupin**, ne s počtem disků. Jeden raidz vdev je jedna skupina, proto se chová jako jeden disk — a proto mirrory, každý jako vlastní skupina, škálují s počtem vdevů.
+
+To je ta citace, která tvrzení chyběla. Platí a teď ukazuje na větu, která ho činí čitelným.
+
+### 27.4 Co obstálo
+
+- **Úroveň parity** — doslova: *"Expansion does not change the number of failures that can be tolerated without data loss."*
+- **Přidání RAIDZ vdevu** — doslova: odstranění vyžaduje, aby *"the primary pool storage does not contain a top-level raidz or draid vdev"*.
+- **`special` / `dedup` vdev na RAIDZ poolu** — dovození, ale správné: tyhle typy v seznamu odstranitelných jsou a raidz omezení výše hradí veškeré odstraňování, takže jejich přítomnost v RAIDZ poolu je trvalá.
+- **Konverze typu vdevu** — absence, doložená dvěma způsoby místo předpokládaná: seznam subcommandů `zpool` neobsahuje žádnou konverzi ani reshape a rozšíření je dokumentované jako zachovávající úroveň parity. Ověřeno s pozitivní kontrolou, protože prázdné hledání není zdroj.
+- **Všech pět datasetových properties z §21.2** — každá už nesla doloženou formulaci; žádná se nehnula.
+
 ## Reference
 
 Externí zdroje (blok ověřen k 2026-08-14; dílčí data uvedena tam, kde se liší):
@@ -935,6 +972,6 @@ Externí zdroje (blok ověřen k 2026-08-14; dílčí data uvedena tam, kde se l
 
 ---
 
-*Vzniklo ve spolupráci s Claude (Anthropic); fakta ověřena proti uvedeným zdrojům k červenci 2026, doplňky (snapshot vrstva, spolehlivostní profily, timelines korupčních bugů) k 1.–6. srpnu 2026, doplněk o růstu po jednom disku k 13. srpnu 2026, a aktualizace automount vrstvy, sekce o námitkách, oprava k `zfs rewrite`, sekce o granularitě kódování, checklist rozhodnutí při vytvoření, sekce o objektovém modelu i sekce o změně velikosti ZVOLu k 14. srpnu 2026 a oprava k block cloningu sekce o malých souborech i sekce o `ashift` k 15. srpnu 2026. Dokument je datovaný snapshot a průběžně se neaktualizuje.*
+*Vzniklo ve spolupráci s Claude (Anthropic); fakta ověřena proti uvedeným zdrojům k červenci 2026, doplňky (snapshot vrstva, spolehlivostní profily, timelines korupčních bugů) k 1.–6. srpnu 2026, doplněk o růstu po jednom disku k 13. srpnu 2026, a aktualizace automount vrstvy, sekce o námitkách, oprava k `zfs rewrite`, sekce o granularitě kódování, checklist rozhodnutí při vytvoření, sekce o objektovém modelu i sekce o změně velikosti ZVOLu k 14. srpnu 2026 a oprava k block cloningu sekce o malých souborech, sekce o `ashift` i prohlídka §21 k 15. srpnu 2026. Dokument je datovaný snapshot a průběžně se neaktualizuje.*
 
 *© 2026 Petr Kratochvíl · Licence [CC BY 4.0](../LICENSE)*
