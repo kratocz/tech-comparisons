@@ -1,7 +1,7 @@
 # ZFS vs Ceph — volba storage enginu pro malý self-hosted cluster
 
 - **Verdikt:** ⭐ **ZFS na Proxmox VE** — platí pro kontext popsaný níže
-- **Fakta ověřena:** červenec 2026 · doplňky 2026-08-01/06 (snapshot vrstva §2.5–2.6; spolehlivostní profily vč. timelines korupčních bugů Ceph i ZFS §15) · **2026-08-13 (růst po jednom disku, EC 2+2 vs RAIDZ2 §16 — vč. dvou oprav dřívějších tvrzení)** · **2026-08-14 (přepis snapshot automount vrstvy upstreamem, zatím nevydaný — §17)**
+- **Fakta ověřena:** červenec 2026 · doplňky 2026-08-01/06 (snapshot vrstva §2.5–2.6; spolehlivostní profily vč. timelines korupčních bugů Ceph i ZFS §15) · **2026-08-13 (růst po jednom disku, EC 2+2 vs RAIDZ2 §16 — vč. dvou oprav dřívějších tvrzení)** · **2026-08-14 (přepis snapshot automount vrstvy upstreamem, zatím nevydaný — §17; osm námitek držících rozhodnutí otevřené, s předem sepsaným měřicím pravidlem — §18)**
 - **Jazyk:** 🇨🇿 čeština (originál) · 🇬🇧 [English version](README.md)
 - **Autor:** Petr Kratochvíl — [krato.cz](https://krato.cz)
 
@@ -498,6 +498,96 @@ Přepis přistál **šest dní po** posledních vydáních a do 2.3.x LTS větve
 
 *§2.5 zůstává tak, jak byla napsána. Tohle je stárnutí, ne chyba: sekce byla k 2026-08-01 přesná a svět se pod ní pohnul, což je přesně to, na co datovaný snímek je.*
 
+## 18. Námitky, které drží rozhodnutí otevřené (doplněno 2026-08-14)
+
+Tenhle dokument došel v §14 k verdiktu. Rok nato jsem podle něj nejednal — a ta mezera je sama o sobě informace. Srovnání, které zaznamená jen závěr a už ne důvody, proč ho vlastní autor nepřijal, je méně užitečné než takové, které přizná obojí. Následuje osm námitek, kvůli kterým se pořád dívám po Cephu, u každé to, co doopravdy platí, a jestli je Ceph tím, co ji řeší.
+
+Nepříjemné shrnutí zní, že **Ceph řeší jednu z osmi**, dvě zhoršuje a tří se netýká.
+
+| # | Námitka | Platí? | Řeší to Ceph? |
+|---|---|---|---|
+| 1 | Zásadní bugy v OpenZFS na Linuxu | Ano — a Ceph má vlastní (§15) | ❌ ne |
+| 2 | LUKS na každý disk jen kvůli posílání snapshotů | Premisa je obrácená | ❌ Ceph je taky per-OSD dm-crypt |
+| 3 | Nelze později přidat větší disk | **Ano — nejsilnější bod** | 🟡 ano, ale viz #8 |
+| 4 | Chybí defragmentace | Ano | ❌ BlueStore fragmentuje taky |
+| 5 | RAM po dedupu se nevrátí | Z velké části ano | ❌ Ceph dedup je experimentální |
+| 6 | Pomalé čtení a zápisy proti Btrfs/ext4 | Často — a příčiny jsou ověřitelné | ❌❌ **v tomhle měřítku výrazně horší** |
+| 7 | ZFS kdysi pokazilo vlastníky souborů | Neumím posoudit | — |
+| 8 | Nelze růst z 1 uzlu s EC na 3 uzly s replikací | **Ano, a hůř, než zní** | ❌ tohle je cena **za** Ceph |
+
+### 18.1 Bugy (námitka 1)
+
+Platí a §15 je dokumentuje. Jenže §15 dokumentuje symetricky i timeline Cephu a užitečná otázka nezní „má to bugy“, ale „kde ty bugy sedí vzhledem k tomu, jak to budu používat“. ZFS je má nahloučené v `send` cestách a v čerstvě dodaných funkcích; Ceph v CephFS snapshotech s multi-MDS, ve spotřebních SSD bez PLP a — což je vlastní závěr §15 — v **chybě obsluhy**, která je dominantní příčinou reálných ztrát a roste s počtem pohyblivých částí. Ceph má pět a víc démonů proti jedné sadě příkazů u ZFS. §17 je datový bod opačným směrem: třída automount paniců se zavřela **přepisem** s účelově psanou sadou testů, ne záplatou.
+
+### 18.2 Šifrování (námitka 2)
+
+Premisa je obrácená, a stojí za to to říct nahlas, protože to byla moje vlastní úvaha. **LUKS nikdy nebyl cenou za replikaci.** Nativní šifrování ZFS umí `zfs send -w` (raw), který posílá šifrovaná data a klíč na cíli nepotřebuje. §12 zvolila LUKS z nesouvisejících důvodů: nativní šifrování nechává čitelná metadata poolu (jména datasetů a snapshotů, velikosti, časy) a jeho `send`/`recv` cesta měla korupční historii, jejíž hlavní issue ([#12014](https://github.com/openzfs/zfs/issues/12014)) se zavřelo až 2025-05-19.
+
+A Ceph šifrování po zařízeních neuteče: *"Logical volumes can be encrypted using `dmcrypt` by specifying the `--dmcrypt` flag when creating OSDs."* Každý OSD je dm-crypt svazek. Rozdíl je v tom, že to orchestruje `ceph-volume` místo Clevisu — reálný ergonomický zisk, ale ne změna modelu.
+
+### 18.3 Větší disky (námitka 3)
+
+Platí a je to nejsilnější z osmi. Uvnitř RAIDZ vdevu je využitelná kapacita na disk daná nejmenším členem, takže 40TB disk koupený do pole z 30TB disků přispěje 30 TB. Než sáhneš po Cephu, existují dvě odpovědi v ZFS. **Mirror vdevy**: přidáváš a měníš po dvou a s `autoexpand=on` výměna obou půlek jednoho zrcadla dá prostor okamžitě — za 50 % efektivity místo 75 % u RAIDZ2, což při cíli 150 TiB znamená hodně disků navíc. **Celé vdevy**: `raidz2` ze 4×30 TB a pozdější `raidz2` ze 4×40 TB koexistují v jednom poolu, za cenu nákupu po čtyřech.
+
+Ceph to řeší nativně přes CRUSH váhy a je to skutečná, durable výhoda. Je to zároveň ta výhoda, kterou §18.8 z větší části ruší.
+
+### 18.4 Defragmentace (námitka 4)
+
+Platí — nástroj neexistuje a jediným lékem je přepis přes `send`/`recv`. Jenže srovnávací tabulka dává **na tomhle řádku 🟡 i Cephu**: BlueStore fragmentuje také. ✅ tam patří Btrfs. A konkrétně u téměř zaplněného pole se způsoby selhání liší v Cephův neprospěch: plný ZFS pool zpomalí, zatímco Ceph pool při dosažení full ratio **přestane přijímat zápisy**. Skutečnou odpovědí na „pole bude často hodně plné“ není engine, ale kupovat kapacitu dřív.
+
+### 18.5 Deduplikace (námitka 5)
+
+Z velké části platí. Fast Dedup v OpenZFS 2.3 přinesl `zpool ddtprune`, který *"prunes older unique entries from the dedup table"* — ale DDT neodstraní, takže „tu RAM už nikdy nedostanu zpátky“ zůstává férovým popisem. Řešením je, že tohle je funkce, která se nemá zapínat: na bulk médiích a fotkách deduplikace nezíská skoro nic, což je závěr zdrojů, které §7 už cituje. Vlastní deduplikace Cephu je dokumentovaná jako experimentální. Tahle námitka je o tlačítku, které nemá zmáčknout ani jeden systém.
+
+### 18.6 Výkon (námitka 6)
+
+Často platí a je to námitka, která odvádí nejvíc emoční práce — právě proto si zaslouží nejpřesnější zacházení. ZFS je na řadě workloadů opravdu pomalejší než ext4 a příčiny jsou konkrétní a ověřitelné, ne záhadné. Ta hlavní je geometrie: **jeden RAIDZ vdev dodá náhodné IOPS zhruba jednoho disku**, takže osmidiskové RAIDZ2 nemá IOPS osmi disků; mirrory škálují s počtem vdevů. Pak následuje `recordsize` neodpovídající workloadu, synchronní zápisy bez SLOGu, ARC vyhladovělý virtuály a `atime=on`, který mění čtení na zápisy. `special` vdev se `special_small_blocks` sundá metadatové IOPS z RAIDZ vdevu úplně a bývá největší dostupnou výhrou — za tu cenu, že to není cache, ale úložiště poolu: **ztratíš ho bez zrcadla a pool je pryč**.
+
+Tahle námitka ale míří od Cephu, ne k němu. Na jednom až třech uzlech s jedním klientem je Ceph výrazně pomalejší než ZFS a s ext4 nesrovnatelný: každý zápis jde po síti a musí se trvanlivě potvrdit na každé replice, než dostane klient odpověď — přesně proto jsou PLP SSD a 10GbE prakticky povinné (§15). Rychlost Cephu pochází z paralelismu přes mnoho OSD a mnoho klientů, a nic z toho tenhle profil nemá.
+
+### 18.7 Incident s vlastníky (námitka 7)
+
+Zaznamenáno, ne vymluveno. Roky staré, detaily se nedochovaly, takže to teď nejde diagnostikovat. Věrohodní kandidáti z toho, co je zdokumentované: regrese 0.7.7→0.7.8 s mizejícími soubory (§15), nesoulad NFSv4 a POSIX ACL na Linuxu (§2.6, [#4966](https://github.com/openzfs/zfs/issues/4966)), nebo idmapping při `recv`. Jako důkaz o konkrétním bugu je to nepoužitelné; jako datový bod o důvěře je to reálné, a důvěra není zaokrouhlovací chyba, když je člověk ve tři ráno na všechno sám.
+
+### 18.8 Z jednoho uzlu s EC na tři s replikací (námitka 8)
+
+Platí, a podstatně hůř, než jak námitka zní. EC profil je neměnný: *"the profile cannot be modified after the pool is created. If you find that you need an erasure-coded pool with a profile different than the one you have created, you must create a new pool … all objects from the wrongly configured pool must be moved to the newly created pool."* A topologický požadavek je tvrdý: *"Most erasure-coded pool deployments require at least `k+m` CRUSH failure domains, which in most cases means racks or hosts. There are operational advantages to planning EC profiles and cluster topology so that there are at least `k+m+1` failure domains."*
+
+EC 2+2 tedy potřebuje **čtyři** failure domény, doporučeně pět. Tři uzly s EC 2+2 na úrovni hostů nejsou pomalé ani neefektivní — nejsou možné.
+
+| Krok | Co reálně dostaneš |
+|---|---|
+| 1 uzel, EC 2+2, doména = OSD | Funguje, ale **žádná odolnost proti ztrátě stroje** |
+| → 3 uzly, EC 2+2 na hostech | ❌ **nelze**, chybí čtvrtá doména |
+| → 3 uzly, EC 2+1 | 67 % efektivity, **jen jedna parita** (slabší než RAIDZ2), nový pool + přesun všech dat |
+| → 3 uzly, replikace size=3 | 33 % efektivity, nový pool + přesun všech dat |
+| → EC 2+2 na hostech | Až od **4–5 uzlů** |
+
+Každá cesta pryč z jednouzlového EC znamená nový pool a plnou migraci, k tomu volné místo na obojí naráz nebo trpělivost dělat to po dávkách. Je to migrační past ZFS→Ceph z §10 zopakovaná **uvnitř Cephu**, kde se jí změnou enginu vyhnout nelze.
+
+A z velké části ruší námitku 3. Když změna topologie stejně znamená plnou migraci pool→pool, je to přesně okamžik, kdy by šel ZFS pool přestavět s novou geometrií vdevů. Z Cephovy výhody zbývá užší tvrzení, že heterogenní disky zvládá líp **mezi** změnami topologie.
+
+### 18.9 Co ten seznam doopravdy vybírá
+
+Přečti ho podle toho, co preferuje, ne co odmítá: defragmentaci, známý výkon, růst po jednom disku, žádnou dedup past, žádné překvapení se šifrováním po discích. To popisuje **stávající stack `mdadm + LUKS + LVM + Btrfs`**, jehož jediná zdokumentovaná slabina ve srovnávací tabulce je jeden řádek — *tichou korupci detekuje, opravit ji neumí* — a ten řádek jde zavřít přidáním `dm-integrity` pod něj.
+
+Ty námitky tedy neukazují na Ceph. Ukazují na vyladěné ZFS, nebo na zůstat.
+
+### 18.10 Rozhodovací pravidlo, sepsané před měřením (2026-08-14)
+
+Námitka 6 je jediná z osmi, kterou jde levně otestovat, a emočně nese ostatní. Dostává proto pravidlo sepsané teď, dřív než existuje jakékoli číslo.
+
+**Test.** Postavit layout, který by se reálně nasadil — což vynutí rozhodnutí mirrory versus RAIDZ2, protože právě to určuje IOPS — na skutečném hardwaru, se zrcadleným `special` vdevem, pokud jsou malé soubory ve hře, s `recordsize` odpovídajícím workloadu a s ARC, který nehladoví. Změřit proti Btrfs na týchž discích se stejnou skladbou zátěže: sekvenční čtení a zápis pro média a metadatově náročný průchod stromem u fotek a dokumentů.
+
+**Brány**, v pořadí závaznosti:
+
+1. **Absolutní.** ZFS musí při sekvenčním přenosu nasytit síťovou linku a průchod stromem fotek zvládnout tak rychle, aby to při používání nestálo za řeč. Tahle brána rozhoduje, protože otázka nezní, jestli se ZFS vyrovná Btrfs, ale jestli je dost rychlé na to, k čemu to pole je.
+2. **Relativní.** Vyladěné ZFS se vejde do 25 % od Btrfs v sekvenční propustnosti a do dvojnásobku v metadatovém průchodu.
+
+**Co který výsledek znamená.** Propadne brána 1 → verdikt z §14 padá poctivě a náhradou je stávající stack plus `dm-integrity`, **ne** Ceph, protože §18.6 a §18.8 ho vylučují na základě téhož měření. Projde brána 1 a propadne 2 → přijatelné; zaznamenat rozdíl a jít dál. Projdou obě → námitky 1, 4, 5, 6 a 7 naráz ztrácejí většinu síly a zbývají jen 3 a 8 — které se navzájem z velké části ruší.
+
+**Co by z Cephu přece jen udělalo správnou volbu:** růst po jednotlivých různě velkých discích po mnoho let **a** přijetí 10GbE, PLP SSD, čtyř a více uzlů kvůli smysluplnému EC a podstatně horší latence pro jednoho klienta. To je konzistentní obchod. Není to oprava ničeho z tohoto seznamu.
+
 ## Reference
 
 Externí zdroje (ověřeno 2026-07; snapshot/ACL doplňky ověřeny 2026-08-01):
@@ -519,6 +609,6 @@ Externí zdroje (ověřeno 2026-07; snapshot/ACL doplňky ověřeny 2026-08-01):
 
 ---
 
-*Vzniklo ve spolupráci s Claude (Anthropic); fakta ověřena proti uvedeným zdrojům k červenci 2026, doplňky (snapshot vrstva, spolehlivostní profily, timelines korupčních bugů) k 1.–6. srpnu 2026 doplněk o růstu po jednom disku k 13. srpnu 2026 a aktualizace automount vrstvy k 14. srpnu 2026. Dokument je datovaný snapshot a průběžně se neaktualizuje.*
+*Vzniklo ve spolupráci s Claude (Anthropic); fakta ověřena proti uvedeným zdrojům k červenci 2026, doplňky (snapshot vrstva, spolehlivostní profily, timelines korupčních bugů) k 1.–6. srpnu 2026 doplněk o růstu po jednom disku k 13. srpnu 2026 a aktualizace automount vrstvy i sekce o námitkách k 14. srpnu 2026. Dokument je datovaný snapshot a průběžně se neaktualizuje.*
 
 *© 2026 Petr Kratochvíl · Licence [CC BY 4.0](../LICENSE)*

@@ -1,7 +1,7 @@
 # ZFS vs Ceph: choosing the storage engine for a small self-hosted cluster
 
 - **Verdict:** ⭐ **ZFS on Proxmox VE** — valid for the context described below
-- **Facts verified:** July 2026 · addenda 2026-08-01/06 (the Linux snapshot layer §2.5–2.6; reliability profiles incl. the Ceph and ZFS corruption-bug timelines §15) · **2026-08-13 (growing one disk at a time, EC 2+2 vs RAIDZ2 §16 — including two corrections to earlier claims)** · **2026-08-14 (the snapshot automount layer rewritten upstream but still unreleased — §17)**
+- **Facts verified:** July 2026 · addenda 2026-08-01/06 (the Linux snapshot layer §2.5–2.6; reliability profiles incl. the Ceph and ZFS corruption-bug timelines §15) · **2026-08-13 (growing one disk at a time, EC 2+2 vs RAIDZ2 §16 — including two corrections to earlier claims)** · **2026-08-14 (the snapshot automount layer rewritten upstream but still unreleased — §17; the eight objections keeping the decision open, with a pre-registered measurement rule — §18)**
 - **Language:** 🇬🇧 English (canonical) · 🇨🇿 [Čeština — original](README.cs.md)
 - **Author:** Petr Kratochvíl — [krato.cz](https://krato.cz)
 
@@ -498,6 +498,96 @@ The rewrite landed **six days after** the most recent releases and has not been 
 
 *§2.5 is left as it was written. This is ageing, not an error: the section was accurate on 2026-08-01 and the world moved under it, which is what a dated snapshot is for.*
 
+## 18. The objections keeping the decision open (added 2026-08-14)
+
+This document reached a verdict in §14. A year on, I have not acted on it — and that gap is itself information. A comparison that records only the conclusion, and not the reasons its own author never adopted it, is less useful than one that admits both. What follows are the eight objections that keep me looking at Ceph, each with what it is actually worth and whether Ceph is the thing that answers it.
+
+The uncomfortable summary is that **Ceph answers one of the eight**, makes two of them worse, and does not touch three.
+
+| # | Objection | Does it hold? | Does Ceph answer it? |
+|---|---|---|---|
+| 1 | Serious bugs in OpenZFS on Linux | Yes — and Ceph has its own (§15) | ❌ no |
+| 2 | Per-disk LUKS just to be able to send snapshots | The premise is inverted | ❌ Ceph is also per-OSD dm-crypt |
+| 3 | Cannot add a larger disk later | **Yes — the strongest point** | 🟡 yes, but see #8 |
+| 4 | No defragmentation | Yes | ❌ BlueStore fragments too |
+| 5 | Dedup RAM you never get back | Largely yes | ❌ Ceph dedup is experimental |
+| 6 | Slow reads and writes vs Btrfs/ext4 | Often — and the causes are checkable | ❌❌ **far worse at this scale** |
+| 7 | ZFS corrupted file ownership years ago | Cannot assess | — |
+| 8 | Cannot grow from 1-node EC to 3-node replication | **Yes, and worse than stated** | ❌ this is a cost *of* Ceph |
+
+### 18.1 Bugs (objection 1)
+
+True, and §15 documents them. But §15 documents Ceph's timeline symmetrically, and the useful question is not "does it have bugs" but "where do the bugs sit relative to how I will use it". ZFS's cluster in the `send` paths and in freshly shipped features; Ceph's in CephFS snapshots with multi-MDS, in non-PLP SSDs, and — §15's own conclusion — in **operator error**, which is the dominant real-world cause of loss and scales with the number of moving parts. Ceph has five-plus daemons to ZFS's one command set. §17 is a data point the other way: the automount panic class was closed by a *rewrite* with a purpose-built test suite, not a patch.
+
+### 18.2 Encryption (objection 2)
+
+The premise is inverted, and this is worth stating plainly because it was my own reasoning. **LUKS was never the price of replication.** ZFS native encryption supports `zfs send -w` (raw), which ships ciphertext and needs no key on the destination. §12 chose LUKS for unrelated reasons: native encryption leaves pool metadata readable (dataset and snapshot names, sizes, timestamps), and its `send`/`recv` path carried a corruption history whose main issue ([#12014](https://github.com/openzfs/zfs/issues/12014)) closed only on 2025-05-19.
+
+And Ceph does not escape per-device encryption: *"Logical volumes can be encrypted using `dmcrypt` by specifying the `--dmcrypt` flag when creating OSDs."* Every OSD is a dm-crypt volume. The difference is that `ceph-volume` orchestrates it instead of Clevis — a real ergonomic gain, but not a change of model.
+
+### 18.3 Larger disks (objection 3)
+
+True, and the strongest of the eight. Inside a RAIDZ vdev, usable capacity per disk is set by the smallest member, so a 40 TB disk bought into a pool of 30 TB disks contributes 30 TB. Two ZFS answers exist before reaching for Ceph. **Mirror vdevs**: add and replace two at a time, and with `autoexpand=on` replacing both halves of one mirror yields the space immediately — at 50 % efficiency instead of RAIDZ2's 75 %, which at a 150 TiB target is a large number of extra drives. **Whole vdevs**: `raidz2` of 4×30 TB and a later `raidz2` of 4×40 TB coexist in one pool, at the cost of buying four at a time.
+
+Ceph handles this natively through CRUSH weights, and that is a genuine, durable advantage. It is also the advantage that §18.9 mostly cancels.
+
+### 18.4 Defragmentation (objection 4)
+
+True — there is no defrag tool and the only cure is a `send`/`recv` rewrite. But the comparison table already rates **Ceph 🟡 on this row as well**: BlueStore fragments too. The ✅ belongs to Btrfs. And on the near-full case specifically, the failure modes differ in Ceph's disfavour: a full ZFS pool becomes slow, whereas a Ceph pool reaching its full ratio **stops accepting writes**. The real answer to "the array will often be very full" is not an engine but buying capacity earlier.
+
+### 18.5 Dedup (objection 5)
+
+Largely true. OpenZFS 2.3's Fast Dedup added `zpool ddtprune`, which *"prunes older unique entries from the dedup table"* — but it does not remove the DDT, so "I will never get that RAM back" survives as a fair description. The resolution is that this is a feature not to switch on: on bulk media and photos deduplication gains almost nothing, which is the conclusion of the sources §7 already cites. Ceph's own deduplication is documented as experimental. This objection is about a button that should stay unpressed in either system.
+
+### 18.6 Performance (objection 6)
+
+Often true, and it is the objection doing the most emotional work — which is exactly why it deserves the most precise treatment. ZFS is genuinely slower than ext4 on many workloads, and the causes are specific and checkable rather than mysterious. The dominant one is geometry: **a single RAIDZ vdev delivers the random IOPS of roughly one disk**, so an eight-disk RAIDZ2 is not eight disks' worth of IOPS; mirrors scale with vdev count. After that come `recordsize` mismatched to the workload, synchronous writes without a SLOG, an ARC starved by VMs, and `atime=on` turning reads into writes. A `special` vdev with `special_small_blocks` takes metadata IOPS off the RAIDZ vdev entirely and is often the single largest available win — at the price that it is pool storage, not cache: **lose it unmirrored and the pool is gone**.
+
+But this objection points away from Ceph, not toward it. On one to three nodes with a single client, Ceph is far slower than ZFS and not remotely comparable to ext4: every write crosses the network and must commit durably on each replica before the client is acknowledged, which is precisely why PLP SSDs and 10 GbE are near-mandatory (§15). Ceph's speed comes from parallelism across many OSDs and many clients — none of which this profile has.
+
+### 18.7 The ownership incident (objection 7)
+
+Recorded, not explained away. Years-old, no details retained, so it cannot be diagnosed now. Plausible candidates from what is documented: the 0.7.7→0.7.8 "disappearing files" regression (§15), the NFSv4-versus-POSIX-ACL mismatch on Linux (§2.6, [#4966](https://github.com/openzfs/zfs/issues/4966)), or idmapping on `recv`. As evidence about a specific bug it is unusable; as a datapoint about trust it is real, and trust is not a rounding error for a solo admin at 3 a.m.
+
+### 18.8 One node with EC to three nodes with replication (objection 8)
+
+True, and materially worse than the objection states. The erasure code profile is immutable: *"the profile cannot be modified after the pool is created. If you find that you need an erasure-coded pool with a profile different than the one you have created, you must create a new pool … all objects from the wrongly configured pool must be moved to the newly created pool."* And the topology requirement is hard: *"Most erasure-coded pool deployments require at least `k+m` CRUSH failure domains, which in most cases means racks or hosts. There are operational advantages to planning EC profiles and cluster topology so that there are at least `k+m+1` failure domains."*
+
+EC 2+2 therefore needs **four** failure domains, five recommended. Three nodes with host-level EC 2+2 is not slow or inefficient — it is not possible.
+
+| Step | What you actually get |
+|---|---|
+| 1 node, EC 2+2, failure domain = OSD | Works, but **no tolerance of losing the machine** |
+| → 3 nodes, EC 2+2 at host level | ❌ **not possible**, the fourth domain is missing |
+| → 3 nodes, EC 2+1 | 67 % efficiency, **one parity only** (weaker than RAIDZ2), new pool + full data move |
+| → 3 nodes, replication size=3 | 33 % efficiency, new pool + full data move |
+| → EC 2+2 at host level | Only from **4–5 nodes** |
+
+Every route off single-node EC is a new pool and a full migration, with the free space to hold both at once or the patience to do it in batches. This is §10's ZFS→Ceph migration trap reproduced **inside Ceph**, where changing engines cannot avoid it.
+
+And it largely cancels objection 3. If changing topology means a full pool-to-pool migration anyway, that is exactly the moment at which a ZFS pool could be rebuilt with new vdev geometry. What survives of Ceph's advantage is the narrower claim that it handles heterogeneous disks better **between** topology changes.
+
+### 18.9 What this actually selects for
+
+Read the list for what it prefers rather than what it rejects: defragmentation, familiar performance, growth one disk at a time, no dedup trap, no per-disk encryption surprise. That describes **the incumbent `mdadm + LUKS + LVM + Btrfs` stack**, whose single documented weakness in the comparison table is one row — *detects silent corruption, cannot repair it* — and that row is closable by adding `dm-integrity` beneath it.
+
+So the objections do not point at Ceph. They point at tuned ZFS or at staying put.
+
+### 18.10 Decision rule, written before the measurement (2026-08-14)
+
+Objection 6 is the only one of the eight that is cheap to test, and it carries the others emotionally. It therefore gets a rule written now, before any number exists.
+
+**The test.** Build the layout that would actually be deployed — which forces the mirrors-versus-RAIDZ2 decision, since that is what sets IOPS — on the real hardware, with a mirrored `special` vdev if small files matter, `recordsize` matched to the workload, and ARC not starved. Measure against Btrfs on the same disks with the same workload mix: bulk sequential read and write for media, and a metadata-heavy directory walk for the photo and document tree.
+
+**The gates**, in order of authority:
+
+1. **Absolute.** ZFS must saturate the network link on sequential transfer and complete the photo-tree walk fast enough to be unremarkable in use. This gate decides, because the question is not whether ZFS matches Btrfs but whether it is fast enough for what the array is for.
+2. **Relative.** Tuned ZFS lands within 25 % of Btrfs on sequential throughput and within 2× on the metadata walk.
+
+**What each outcome means.** Fail gate 1 → the §14 verdict falls honestly, and the replacement is the incumbent stack plus `dm-integrity`, **not** Ceph, because §18.6 and §18.8 rule Ceph out on the same evidence. Pass gate 1 but fail gate 2 → acceptable; record the gap and move on. Pass both → objections 1, 4, 5, 6 and 7 lose most of their force at once, and only 3 and 8 remain — and those two largely cancel each other.
+
+**What would make Ceph right after all:** growth by single heterogeneous disks over many years **and** acceptance of 10 GbE, PLP SSDs, four-plus nodes for meaningful EC, and materially worse single-client latency. That is a coherent trade. It is not a fix for anything on this list.
+
 ## References
 
 External sources (verified July 2026; snapshot/ACL addenda verified 2026-08-01):
@@ -519,6 +609,6 @@ External sources (verified July 2026; snapshot/ACL addenda verified 2026-08-01):
 
 ---
 
-*Researched and written in collaboration with Claude (Anthropic); facts verified against the sources above as of July 2026, with the addenda (snapshot layer, reliability profiles, corruption-bug timelines) verified 1–6 August 2026 the growth addendum verified 13 August 2026 and the automount update 14 August 2026. This document is a dated snapshot and is not continuously updated.*
+*Researched and written in collaboration with Claude (Anthropic); facts verified against the sources above as of July 2026, with the addenda (snapshot layer, reliability profiles, corruption-bug timelines) verified 1–6 August 2026 the growth addendum verified 13 August 2026, and the automount update and the objections section 14 August 2026. This document is a dated snapshot and is not continuously updated.*
 
 *© 2026 Petr Kratochvíl · Licensed under [CC BY 4.0](../LICENSE)*
