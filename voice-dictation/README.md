@@ -50,7 +50,7 @@ Symbols: ✅ strength · 🟡 works with caveats / trade-off · ❌ weakness or 
 | **▸ Integration with AI coding agents** (§6) | | | | | | |
 | Voice for coding agents | — | ✅ declared support for Claude Code et al. | ✅ MCP server | — | 🟡 "Local CLI" provider for enhancement | — |
 | **▸ Operational risk** | | | | | | |
-| Maturity and continuity | 🟡 established service, but cloud: price hikes or shutdown outside your control | 🟡 commercial indie app | 🟡 commercial indie app | ✅ part of the OS | 🟡 solo developer; GPL → fork possible, local models survive | 🟡 young project, GPLv3 only since 2/2026 |
+| Maturity and continuity | 🟡 established service, but cloud: price hikes or shutdown outside your control | 🟡 commercial app from a small independent developer | 🟡 commercial app from a small independent developer | ✅ part of the OS | 🟡 solo developer; GPL → fork possible, local models survive | 🟡 young project, GPLv3 only since 2/2026 |
 
 ### How to read it
 

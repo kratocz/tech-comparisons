@@ -50,7 +50,7 @@ Symboly: ✅ silná stránka · 🟡 funguje s výhradami / kompromis · ❌ sla
 | **▸ Integrace s AI coding agenty** (§6) | | | | | | |
 | Hlas pro coding agenty | — | ✅ deklarovaná podpora Claude Code aj. | ✅ MCP server | — | 🟡 „Local CLI“ provider pro enhancement | — |
 | **▸ Provozní riziko** | | | | | | |
-| Zralost a kontinuita | 🟡 etablovaná služba, ale cloud: zdražení či zánik mimo tvou kontrolu | 🟡 komerční indie aplikace | 🟡 komerční indie aplikace | ✅ součást OS | 🟡 sólo vývojář; GPL → fork možný, lokální modely přežijí | 🟡 mladý projekt, GPLv3 až od 2/2026 |
+| Zralost a kontinuita | 🟡 etablovaná služba, ale cloud: zdražení či zánik mimo tvou kontrolu | 🟡 komerční aplikace malého nezávislého vývojáře | 🟡 komerční aplikace malého nezávislého vývojáře | ✅ součást OS | 🟡 sólo vývojář; GPL → fork možný, lokální modely přežijí | 🟡 mladý projekt, GPLv3 až od 2/2026 |
 
 ### Jak to číst
 
