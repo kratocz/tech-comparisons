@@ -3,6 +3,7 @@
 - **Verdikt:** ⭐ **VoiceInk** (build ze zdrojáků, lokální Parakeet v3, vylepšování textu přes vlastní klíče) — platí pro kontext popsaný níže
 - **Fakta ověřena:** 2026-08-18 (wisprflow.ai /pricing a /data-controls, superwhisper.com, spokenly.app, tryvoiceink.com + dokumentace + GitHub Beingpax/VoiceInk, GitHub altic-dev/FluidVoice, Apple „macOS Feature Availability“, NVIDIA model card parakeet-tdt-0.6b-v3)
 - **Otevřené tagy:** jeden `[OVĚŘIT]` — cena Superwhisper Pro / Lifetime (§7): zdroje si protiřečí a web cenu nevydal čitelně
+- **Adversariální ověření:** provedeno 2026-08-18 v čistém kontextu se zadáním „vyvrátit“. Žádné tvrzení nepadlo — včetně všech tvrzení o nemožnosti; jedno bylo oslabeno a je zapracováno: build VoiceInk ze zdrojáků odemyká aplikaci jen oficiální cestou `make local` a kromě aktualizací ztrácí i iCloud synchronizaci slovníku (§3, §8).
 - **Poznámka k procesu:** srovnání vzniklo z konverzace s Claude (claude.ai, 2026-08-18). Podle pravidel repozitáře jsou nálezy z AI konverzace hypotézy, ne zdroje — všechna nosná tvrzení byla přeověřena proti primárním zdrojům. Dvě ověření nepřežila a jsou tu už opravená: čeština v macOS diktování **není** on-device (§4) a VoiceInk **má** iOS companion aplikaci (§7). Rozhodovací pravidla v §1 byla sepsána až po volbě aplikace — nejsou pre-registrovaná a nelze je číst jako predikci.
 - **Jazyk:** 🇨🇿 čeština (originál) · 🇬🇧 [English version](README.md)
 - **Autor:** Petr Kratochvíl — [krato.cz](https://krato.cz)
@@ -79,7 +80,7 @@ Pět aplikací pokrývá celé spektrum obchodních modelů:
 - **Wispr Flow** — čisté SaaS předplatné ($15 / měs, ročně $12 / měs). Free tier s limitem 2 000 slov týdně na desktopu je na denní diktování řádově málo.
 - **Superwhisper** — freemium: free tier s malými lokálními modely a vlastními prompty, placené Pro (měsíčně / ročně / lifetime; k cenám viz rozpor v §7).
 - **Spokenly** — lokální modely a vlastní klíče zdarma bez limitů; platí se jen spravovaný cloud ($9,99 / měs).
-- **VoiceInk** — open source (GPL-3.0) s placenými binárkami: jednorázově $29 / $49 / $69 podle počtu Maců, doživotní aktualizace. README výslovně říká: *"As an open-source project, you can build VoiceInk yourself by following the instructions in BUILDING.md."* Placený build přidává automatické aktualizace a podporu vývojáře — build ze zdrojáků je legální a oficiálně popsaná cesta, ne obcházení licence.
+- **VoiceInk** — open source (GPL-3.0) s placenými binárkami: jednorázově $29 / $49 / $69 podle počtu Maců, doživotní aktualizace. README výslovně říká: *"As an open-source project, you can build VoiceInk yourself by following the instructions in BUILDING.md."* Placený build přidává automatické aktualizace a podporu vývojáře — build ze zdrojáků je legální a oficiálně popsaná cesta, ne obcházení licence. Nuance z ověření zdrojáků: v kódu je plnohodnotná licenční brána se 7denní zkušební lhůtou a oficiální build cesta `make local` ji záměrně vypíná (compile flag `LOCAL_BUILD`) — kdo si aplikaci přeloží přímo v Xcode bez tohoto flagu, dostane trial verzi a mohl by mylně usoudit, že „zdarma ze zdrojáků“ neplatí. Lokální build zároveň podle BUILDING.md nemá automatické aktualizace ani iCloud synchronizaci slovníku.
 - **FluidVoice** — zdarma bez tierů, GPLv3 (od 2026-02-23; předchozí verze Apache 2.0). Háček je ve vrstvě Fluid Intelligence / Fluid-1: *"We're keeping Fluid Intelligence private for now so we can sustainably offer the core dictation experience for free."* Samotné diktování je open source, chytré vylepšování textu ne — běží sice lokálně, ale je to černá skříňka s nejasnou budoucností (dnešní zdůvodnění „for now“ zní jako budoucí monetizace; to je inference, ne fakt).
 
 Pro tento kontext z toho plyne pořadí: VoiceInk (open source + doložená čeština) > FluidVoice (zdarma, ale closed-source jádro přidané hodnoty) > Spokenly (zdarma v potřebném rozsahu, ale closed source) > Superwhisper (platí se) > Wispr Flow (předplatné navždy).
@@ -137,7 +138,7 @@ Ceny VoiceInk se podle konverzace měnily krátce před vznikem dokumentu (dří
 
 Přijaté kompromisy, vědomě:
 
-- **Build ze zdrojáků = žádné automatické aktualizace ani podpora vývojáře.** Aktualizace znamená stáhnout a přeložit nové zdrojáky. Kdo to nechce, koupí Solo za $29 — pořád zlomek roční ceny Wispr Flow.
+- **Build ze zdrojáků = žádné automatické aktualizace, žádná iCloud synchronizace slovníku, žádná podpora vývojáře.** Aktualizace znamená stáhnout a přeložit nové zdrojáky — oficiální cestou `make local`, ne přímo v Xcode, jinak se aktivuje trial brána (§3). Kdo to nechce, koupí Solo za $29 — pořád zlomek roční ceny Wispr Flow.
 - **Čeština o jednotky procent horší než Wispr Flow** (vlastní měření, §4). Hypotéza k vyzkoušení: vlastní enhancement prompt na čištění hezitací může rozdíl dál smazat — neověřeno.
 - **Sólo vývojář, komerční zájem vedle open source.** Mitigace: GPL-3.0 umožňuje fork a lokální modely fungují i bez vývojáře (§2).
 - **Žádná specifická integrace pro coding agenty** (§6). Diktování do promptů funguje i tak; kdyby začalo chybět hlasové ovládání agentů, je Spokenly bezplatně vyzkoušitelné vedle — obě aplikace se nevylučují.
