@@ -2,7 +2,7 @@
 
 - **Verdikt:** ⏳ zatím žádný. Pravidla (§2) sepsána a potvrzena PŘED rešerší. Kolo 1 (§4.4, §4.5) hotové: **brána B2 vypálila proti TypeScriptu** — rozhodnutí o úpravě pravidla čeká na zadavatele a nebude provedeno tiše (§4.5).
 - **Sycené rozhodnutí:** na čem stavět **nové** projekty (vlastní, firemní i cizí) v horizontu let — a čím ta volba argumentovat u někoho, kdo u úvahy nebyl.
-- **Fakta ověřena:** 🟡 2026-08-22, dvě kola, reference [R1]–[R27]: kolo 1 — financování, governance a závazky podpory (§4.4, §4.5); kolo 2 — doména CLI a distribuce (§4.3, sloupec CLI v §3). Otevřené `[OVĚŘIT]`: §3 (tři sloupce a vážená cena), §4.1, §4.2, zbytek §4.3, §4.6–§4.8, §5.
+- **Fakta ověřena:** 🟡 2026-08-22, tři kola, reference [R1]–[R34]: financování, governance a závazky podpory (§4.4, §4.5); domény CLI a backend (§4.3 a tytéž sloupce v §3). Otevřené `[OVĚŘIT]`: §3 (frontend, data, vážená cena), §4.1, §4.2, zbytek §4.3, §4.6–§4.8, §5. Jedna buňka označena jako nejistá a přednostně poslána do adversariálního průchodu (Rust v backendu).
 - **Adversariální průchod:** ❌ zatím neproběhl (povinný před verdiktem, §2.4 M5).
 - **Jazyk:** 🇨🇿 čeština (originál); 🇬🇧 kanonická anglická verze zatím nevznikla
 - **Autor:** Petr Kratochvíl — [krato.cz](https://krato.cz)
@@ -14,8 +14,8 @@
 - [x] řádek v kořenovém README — 2026-08-22
 - [x] **potvrdit rozhodovací pravidla (§2) uživatelem** — 2026-08-22: váhy domén doplněny (§2.3), B1 zúžena na backend (§2.2), agregace přepsána na váženou cenu; předpověď zapsána před rešerší
 - [ ] tabulka vlastností (§4.8) — po §3
-- [~] regret matrix (§3) — sloupec CLI hotový (kolo 2, 2026-08-22); zbývají backend, frontend, data a vážená cena
-- [~] trvanlivá vrstva (§4) — hotovo §4.4, §4.5 (kolo 1) a doména CLI v §4.3 (kolo 2), obojí 2026-08-22; zbývá §4.1, §4.2, tři domény v §4.3, §4.6, §4.7
+- [~] regret matrix (§3) — sloupce CLI a backend hotové (kola 2 a 3, 2026-08-22); zbývá frontend, data a vážená cena
+- [~] trvanlivá vrstva (§4) — hotovo §4.4, §4.5 (kolo 1), CLI a backend v §4.3 (kola 2 a 3), vše 2026-08-22; zbývá §4.1, §4.2, dvě domény v §4.3, §4.6, §4.7
 - [ ] datovaný snapshot (§5)
 - [ ] adversariální průchod (§2.4 M5), výsledek do hlavičky
 - [ ] verdikt (§6)
@@ -100,20 +100,20 @@ Tabulka se **neptá, jak je jazyk v doméně dobrý**. Ptá se: *kolik mě stoj�
 
 Symboly: ✅ domovská doména, cena blízko nule · 🟡 použitelné, ale s pojmenovanou cenou · ❌ cena tak vysoká, že bys pro tuhle doménu sáhl po jiném jazyce. Hodnoceno **pro kontext §1** (zelená louka, výkon jako měkká osa), ne obecně.
 
-Stav vyplňování: sloupec **CLI ověřen 2026-08-22** (kolo 2, §4.3); zbylé tři domény a vážená cena se doplní v dalších kolech.
+Stav vyplňování: sloupce **backend a CLI ověřeny 2026-08-22** (kola 2 a 3, §4.3); frontend, data a vážená cena se doplní v dalších kolech.
 
 Sloupce jsou seřazené **podle váhy domény sestupně** (4 · 3 · 2 · 1, §2.3), aby se tabulka četla zleva od toho, co rozhoduje nejvíc. Poslední sloupec je vážená cena podle §2.3 — nižší je lepší, rozsah 0 až 30.
 
 | Jazyk | Backend a API (×4) | CLI a automatizace (×3) | Frontend v prohlížeči (×2) | Data, ML, dávky (×1) | Vážená cena |
 |---|---|---|---|---|---|
-| **C#** | [OVĚŘIT] | 🟡 Native AOT, ale s toolchainem a zákazem dynamických rysů [R20] | [OVĚŘIT] | [OVĚŘIT] | [OVĚŘIT] |
-| **Go** | [OVĚŘIT] | ✅ domovská; vždy křížový překlad [R24] | [OVĚŘIT] | [OVĚŘIT] | [OVĚŘIT] |
-| **Java** | [OVĚŘIT] | 🟡 GraalVM, ale closed-world a JSON metadata [R21] | [OVĚŘIT] | [OVĚŘIT] | [OVĚŘIT] |
-| **Kotlin** | [OVĚŘIT] | 🟡 táž cesta a tytéž výhrady jako Java [R21] | [OVĚŘIT] | [OVĚŘIT] | [OVĚŘIT] |
-| **PHP** | [OVĚŘIT] | 🟡 binárka jen přes projekt třetí strany [R25] | [OVĚŘIT] | [OVĚŘIT] | [OVĚŘIT] |
-| **Python** | [OVĚŘIT] | 🟡 bez křížového překladu [R26] | [OVĚŘIT] | [OVĚŘIT] | [OVĚŘIT] |
-| **Rust** | [OVĚŘIT] | ✅ domovská; Tier 1 napříč OS [R27] | [OVĚŘIT] | [OVĚŘIT] | [OVĚŘIT] |
-| **TypeScript** | [OVĚŘIT] | 🟡 Node SEA experimentální; `deno compile` zralé, ale jiný runtime [R22][R23] | [OVĚŘIT] | [OVĚŘIT] | [OVĚŘIT] |
+| **C#** | ✅ ASP.NET Core je first-party, jeden kalendář s jazykem [R9] | 🟡 Native AOT, ale s toolchainem a zákazem dynamických rysů [R20] | [OVĚŘIT] | [OVĚŘIT] | [OVĚŘIT] |
+| **Go** | ✅ `net/http` ve stdlib — žádné druhé okno podpory [R8] | ✅ domovská; vždy křížový překlad [R24] | [OVĚŘIT] | [OVĚŘIT] | [OVĚŘIT] |
+| **Java** | ✅ Spring Boot; minor ale jen ≥12 měsíců OSS [R31] | 🟡 GraalVM, ale closed-world a JSON metadata [R21] | [OVĚŘIT] | [OVĚŘIT] | [OVĚŘIT] |
+| **Kotlin** | ✅ táž cesta jako Java [R31] | 🟡 táž cesta a tytéž výhrady jako Java [R21] | [OVĚŘIT] | [OVĚŘIT] | [OVĚŘIT] |
+| **PHP** | ✅ Symfony či Laravel; volba mění okno 4 roky vs. 2 [R28][R29] | 🟡 binárka jen přes projekt třetí strany [R25] | [OVĚŘIT] | [OVĚŘIT] | [OVĚŘIT] |
+| **Python** | ✅ Django, tři roky na každé vydání [R30] | 🟡 bez křížového překladu [R26] | [OVĚŘIT] | [OVĚŘIT] | [OVĚŘIT] |
+| **Rust** | 🟡 u Axumu nenalezen datovaný kalendář podpory; **buňka nejistá**, jde do M5 [R34] | ✅ domovská; Tier 1 napříč OS [R27] | [OVĚŘIT] | [OVĚŘIT] | [OVĚŘIT] |
+| **TypeScript** | ✅ zralé, ale roztříštěné; Fastify ~rok, Express nenalezeno [R32][R33] | 🟡 Node SEA experimentální; `deno compile` zralé, ale jiný runtime [R22][R23] | [OVĚŘIT] | [OVĚŘIT] | [OVĚŘIT] |
 
 ### 3.1 Jak tabulku číst
 
@@ -150,7 +150,28 @@ Rozhoduje tu jedna otázka: **dostane se můj nástroj na cizí stroj, aniž byc
 
 Tím se **potvrzuje ta část předpovědi z §2.3, která se týkala Go** — ale z jiného důvodu, než jsem psal. Nepředpovídal jsem křížový překlad, předpovídal jsem obecně „domovskou doménu“. Doložilo se to konkrétněji a zároveň to platí stejně silně pro Rust, kterého jsem v téhle doméně nezmiňoval.
 
-**Ostatní tři domény:** [OVĚŘIT] — kola 3 až 5.
+**▸ Webový backend a API (váha 4) — ověřeno 2026-08-22**
+
+Tady nezáleží na tom, jestli jazyk backend „umí“ — umí ho všech osm. Rozhoduje něco jiného a je to trvanlivé: **v backendu tě neváže životní cyklus jazyka, ale frameworku, a ten je u většiny kandidátů podstatně kratší.** Sledovat tedy musíš dvě okna, ne jedno.
+
+| Jazyk | Hlavní framework | Okno podpory frameworku | Kolik oken musíš hlídat | Zdroj |
+|---|---|---|---|---|
+| **C#** | ASP.NET Core — součást .NET, od téhož výrobce | Shodné s .NET: LTS 36 měsíců | **Jedno** — framework a jazyk mají jeden kalendář | [R9] |
+| **Go** | `net/http` ve **standardní knihovně** | Žádné samostatné; kryje ho Go 1 compatibility promise | **Žádné navíc** — jediný z osmi, kdo druhý kalendář nemá vůbec | [R8] |
+| **Java** | Spring Boot | Minor *„at least 12 months“*, major *„at least 3 years“*; nové vydání každých šest měsíců (květen a listopad) | Dvě | [R31] |
+| **Kotlin** | Spring Boot (Ktor v tomto kole nezjišťován) | Tytéž hodnoty jako u Javy | Dvě | [R31] |
+| **PHP** | Symfony **nebo** Laravel — a rozdíl mezi nimi je dvojnásobný | Symfony LTS: 3 roky oprav + **4 roky bezpečnosti**. Laravel: 18 měsíců oprav + **2 roky bezpečnosti** | Dvě, a volba frameworku ti okno zdvojnásobí nebo zkrátí na polovinu | [R28][R29] |
+| **Python** | Django | Tři roky; od vydání 2028 dostane **každé** feature vydání týchž tři roky, ne jen LTS | Dvě | [R30] |
+| **Rust** | Axum | Datovaná politika podpory **nenalezena** v kořeni repozitáře ani v adresáři crate `axum` (pozitivní kontrola prošla — `Cargo.toml` se v obou výpisech objevil) | Dvě, z toho jedno bez zveřejněného kalendáře | [R34] |
+| **TypeScript** | Fastify, Express a další — vrstva je roztříštěná | Fastify: minimum šest měsíců plus dalších šest po vydání následujícího major, tedy zhruba rok. Express: politika **nenalezena** — a přiznávám, že tenhle závěr je slabý, protože pozitivní kontrola u repozitáře s dokumentací selhala (viz [R33]) | Dvě | [R32][R33] |
+
+**Nález, který jsem nečekal a který mění čtení §2.3.** Backend má nejvyšší váhu (4), ale je to **nejméně rozlišující sloupec celého dokumentu** — sedm z osmi kandidátů je tu na stejné úrovni. A protože se vážená cena počítá jako součin ceny buňky a váhy, doména, kde jsou všichni stejní, přispívá **všem stejně**, tedy nerozhoduje o pořadí vůbec. Vysoká váha sama o sobě vliv nedělá; vliv dělá **rozptyl uvnitř sloupce**.
+
+Prakticky z toho plyne, že verdikt nerozhodne backend s vahou 4, ale **CLI s vahou 3**, kde se buňky opravdu liší (§4.3 výše). To je proti intuici, se kterou se váhy zadávaly, a je to důsledek pravidla §2.3, ne jeho porušení — pravidlo se nemění, jen se ukazuje, jak se chová.
+
+Jediný, koho backend odděluje, je **Rust**, a jeho 🟡 stojí zatím na jediné ose (chybějící zveřejněný kalendář podpory u Axumu). Šíře ekosystému pro autentizaci, ORM a administraci v tomto kole zjišťována nebyla, takže **tuhle buňku označuji za nejistou a posílám ji přednostně do adversariálního průchodu** (M5).
+
+**Zbylé dvě domény:** [OVĚŘIT] — kola 4 a 5.
 
 ### 4.4 Kdo ekosystém platí (ověřeno 2026-08-22)
 
@@ -269,6 +290,16 @@ Ověřeno k 2026-08-22 (kolo 1 — brána B2, §4.4 a §4.5).
 - [R25] static-php-cli — Guide (staticky slinkované PHP binárky, podporované platformy a verze). Ověřeno 2026-08-22: <https://static-php.dev/en/guide/>
 - [R26] PyInstaller — How it works / operating mode (one-file režim, absence křížového překladu). Ověřeno 2026-08-22: <https://pyinstaller.org/en/stable/operating-mode.html>
 - [R27] Rust — Platform Support (definice Tier 1 a Tier 2). Ověřeno 2026-08-22: <https://doc.rust-lang.org/rustc/platform-support.html>
+
+**Frameworky a jejich závazky podpory (kolo 3, doména backend)**
+
+- [R28] Symfony — Releases (standardní vydání 8 měsíců oprav a 14 měsíců bezpečnosti; LTS 3 roky oprav a 4 roky bezpečnosti). Ověřeno 2026-08-22: <https://symfony.com/releases>
+- [R29] Laravel — Release Notes, sekce Support Policy (*„bug fixes are provided for 18 months and security fixes are provided for 2 years“*). Ověřeno 2026-08-22 na stránce dokumentace 12.x, která zároveň upozorňuje, že aktuální řadou je 13.x: <https://laravel.com/docs/12.x/releases>
+- [R30] Django — Download, přehled podporovaných verzí a tříletého okna. Ověřeno 2026-08-22: <https://www.djangoproject.com/download/>
+- [R31] Spring Boot — Supported Versions (wiki projektu): minor *„at least 12 months“*, major *„at least 3 years“*. Ověřeno 2026-08-22: <https://github.com/spring-projects/spring-boot/wiki/Supported-Versions>
+- [R32] Fastify — Long Term Support. Ověřeno 2026-08-22: <https://fastify.dev/docs/latest/Reference/LTS/>
+- [R33] expressjs/express — výpis repozitáře; politika podpory nenalezena v kořeni ani v `.github`. **Závěr je slabý:** pozitivní kontrola u repozitáře `expressjs/expressjs.com` selhala (cesta `en` vrátila 404), takže o struktuře dokumentace nic netvrdím. Ověřeno 2026-08-22: <https://github.com/expressjs/express>
+- [R34] tokio-rs/axum — výpis repozitáře; datovaná politika podpory nenalezena v kořeni ani v adresáři crate `axum`. Pozitivní kontrola prošla (`Cargo.toml` přítomen v obou výpisech). Ověřeno 2026-08-22: <https://github.com/tokio-rs/axum>
 
 **Jazykové vlastnosti**
 
