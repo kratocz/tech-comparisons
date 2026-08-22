@@ -2,7 +2,7 @@
 
 - **Verdikt:** ⏳ zatím žádný. Pravidla (§2) sepsána a potvrzena PŘED rešerší. Kolo 1 (§4.4, §4.5) hotové: **brána B2 vypálila proti TypeScriptu** — rozhodnutí o úpravě pravidla čeká na zadavatele a nebude provedeno tiše (§4.5).
 - **Sycené rozhodnutí:** na čem stavět **nové** projekty (vlastní, firemní i cizí) v horizontu let — a čím ta volba argumentovat u někoho, kdo u úvahy nebyl.
-- **Fakta ověřena:** 🟡 kolo 1 (2026-08-22): §4.4 a §4.5 — financování, governance a závazky podpory všech osmi kandidátů, reference [R1]–[R19]. Otevřené `[OVĚŘIT]`: §3, §4.1–§4.3, §4.6–§4.8, §5.
+- **Fakta ověřena:** 🟡 2026-08-22, dvě kola, reference [R1]–[R27]: kolo 1 — financování, governance a závazky podpory (§4.4, §4.5); kolo 2 — doména CLI a distribuce (§4.3, sloupec CLI v §3). Otevřené `[OVĚŘIT]`: §3 (tři sloupce a vážená cena), §4.1, §4.2, zbytek §4.3, §4.6–§4.8, §5.
 - **Adversariální průchod:** ❌ zatím neproběhl (povinný před verdiktem, §2.4 M5).
 - **Jazyk:** 🇨🇿 čeština (originál); 🇬🇧 kanonická anglická verze zatím nevznikla
 - **Autor:** Petr Kratochvíl — [krato.cz](https://krato.cz)
@@ -14,8 +14,8 @@
 - [x] řádek v kořenovém README — 2026-08-22
 - [x] **potvrdit rozhodovací pravidla (§2) uživatelem** — 2026-08-22: váhy domén doplněny (§2.3), B1 zúžena na backend (§2.2), agregace přepsána na váženou cenu; předpověď zapsána před rešerší
 - [ ] tabulka vlastností (§4.8) — po §3
-- [ ] regret matrix (§3) — 8 kandidátů × 4 domény
-- [~] trvanlivá vrstva (§4) — hotovo §4.4 a §4.5 (kolo 1, 2026-08-22); zbývá §4.1–§4.3, §4.6, §4.7
+- [~] regret matrix (§3) — sloupec CLI hotový (kolo 2, 2026-08-22); zbývají backend, frontend, data a vážená cena
+- [~] trvanlivá vrstva (§4) — hotovo §4.4, §4.5 (kolo 1) a doména CLI v §4.3 (kolo 2), obojí 2026-08-22; zbývá §4.1, §4.2, tři domény v §4.3, §4.6, §4.7
 - [ ] datovaný snapshot (§5)
 - [ ] adversariální průchod (§2.4 M5), výsledek do hlavičky
 - [ ] verdikt (§6)
@@ -50,6 +50,14 @@ Vyřazení kandidáta se zapisuje s důvodem a s odkazem na pravidlo, na kterém
 |---|---|---|
 | **B1** | ❌ v **backendu a API** (nejvýš vážená doména, §2.3) → vyřazen. ❌ v ostatních třech doménách **nevyřazuje** — započítá se váženou cenou (§2.3) a zapíše se do verdiktu jako explicitně přijatý náklad | Jeden jazyk se vybírá především kvůli nejvýš vážené doméně; tam ❌ ruší smysl celé volby. V níže vážené doméně je ❌ drahá, ale zaplatitelná — a poctivější je tu cenu přiznat než kandidáta tiše vyhodit. |
 | **B2** | Chybí identifikovatelný plátce ekosystému **nebo** doložitelný závazek k dlouhodobé podpoře → vyřazen | Sázka na dekádu potřebuje někoho, kdo ji financuje. Ověřuje se doložitelně (§4.4, §4.5), ne pověstí. |
+
+**Úprava B2 — DODATEČNÁ, provedená 2026-08-22 AŽ PO výsledku kola 1.** Původní znění výše se nemění a zůstává čitelné; tohle je přílepek, ne přepis, protože pravidlo upravené po zhlédnutí výsledku ztrácí přesně tu vlastnost, kvůli které se píše dopředu.
+
+- **Co se stalo:** B2 vypálila proti TypeScriptu (§4.5). Rešerše zároveň ukázala, že pravidlo míchá dvě různé věci — u běhového prostředí je „podpora“ tikající bezpečnostní povinnost, u překladače je nosným závazkem slib kompatibility. B2 tenhle rozdíl nerozlišovala.
+- **Nové znění:** závazek k dlouhodobé podpoře se uznává **buď** datovanou tabulkou podpory, **nebo** doloženým slibem zpětné kompatibility. U jazyka, který se překládá do artefaktu běžícího jinde, se navíc čte životní cyklus **toho běhového prostředí**, ne překladače.
+- **Důsledek:** TypeScript bránou prochází — na Node.js s LTS 30 měsíců [R19]. Chybějící politika podpory překladače mu ale **zůstává zapsaná jako náklad** v §4.5 a promítne se do tie-breakerů, ne že by zmizela.
+- **Rozhodl:** zadavatel, 2026-08-22, s vyloženou alternativou nechat pravidlo platit a TypeScript vyřadit.
+- **Proč to bylo obhajitelné:** záměr B2 byl „kdo to financuje“ a ten Microsoft splňuje bez debat. Klopýtnutí bylo v návrhu měřidla, ne v riziku pod ním. Kdyby chyba byla ve faktech, pravidlo by se nechalo vypálit.
 
 **Poznámka k síle B1 (zapsáno 2026-08-22, před rešerší):** zúžením na backend se z B1 stala spíš pojistka než čepel — je pravděpodobné, že ji projde všech osm kandidátů a že veškerou práci odvede vážená cena v §2.3. Necháváme ji tam vědomě: kdyby se ukázalo, že některý kandidát backend a API pořádně nezvládá, má to být vyřazení, ne položka v součtu.
 
@@ -92,18 +100,20 @@ Tabulka se **neptá, jak je jazyk v doméně dobrý**. Ptá se: *kolik mě stoj�
 
 Symboly: ✅ domovská doména, cena blízko nule · 🟡 použitelné, ale s pojmenovanou cenou · ❌ cena tak vysoká, že bys pro tuhle doménu sáhl po jiném jazyce. Hodnoceno **pro kontext §1** (zelená louka, výkon jako měkká osa), ne obecně.
 
+Stav vyplňování: sloupec **CLI ověřen 2026-08-22** (kolo 2, §4.3); zbylé tři domény a vážená cena se doplní v dalších kolech.
+
 Sloupce jsou seřazené **podle váhy domény sestupně** (4 · 3 · 2 · 1, §2.3), aby se tabulka četla zleva od toho, co rozhoduje nejvíc. Poslední sloupec je vážená cena podle §2.3 — nižší je lepší, rozsah 0 až 30.
 
 | Jazyk | Backend a API (×4) | CLI a automatizace (×3) | Frontend v prohlížeči (×2) | Data, ML, dávky (×1) | Vážená cena |
 |---|---|---|---|---|---|
-| **C#** | [OVĚŘIT] | [OVĚŘIT] | [OVĚŘIT] | [OVĚŘIT] | [OVĚŘIT] |
-| **Go** | [OVĚŘIT] | [OVĚŘIT] | [OVĚŘIT] | [OVĚŘIT] | [OVĚŘIT] |
-| **Java** | [OVĚŘIT] | [OVĚŘIT] | [OVĚŘIT] | [OVĚŘIT] | [OVĚŘIT] |
-| **Kotlin** | [OVĚŘIT] | [OVĚŘIT] | [OVĚŘIT] | [OVĚŘIT] | [OVĚŘIT] |
-| **PHP** | [OVĚŘIT] | [OVĚŘIT] | [OVĚŘIT] | [OVĚŘIT] | [OVĚŘIT] |
-| **Python** | [OVĚŘIT] | [OVĚŘIT] | [OVĚŘIT] | [OVĚŘIT] | [OVĚŘIT] |
-| **Rust** | [OVĚŘIT] | [OVĚŘIT] | [OVĚŘIT] | [OVĚŘIT] | [OVĚŘIT] |
-| **TypeScript** | [OVĚŘIT] | [OVĚŘIT] | [OVĚŘIT] | [OVĚŘIT] | [OVĚŘIT] |
+| **C#** | [OVĚŘIT] | 🟡 Native AOT, ale s toolchainem a zákazem dynamických rysů [R20] | [OVĚŘIT] | [OVĚŘIT] | [OVĚŘIT] |
+| **Go** | [OVĚŘIT] | ✅ domovská; vždy křížový překlad [R24] | [OVĚŘIT] | [OVĚŘIT] | [OVĚŘIT] |
+| **Java** | [OVĚŘIT] | 🟡 GraalVM, ale closed-world a JSON metadata [R21] | [OVĚŘIT] | [OVĚŘIT] | [OVĚŘIT] |
+| **Kotlin** | [OVĚŘIT] | 🟡 táž cesta a tytéž výhrady jako Java [R21] | [OVĚŘIT] | [OVĚŘIT] | [OVĚŘIT] |
+| **PHP** | [OVĚŘIT] | 🟡 binárka jen přes projekt třetí strany [R25] | [OVĚŘIT] | [OVĚŘIT] | [OVĚŘIT] |
+| **Python** | [OVĚŘIT] | 🟡 bez křížového překladu [R26] | [OVĚŘIT] | [OVĚŘIT] | [OVĚŘIT] |
+| **Rust** | [OVĚŘIT] | ✅ domovská; Tier 1 napříč OS [R27] | [OVĚŘIT] | [OVĚŘIT] | [OVĚŘIT] |
+| **TypeScript** | [OVĚŘIT] | 🟡 Node SEA experimentální; `deno compile` zralé, ale jiný runtime [R22][R23] | [OVĚŘIT] | [OVĚŘIT] | [OVĚŘIT] |
 
 ### 3.1 Jak tabulku číst
 
@@ -121,7 +131,26 @@ Sloupce jsou seřazené **podle váhy domény sestupně** (4 · 3 · 2 · 1, §2
 
 ### 4.3 Čím se platí za každou ze čtyř domén
 
-[OVĚŘIT] — podklad pro §3.
+**▸ CLI, démoni a automatizace (váha 3) — ověřeno 2026-08-22**
+
+Rozhoduje tu jedna otázka: **dostane se můj nástroj na cizí stroj, aniž bych tam musel nejdřív nainstalovat běhové prostředí?** Odpověď rozděluje osmičku ostřeji než cokoli jiného v tomhle dokumentu.
+
+| Jazyk | Samostatná binárka | Křížový překlad | Cena a výhrady | Zdroj |
+|---|---|---|---|---|
+| **C#** | Native AOT — self-contained, bez nainstalovaného .NET | 🟡 zdroj mlčí o překladu mezi OS; dokumentace uvádí, že binárka vyrobená na Linuxu poběží na *"same or newer Linux version"* | Vyžaduje toolchain na hostiteli (clang a zlib na Linuxu, C++ workload ve Visual Studiu). Zakázáno: dynamické načítání sestav, `System.Reflection.Emit`, C++/CLI, vestavěné COM na Windows. Vynucuje trimming. `System.Linq.Expressions` běží vždy interpretovaně. *"Not all the runtime libraries are fully annotated to be Native AOT compatible."* | [R20] |
+| **Go** | Ano, standardně | ✅ na libovolný cíl z libovolného hostitele | Domovská doména. Dokumentace to říká rovnou: *"In effect, you are always cross-compiling."* Cílů je přes dvacet kombinací OS a architektury. | [R24] |
+| **Java** | Přes GraalVM Native Image — *"Starts in milliseconds"*, bez nainstalované JVM | 🟡 nezjišťováno v tomto kole | **Closed-world assumption.** Analýza je statická a *"does not run your application"*, takže *"cannot always exhaustively predict all usages of the Java Native Interface (JNI), Java Reflection, Dynamic Proxy objects, or class path resources"* — chybějící místa se dopisují ručně do JSON metadat. V ekosystému postaveném na reflexi je to opakovaný náklad, ne jednorázový. Bez native image potřebuje cílový stroj JVM. | [R21] |
+| **Kotlin** | Táž cesta jako Java (JVM + GraalVM) | 🟡 nezjišťováno v tomto kole | Tytéž výhrady jako u Javy [R21]. Kotlin/Native jako druhá cesta v tomto kole nezjišťován. | [R21] |
+| **PHP** | Přes `static-php-cli` — staticky slinkovaná binárka bez systémového PHP | 🟡 Linux, macOS a FreeBSD lokálně; Windows jen přes GitHub Actions | Zásadní rozdíl proti ostatním: **není to oficiální nástroj jazyka**, ale projekt třetí strany (MIT, autor crazywhalecc). Podporuje PHP 8.2–8.5. Zralost knihoven pro dlouhoběžící démony a systémovou automatizaci v tomto kole nezjišťována — hodnocení stojí zatím jen na distribuci. | [R25] |
+| **Python** | Přes PyInstaller, režim one-file | ❌ *"PyInstaller does not support cross-compilation"* — pro každý OS a verzi Pythonu je nutné pustit build na tom OS | One-file se při každém spuštění rozbaluje do dočasné složky, což start zpomaluje oproti one-folder. Na strojích, kde Python už je, žádný z těchto nákladů nevzniká — proto je to cena za distribuci, ne za psaní. | [R26] |
+| **Rust** | Ano, standardně | ✅ Tier 1 pokrývá Linux, macOS i Windows na x86-64 i ARM64, s oficiálními buildy a automatickými testy po každé změně | Domovská doména. Tier 1 znamená *"Guaranteed to work"*, Tier 2 *"Guaranteed to build"*. | [R27] |
+| **TypeScript** | Dvě cesty, obě funkční, každá s jinou cenou | ✅ přes `deno compile` (Windows, macOS, Linux × x64 i ARM64) | **Node SEA** je *"Stability: 1.1 - Active development"*, `require()` a `import` ve vloženém skriptu čtou jen vestavěné moduly, křížové sestavení vyžaduje vypnout `useCodeCache` i `useSnapshot`, macOS x64 se netestuje a na Linux arm64 v Dockeru je známý pád na `process.dlopen()`. **`deno compile`** je podstatně vyzrálejší a přibaluje osekaný runtime — ale volbou Dena volíš jiný runtime než Node, tedy odbočku uvnitř téhož jazyka. | [R22][R23] |
+
+**Co z toho plyne.** Go a Rust jsou tu jediné, kde distribuce nestojí **nic** — binárka je výchozí výstup překladu a křížový překlad je vlastnost jazyka, ne přílepek. Všichni ostatní si samostatnou binárku musí koupit: C# a Java toolchainem a omezením dynamických rysů, PHP závislostí na projektu třetí strany, Python vzdáním se křížového překladu, TypeScript volbou mezi experimentální cestou a jiným runtime.
+
+Tím se **potvrzuje ta část předpovědi z §2.3, která se týkala Go** — ale z jiného důvodu, než jsem psal. Nepředpovídal jsem křížový překlad, předpovídal jsem obecně „domovskou doménu“. Doložilo se to konkrétněji a zároveň to platí stejně silně pro Rust, kterého jsem v téhle doméně nezmiňoval.
+
+**Ostatní tři domény:** [OVĚŘIT] — kola 3 až 5.
 
 ### 4.4 Kdo ekosystém platí (ověřeno 2026-08-22)
 
@@ -229,6 +258,17 @@ Ověřeno k 2026-08-22 (kolo 1 — brána B2, §4.4 a §4.5).
 - [R17] TypeScript's Release Process (wiki) — kadence vydání; o LTS mlčí. Ověřeno 2026-08-22: <https://github.com/microsoft/TypeScript/wiki/TypeScript%27s-Release-Process>
 - [R18] microsoft/TypeScript issue #49088 „Document TypeScript version lifetime and EOL“ (uzavřeno) — vyjádření týmu, že oficiální politika neexistuje. Ověřeno 2026-08-22: <https://github.com/microsoft/TypeScript/issues/49088>
 - [R19] Node.js — Previous Releases (LTS 30 měsíců). Ověřeno 2026-08-22: <https://nodejs.org/en/about/previous-releases>
+
+**Distribuce a nasazení (kolo 2, doména CLI)**
+
+- [R20] .NET — Native AOT deployment overview, včetně sekce Limitations. Ověřeno 2026-08-22: <https://learn.microsoft.com/en-us/dotnet/core/deploying/native-aot/>
+- [R21] GraalVM — Native Image (closed-world assumption, omezení reflexe a JNI). Ověřeno 2026-08-22: <https://www.graalvm.org/latest/reference-manual/native-image/>
+- [R22] Node.js — Single executable applications (Stability 1.1, omezení). Ověřeno 2026-08-22: <https://nodejs.org/api/single-executable-applications.html>
+- [R23] Deno — `deno compile` (samostatná binárka, křížový překlad). Ověřeno 2026-08-22: <https://docs.deno.com/runtime/reference/cli/compile/>
+- [R24] Go — Installing Go from source, tabulka `GOOS`/`GOARCH`. Ověřeno 2026-08-22: <https://go.dev/doc/install/source>
+- [R25] static-php-cli — Guide (staticky slinkované PHP binárky, podporované platformy a verze). Ověřeno 2026-08-22: <https://static-php.dev/en/guide/>
+- [R26] PyInstaller — How it works / operating mode (one-file režim, absence křížového překladu). Ověřeno 2026-08-22: <https://pyinstaller.org/en/stable/operating-mode.html>
+- [R27] Rust — Platform Support (definice Tier 1 a Tier 2). Ověřeno 2026-08-22: <https://doc.rust-lang.org/rustc/platform-support.html>
 
 **Jazykové vlastnosti**
 
