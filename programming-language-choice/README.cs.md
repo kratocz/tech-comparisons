@@ -2,7 +2,7 @@
 
 - **Verdikt:** ⏳ zatím žádný. Regret matrix je kompletní a **prozatímní pořadí vede TypeScript s váženou cenou 4** před Pythonem (5), viz §3.1 — pořadí ale zatím nesmí být verdiktem ze tří doložených důvodů uvedených tamtéž. **Předpověď zapsaná v §2.3 se nepotvrdila:** Go skončilo sedmé z osmi.
 - **Sycené rozhodnutí:** na čem stavět **nové** projekty (vlastní, firemní i cizí) v horizontu let — a čím ta volba argumentovat u někoho, kdo u úvahy nebyl.
-- **Fakta ověřena:** 🟡 2026-08-22, sedm kol, reference [R1]–[R61]: financování, governance a závazky podpory (§4.4, §4.5); všechny čtyři domény (§4.3) a kompletní regret matrix (§3, §3.1); přísnost podle M2 (§4.1); souběžnost, nábor a frameworky (§4.2, §4.6, §4.7); datovaný snapshot (§5). Otevřené `[OVĚŘIT]`: §4.8. Neúplné a přiznané: C# a Rust v §4.2, úrovně PHPStan a Psalm v §4.1. **Čtyři buňky označeny jako nejisté** a přednostně poslány do adversariálního průchodu: Rust v backendu, Go a PHP v prohlížeči (obě ❌), Rust v prohlížeči.
+- **Fakta ověřena:** 🟡 2026-08-22, sedm kol, reference [R1]–[R64]: financování, governance a závazky podpory (§4.4, §4.5); všechny čtyři domény (§4.3) a kompletní regret matrix (§3, §3.1); přísnost podle M2 (§4.1); souběžnost, nábor a frameworky (§4.2, §4.6, §4.7); datovaný snapshot (§5). Otevřené `[OVĚŘIT]`: žádné. Neúplné a přiznané: C# a Rust v §4.2, úrovně PHPStan a Psalm v §4.1. **Čtyři buňky označeny jako nejisté** a přednostně poslány do adversariálního průchodu: Rust v backendu, Go a PHP v prohlížeči (obě ❌), Rust v prohlížeči.
 - **Adversariální průchod:** ❌ zatím neproběhl (povinný před verdiktem, §2.4 M5).
 - **Jazyk:** 🇨🇿 čeština (originál); 🇬🇧 kanonická anglická verze zatím nevznikla
 - **Autor:** Petr Kratochvíl — [krato.cz](https://krato.cz)
@@ -13,7 +13,7 @@
 - [x] rozhodovací pravidla (§2) sepsána před rešerší — 2026-08-22
 - [x] řádek v kořenovém README — 2026-08-22
 - [x] **potvrdit rozhodovací pravidla (§2) uživatelem** — 2026-08-22: váhy domén doplněny (§2.3), B1 zúžena na backend (§2.2), agregace přepsána na váženou cenu; předpověď zapsána před rešerší
-- [ ] tabulka vlastností (§4.8) — po §3
+- [x] tabulka vlastností (§4.8) — 2026-08-22
 - [x] regret matrix (§3) včetně vážené ceny a čtení tabulky (§3.1) — kola 2 až 5, 2026-08-22
 - [x] trvanlivá vrstva (§4) — §4.1 až §4.7 hotové (kola 1 až 7, 2026-08-22)
 - [x] datovaný snapshot (§5) — 2026-08-22
@@ -225,25 +225,6 @@ Výkon není v tomhle kontextu brána (§1), takže se neptám „který je rych
 
 To je přesně to, kvůli čemu M1 existuje: vlastnost je vydaná, ale ekosystém ji nedohnal a dokument to musí říct, místo aby napsal „Python už GIL nemá“.
 
-### 4.6 Náborový rybník, předatelnost, zaškolení (ověřeno 2026-08-22)
-
-Tahle osa má plnou váhu kvůli druhé roli ze §1 — doporučování ve firmách. Firma nepřebírá jazyk, přebírá jeho náborový rybník.
-
-**Trvanlivá část** (konkrétní procenta jsou perishable a jsou v §5): rozdíly mezi těmi osmi nejsou po procentech, ale **řádové**. Ve třech pásmech: TypeScript a Python s nejširší základnou; C#, Java a PHP ve středu; Go, Rust a Kotlin nejúžeji, přičemž **Kotlin má nejmenší základnu z celé osmičky** [R61].
-
-**A tady vzniká napětí, které musí verdikt vyřešit, ne zamlčet.** Tie-breaker 1 (přísnost, §4.1) rozhodl trojici na ceně 6 pořadím Kotlin › C# › Java. Tie-breaker 2 (nábor) ji řadí **přesně opačně** — C# a Java mají zhruba trojnásobnou základnu oproti Kotlinu. Pravidlo §2.3 má pořadí tie-breakerů pevně dané předem, takže **platí Kotlin**; ale pro firemní roli je to výsledek, který jde proti tomu, co by firma chtěla slyšet. Verdikt to musí uvést jako přiznaný důsledek pravidla, ne to schovat.
-
-*Omezení zdroje: jde o dobrovolnou anketu jedné komunity, ne o měření trhu práce, a „používá jazyk“ není totéž co „je na něj k sehnání“. Pro ČR specificky data v tomto kole zjišťována nebyla.*
-
-### 4.7 Zralost frameworků a knihoven (ověřeno 2026-08-22)
-
-Podklady jsou už v §4.3, kde se zjišťovaly kvůli doménám. Shrnuto do jedné osy:
-
-- **Nejzralejší a nejcelistvější:** C# (ASP.NET Core first-party, jeden kalendář s jazykem), Java a Kotlin (Spring Boot), PHP (Symfony a Laravel, obojí s vlastní datovanou politikou podpory), Python (Django).
-- **Nejméně tříštivé:** Go — webová vrstva je ve standardní knihovně, takže „framework“ jako samostatná závislost s vlastním životním cyklem tu vůbec nevzniká [R8].
-- **Nejtříštivější:** TypeScript. Vrstva frameworků je široká a bez společné politiky — Fastify má LTS zhruba na rok [R32], u Expressu se politiku nepodařilo najít [R33]. Ekosystém je největší z osmi a zároveň nejméně koordinovaný; pro sázku na dekádu je to obojí najednou.
-- **Nejtenčí ve dvou ze čtyř domén:** Rust (u Axumu nenalezen datovaný kalendář [R34]) a PHP mimo web.
-
 ### 4.3 Čím se platí za každou ze čtyř domén
 
 **▸ CLI, démoni a automatizace (váha 3) — ověřeno 2026-08-22**
@@ -371,32 +352,53 @@ Pozor ale na rozsah tohoto tvrzení: **týká se kompilátoru, ne běhového pro
 
 Rozhodnutí, co s tím, **nepatří mně a nebude provedeno tiše**: B2 se ukázala jako nástroj, který u překladačů měří něco jiného než u běhových prostředí, a to je vada v návrhu pravidla, ne ve faktech pod ním. Pravidlo proto zůstává zapsané přesně tak, jak bylo, i s poznámkou, že vypálilo. Případná úprava bude zaznamenána jako **dodatečná, s datem a důvodem** — ne jako by tam byla od začátku.
 
-### 4.6 Náborový rybník, předatelnost, zaškolení
+### 4.6 Náborový rybník, předatelnost, zaškolení (ověřeno 2026-08-22)
 
-[OVĚŘIT] — plná váha kvůli firemní roli (§1).
+Tahle osa má plnou váhu kvůli druhé roli ze §1 — doporučování ve firmách. Firma nepřebírá jazyk, přebírá jeho náborový rybník.
 
-### 4.7 Zralost frameworků a knihoven
+**Trvanlivá část** (konkrétní procenta jsou perishable a jsou v §5): rozdíly mezi těmi osmi nejsou po procentech, ale **řádové**. Ve třech pásmech: TypeScript a Python s nejširší základnou; C#, Java a PHP ve středu; Go, Rust a Kotlin nejúžeji, přičemž **Kotlin má nejmenší základnu z celé osmičky** [R61].
 
-[OVĚŘIT]
+**A tady vzniká napětí, které musí verdikt vyřešit, ne zamlčet.** Tie-breaker 1 (přísnost, §4.1) rozhodl trojici na ceně 6 pořadím Kotlin › C# › Java. Tie-breaker 2 (nábor) ji řadí **přesně opačně** — C# a Java mají zhruba trojnásobnou základnu oproti Kotlinu. Pravidlo §2.3 má pořadí tie-breakerů pevně dané předem, takže **platí Kotlin**; ale pro firemní roli je to výsledek, který jde proti tomu, co by firma chtěla slyšet. Verdikt to musí uvést jako přiznaný důsledek pravidla, ne to schovat.
 
-### 4.8 Souhrnná tabulka vlastností (důkazní materiál — nenese verdikt)
+*Omezení zdroje: jde o dobrovolnou anketu jedné komunity, ne o měření trhu práce, a „používá jazyk“ není totéž co „je na něj k sehnání“. Pro ČR specificky data v tomto kole zjišťována nebyla.*
 
-Tabulka, na kterou se čtenář ptá jako první: konkrétní vlastnosti jazyk po jazyku. **Verdikt z ní neplyne** — ten vydává §3 podle pravidla §2.3. Tahle tabulka shrnuje, co zjistily §4.1–§4.7, a slouží jako podklad pro tie-breakery. Kdyby ukazovala jinam než §3, platí §3; rozpor se zapíše, ne zamlčí.
+### 4.7 Zralost frameworků a knihoven (ověřeno 2026-08-22)
 
-Dvě omezení, obě záměrná:
+Podklady jsou už v §4.3, kde se zjišťovaly kvůli doménám. Shrnuto do jedné osy:
 
-- **Jen vedoucí kandidáti** podle vážené ceny z §3, ne všech osm — zbytek je vyřazen už cenou a šířka tabulky by šla proti čitelnosti. Kolik jich bude, se ukáže po §3.
-- **Jen vlastnosti napojené na rozhodovací pravidlo nebo tie-breaker.** Vlastnost, která nezmění žádné rozhodnutí, je dekorace a do tabulky nepatří. Každá buňka podle M1 (§2.4) uvede, ve které verzi vlastnost přišla a zda ji ekosystém dohnal.
+- **Nejzralejší a nejcelistvější:** C# (ASP.NET Core first-party, jeden kalendář s jazykem), Java a Kotlin (Spring Boot), PHP (Symfony a Laravel, obojí s vlastní datovanou politikou podpory), Python (Django).
+- **Nejméně tříštivé:** Go — webová vrstva je ve standardní knihovně, takže „framework“ jako samostatná závislost s vlastním životním cyklem tu vůbec nevzniká [R8].
+- **Nejtříštivější:** TypeScript. Vrstva frameworků je široká a bez společné politiky — Fastify má LTS zhruba na rok [R32], u Expressu se politiku nepodařilo najít [R33]. Ekosystém je největší z osmi a zároveň nejméně koordinovaný; pro sázku na dekádu je to obojí najednou.
+- **Nejtenčí ve dvou ze čtyř domén:** Rust (u Axumu nenalezen datovaný kalendář [R34]) a PHP mimo web.
 
-Jazyky jsou tu **ve sloupcích** (v §3 jsou v řádcích), protože patnáct vlastností jako sloupců je nečitelných. Pořadí jazyků zůstává abecední jako všude jinde v dokumentu (§2.1).
+### 4.8 Souhrnná tabulka vlastností (důkazní materiál — nenese verdikt, ověřeno 2026-08-22)
 
-Plánované řádky — tři skupiny:
+Tabulka, na kterou se čtenář ptá jako první: konkrétní vlastnosti jazyk po jazyku. **Verdikt z ní neplyne** — ten vydává §3 podle pravidla §2.3. Tohle shrnuje, co zjistily §4.1 až §4.7, a slouží jako podklad pro tie-breakery. Kdyby ukazovala jinam než §3, platí §3 a rozpor se zapíše.
 
-- **▸ Přísnost** (živí §4.1 a tie-breaker 1): typy vynucené za běhu vs. jen při kontrole · null safety · generika v jazyce vs. jen v anotacích pro statickou analýzu · sealed typy a vyčerpávající pattern matching · neměnnost jako výchozí stav · co jde vynutit v CI a existuje-li ráčna proti couvání
-- **▸ Ergonomie** (sem patří i tři vlastnosti z původního zadání — jsou to otázky pohodlí a stylu, ne korektnosti, a míchat je s přísností by zkreslilo obojí): vyžaduje deklaraci proměnných · zakazuje globální proměnné · get/set properties
-- **▸ Provoz a ekosystém** (živí §4.2 a §4.4–§4.7): model souběžnosti · GC vs. bez GC · startup čas · distribuce jedním binárkem · oficiální správce balíčků · oficiální formátovač a jazykový server
+*Úprava proti záměru z kostry (2026-08-22): původně měla tabulka obsahovat jen vedoucí kandidáty, aby nebyla široká. Nakonec je tu všech osm — vyřadit PHP a Go z referenční tabulky by čtenáři vzalo právě to srovnání, kvůli kterému tuhle tabulku chtěl. Cenou je devět sloupců, které se na úzké obrazovce posouvají.*
 
-[OVĚŘIT] — tabulka se doplní po §3 a §4.1–§4.7.
+Jazyky jsou tu **ve sloupcích** (v §3 v řádcích), pořadí abecední jako všude (§2.1).
+
+| Vlastnost | C# | Go | Java | Kotlin | PHP | Python | Rust | TypeScript |
+|---|---|---|---|---|---|---|---|---|
+| **▸ Přísnost** | | | | | | | | |
+| Typy vynucené za běhu | ✅ | ✅ | ✅ | ✅ | 🟡 po souborech | ❌ | ✅ | ❌ |
+| Nullabilita v typovém systému | 🟡 jen při překladu | ❌ `nil` | ❌ | ✅ | 🟡 `?int` | 🟡 jen anotace | ✅ `Option<T>` | ✅ `strictNullChecks` |
+| Generika skutečná za běhu | ✅ | ✅ od 1.18 | ❌ mazaná | ❌ mazaná | ❌ nemá vůbec | ❌ jen anotace | ✅ | ❌ mazaná |
+| Hlavní únik z přísnosti | `!` a `default` struktury | `any`, aserce | mazání, raw typy | platform types z Javy | soubor bez direktivy | `Any` | `unwrap`, `unsafe` | `any` |
+| **▸ Ergonomie** | | | | | | | | |
+| Vlastnosti get/set jako jazykový rys | ✅ [R62] | — | — | ✅ [R63] | ✅ od 8.4 [R1] | ✅ `@property` [R64] | — | — |
+| **▸ Provoz a ekosystém** | | | | | | | | |
+| Model souběžnosti | `async`/`Task` *(nezj.)* | goroutiny | virtuální vlákna (JDK 21) | korutiny + JVM | jen kooperativní (Fibers 8.1) | GIL; build bez něj od 3.13, není výchozí | `async` + vlákna *(nezj.)* | smyčka událostí + workeři |
+| Samostatná binárka bez runtime | 🟡 Native AOT | ✅ výchozí | 🟡 GraalVM | 🟡 GraalVM | 🟡 třetí strana | 🟡 PyInstaller | ✅ výchozí | 🟡 SEA / `deno compile` |
+| Křížový překlad | 🟡 zdroj mlčí | ✅ | 🟡 nezj. | 🟡 nezj. | 🟡 částečně | ❌ | ✅ | ✅ přes Deno |
+| Okno podpory jazyka | 36 měs. LTS | ~1 rok + slib kompatibility | ≥4 roky (Adoptium) | bez tabulky | 4 roky | 5 let | bez tabulky | žádné |
+| Okno podpory frameworku | shodné s jazykem | žádný navíc | ≥12 měs. minor | ≥12 měs. minor | 2–4 roky dle volby | 3 roky | nenalezeno | ~1 rok / nenalezeno |
+| Náborová základna (§5.1) | 29,9 % | 17,4 % | 29,6 % | 11,5 % | 19,1 % | 54,8 % | 14,5 % | 48,8 % |
+
+**Ke třem sloupcům z původního zadání.** Tabulka, která tenhle dokument inspirovala, měla tři sloupce: *vyžaduje deklaraci proměnných*, *zakazuje globální proměnné* a *podporuje get/set properties*. Třetí je výše a je doložený. **První dva tu nejsou schválně** a je to důsledek pravidla, které si tahle tabulka sama uložila: patří sem jen vlastnost napojená na nějaké rozhodovací pravidlo nebo tie-breaker. Deklarace proměnných ani zákaz globálních proměnných na žádné pravidlo v §2 nenapojené nejsou — a otázka, kvůli které tam původně byly, tedy *„nakolik mi jazyk sám od sebe zabrání udělat chybu“*, má odpověď jinde a mnohem přesnější: v §4.1 bodě (a), kde se ukázalo, že rozhoduje **hranice vynucení**, ne přítomnost syntaktického pravidla.
+
+**A ještě jedna oprava původní tabulky.** Řadila *get/set properties* mezi vlastnosti přísnosti, kde Java vycházela hůř. Jsou to ale dvě různé osy: vlastnosti jsou ergonomie, ne korektnost, a Java tím, že je nemá, není méně bezpečná — jak je vidět na řádku „Typy vynucené za běhu“, kde Java ✅ má a Python s TypeScriptem ne.
 
 ## 5. Datovaná vrstva (snapshot k 2026-08-22 — rychle zastarává)
 
@@ -534,6 +536,12 @@ Ověřeno k 2026-08-22 (kolo 1 — brána B2, §4.4 a §4.5).
 - [R59] Effective Go — Concurrency (cena goroutiny, multiplexování na vlákna OS). Ověřeno 2026-08-22: <https://go.dev/doc/effective_go>
 - [R60] PHP Manual — Fibers (od PHP 8.1). Ověřeno 2026-08-22: <https://www.php.net/manual/en/language.fibers.php>
 - [R61] Stack Overflow Developer Survey 2025 — Technology, podíly u profesionálních vývojářů. Ověřeno 2026-08-22: <https://survey.stackoverflow.co/2025/technology>
+
+**Vlastnosti jako jazykový rys (kolo 8, §4.8)**
+
+- [R62] C# — Properties (vlastnosti jako členy s přístupovými metodami `get`/`set`). Ověřeno 2026-08-22: <https://learn.microsoft.com/en-us/dotnet/csharp/programming-guide/classes-and-structs/properties>
+- [R63] Kotlin — Properties (`val`/`var`, automaticky generované a vlastní přístupové metody). Ověřeno 2026-08-22: <https://kotlinlang.org/docs/properties.html>
+- [R64] Python — vestavěná funkce `property()` a dekorátor `@property`. Ověřeno 2026-08-22: <https://docs.python.org/3/library/functions.html>
 
 **Jazykové vlastnosti**
 
