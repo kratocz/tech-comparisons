@@ -2,7 +2,7 @@
 
 - **Verdikt:** ⏳ zatím žádný. Pravidla (§2) sepsána a potvrzena PŘED rešerší. Kolo 1 (§4.4, §4.5) hotové: **brána B2 vypálila proti TypeScriptu** — rozhodnutí o úpravě pravidla čeká na zadavatele a nebude provedeno tiše (§4.5).
 - **Sycené rozhodnutí:** na čem stavět **nové** projekty (vlastní, firemní i cizí) v horizontu let — a čím ta volba argumentovat u někoho, kdo u úvahy nebyl.
-- **Fakta ověřena:** 🟡 2026-08-22, tři kola, reference [R1]–[R34]: financování, governance a závazky podpory (§4.4, §4.5); domény CLI a backend (§4.3 a tytéž sloupce v §3). Otevřené `[OVĚŘIT]`: §3 (frontend, data, vážená cena), §4.1, §4.2, zbytek §4.3, §4.6–§4.8, §5. Jedna buňka označena jako nejistá a přednostně poslána do adversariálního průchodu (Rust v backendu).
+- **Fakta ověřena:** 🟡 2026-08-22, čtyři kola, reference [R1]–[R42]: financování, governance a závazky podpory (§4.4, §4.5); domény CLI, backend a frontend (§4.3 a tytéž sloupce v §3). Otevřené `[OVĚŘIT]`: §3 (doména dat a vážená cena), §4.1, §4.2, zbytek §4.3, §4.6–§4.8, §5. **Čtyři buňky označeny jako nejisté** a přednostně poslány do adversariálního průchodu: Rust v backendu, Go a PHP ve frontendu (obě ❌), Rust ve frontendu.
 - **Adversariální průchod:** ❌ zatím neproběhl (povinný před verdiktem, §2.4 M5).
 - **Jazyk:** 🇨🇿 čeština (originál); 🇬🇧 kanonická anglická verze zatím nevznikla
 - **Autor:** Petr Kratochvíl — [krato.cz](https://krato.cz)
@@ -14,8 +14,8 @@
 - [x] řádek v kořenovém README — 2026-08-22
 - [x] **potvrdit rozhodovací pravidla (§2) uživatelem** — 2026-08-22: váhy domén doplněny (§2.3), B1 zúžena na backend (§2.2), agregace přepsána na váženou cenu; předpověď zapsána před rešerší
 - [ ] tabulka vlastností (§4.8) — po §3
-- [~] regret matrix (§3) — sloupce CLI a backend hotové (kola 2 a 3, 2026-08-22); zbývá frontend, data a vážená cena
-- [~] trvanlivá vrstva (§4) — hotovo §4.4, §4.5 (kolo 1), CLI a backend v §4.3 (kola 2 a 3), vše 2026-08-22; zbývá §4.1, §4.2, dvě domény v §4.3, §4.6, §4.7
+- [~] regret matrix (§3) — sloupce backend, CLI a frontend hotové (kola 2 až 4, 2026-08-22); zbývá doména dat a vážená cena
+- [~] trvanlivá vrstva (§4) — hotovo §4.4, §4.5 (kolo 1) a tři domény v §4.3 (kola 2 až 4), vše 2026-08-22; zbývá §4.1, §4.2, doména dat v §4.3, §4.6, §4.7
 - [ ] datovaný snapshot (§5)
 - [ ] adversariální průchod (§2.4 M5), výsledek do hlavičky
 - [ ] verdikt (§6)
@@ -100,20 +100,20 @@ Tabulka se **neptá, jak je jazyk v doméně dobrý**. Ptá se: *kolik mě stoj�
 
 Symboly: ✅ domovská doména, cena blízko nule · 🟡 použitelné, ale s pojmenovanou cenou · ❌ cena tak vysoká, že bys pro tuhle doménu sáhl po jiném jazyce. Hodnoceno **pro kontext §1** (zelená louka, výkon jako měkká osa), ne obecně.
 
-Stav vyplňování: sloupce **backend a CLI ověřeny 2026-08-22** (kola 2 a 3, §4.3); frontend, data a vážená cena se doplní v dalších kolech.
+Stav vyplňování: sloupce **backend, CLI a frontend ověřeny 2026-08-22** (kola 2 až 4, §4.3); zbývá doména dat a vážená cena.
 
 Sloupce jsou seřazené **podle váhy domény sestupně** (4 · 3 · 2 · 1, §2.3), aby se tabulka četla zleva od toho, co rozhoduje nejvíc. Poslední sloupec je vážená cena podle §2.3 — nižší je lepší, rozsah 0 až 30.
 
 | Jazyk | Backend a API (×4) | CLI a automatizace (×3) | Frontend v prohlížeči (×2) | Data, ML, dávky (×1) | Vážená cena |
 |---|---|---|---|---|---|
-| **C#** | ✅ ASP.NET Core je first-party, jeden kalendář s jazykem [R9] | 🟡 Native AOT, ale s toolchainem a zákazem dynamických rysů [R20] | [OVĚŘIT] | [OVĚŘIT] | [OVĚŘIT] |
-| **Go** | ✅ `net/http` ve stdlib — žádné druhé okno podpory [R8] | ✅ domovská; vždy křížový překlad [R24] | [OVĚŘIT] | [OVĚŘIT] | [OVĚŘIT] |
-| **Java** | ✅ Spring Boot; minor ale jen ≥12 měsíců OSS [R31] | 🟡 GraalVM, ale closed-world a JSON metadata [R21] | [OVĚŘIT] | [OVĚŘIT] | [OVĚŘIT] |
-| **Kotlin** | ✅ táž cesta jako Java [R31] | 🟡 táž cesta a tytéž výhrady jako Java [R21] | [OVĚŘIT] | [OVĚŘIT] | [OVĚŘIT] |
-| **PHP** | ✅ Symfony či Laravel; volba mění okno 4 roky vs. 2 [R28][R29] | 🟡 binárka jen přes projekt třetí strany [R25] | [OVĚŘIT] | [OVĚŘIT] | [OVĚŘIT] |
-| **Python** | ✅ Django, tři roky na každé vydání [R30] | 🟡 bez křížového překladu [R26] | [OVĚŘIT] | [OVĚŘIT] | [OVĚŘIT] |
-| **Rust** | 🟡 u Axumu nenalezen datovaný kalendář podpory; **buňka nejistá**, jde do M5 [R34] | ✅ domovská; Tier 1 napříč OS [R27] | [OVĚŘIT] | [OVĚŘIT] | [OVĚŘIT] |
-| **TypeScript** | ✅ zralé, ale roztříštěné; Fastify ~rok, Express nenalezeno [R32][R33] | 🟡 Node SEA experimentální; `deno compile` zralé, ale jiný runtime [R22][R23] | [OVĚŘIT] | [OVĚŘIT] | [OVĚŘIT] |
+| **C#** | ✅ ASP.NET Core je first-party, jeden kalendář s jazykem [R9] | 🟡 Native AOT, ale s toolchainem a zákazem dynamických rysů [R20] | 🟡 Blazor WASM: do prohlížeče jde runtime; past s heapem na iOS [R35] | [OVĚŘIT] | [OVĚŘIT] |
+| **Go** | ✅ `net/http` ve stdlib — žádné druhé okno podpory [R8] | ✅ domovská; vždy křížový překlad [R24] | ❌ ~2 MB dno, 10 MB+ běžně; `wasm_exec.js` vázán na verzi — **nejistá, do M5** [R37] | [OVĚŘIT] | [OVĚŘIT] |
+| **Java** | ✅ Spring Boot; minor ale jen ≥12 měsíců OSS [R31] | 🟡 GraalVM, ale closed-world a JSON metadata [R21] | 🟡 TeaVM (třetí strana); omezení nedoložena [R41] | [OVĚŘIT] | [OVĚŘIT] |
+| **Kotlin** | ✅ táž cesta jako Java [R31] | 🟡 táž cesta a tytéž výhrady jako Java [R21] | 🟡 Kotlin/Wasm je Beta a klade podmínku na prohlížeč [R36] | [OVĚŘIT] | [OVĚŘIT] |
+| **PHP** | ✅ Symfony či Laravel; volba mění okno 4 roky vs. 2 [R28][R29] | 🟡 binárka jen přes projekt třetí strany [R25] | ❌ jen `php-wasm`, fakticky jeden udržovatel — **nejistá, do M5** [R42] | [OVĚŘIT] | [OVĚŘIT] |
+| **Python** | ✅ Django, tři roky na každé vydání [R30] | 🟡 bez křížového překladu [R26] | 🟡 Pyodide zralé, plný přístup k Web API; velikost nedoložena [R38] | [OVĚŘIT] | [OVĚŘIT] |
+| **Rust** | 🟡 u Axumu nenalezen datovaný kalendář podpory; **buňka nejistá**, jde do M5 [R34] | ✅ domovská; Tier 1 napříč OS [R27] | 🟡 evidence úzká (nemaintainovaná kniha WG) — **nejistá, do M5** [R40] | [OVĚŘIT] | [OVĚŘIT] |
+| **TypeScript** | ✅ zralé, ale roztříštěné; Fastify ~rok, Express nenalezeno [R32][R33] | 🟡 Node SEA experimentální; `deno compile` zralé, ale jiný runtime [R22][R23] | ✅ prohlížeč je nativní cíl; jediná nula ve sloupci [R39] | [OVĚŘIT] | [OVĚŘIT] |
 
 ### 3.1 Jak tabulku číst
 
@@ -158,7 +158,7 @@ Tady nezáleží na tom, jestli jazyk backend „umí“ — umí ho všech osm.
 |---|---|---|---|---|
 | **C#** | ASP.NET Core — součást .NET, od téhož výrobce | Shodné s .NET: LTS 36 měsíců | **Jedno** — framework a jazyk mají jeden kalendář | [R9] |
 | **Go** | `net/http` ve **standardní knihovně** | Žádné samostatné; kryje ho Go 1 compatibility promise | **Žádné navíc** — jediný z osmi, kdo druhý kalendář nemá vůbec | [R8] |
-| **Java** | Spring Boot | Minor *„at least 12 months“*, major *„at least 3 years“*; nové vydání každých šest měsíců (květen a listopad) | Dvě | [R31] |
+| **Java** | Spring Boot | Minor *"at least 12 months"*, major *"at least 3 years"*; nové vydání každých šest měsíců (květen a listopad) | Dvě | [R31] |
 | **Kotlin** | Spring Boot (Ktor v tomto kole nezjišťován) | Tytéž hodnoty jako u Javy | Dvě | [R31] |
 | **PHP** | Symfony **nebo** Laravel — a rozdíl mezi nimi je dvojnásobný | Symfony LTS: 3 roky oprav + **4 roky bezpečnosti**. Laravel: 18 měsíců oprav + **2 roky bezpečnosti** | Dvě, a volba frameworku ti okno zdvojnásobí nebo zkrátí na polovinu | [R28][R29] |
 | **Python** | Django | Tři roky; od vydání 2028 dostane **každé** feature vydání týchž tři roky, ne jen LTS | Dvě | [R30] |
@@ -171,7 +171,26 @@ Prakticky z toho plyne, že verdikt nerozhodne backend s vahou 4, ale **CLI s va
 
 Jediný, koho backend odděluje, je **Rust**, a jeho 🟡 stojí zatím na jediné ose (chybějící zveřejněný kalendář podpory u Axumu). Šíře ekosystému pro autentizaci, ORM a administraci v tomto kole zjišťována nebyla, takže **tuhle buňku označuji za nejistou a posílám ji přednostně do adversariálního průchodu** (M5).
 
-**Zbylé dvě domény:** [OVĚŘIT] — kola 4 a 5.
+**▸ Webový frontend v prohlížeči (váha 2) — ověřeno 2026-08-22**
+
+Jediná doména, kde má jeden kandidát výhodu, kterou mu ostatní nemohou vzít: **prohlížeč je nativní cíl TypeScriptu, ne jeho exportní trh.** Ostatních sedm se do prohlížeče dostává přes WebAssembly nebo transpilaci a každý za to platí něčím jiným.
+
+| Jazyk | Cesta do prohlížeče | Doložená cena | Zdroj |
+|---|---|---|---|
+| **C#** | Blazor WebAssembly, first-party | *"The Blazor app, its dependencies, and the .NET runtime are downloaded to the browser"* — do prohlížeče tedy putuje běhové prostředí. Zmírnění jsou dokumentovaná: balení Webcil, IL trimming při každém Release buildu, statická komprese Brotli a Gzip. Konkrétní past: výchozí `EmccMaximumHeapSize` je 2 GB a na Safari v iOS ho může být nutné snížit, jinak aplikace spadne. | [R35] |
+| **Go** | `GOOS=js GOARCH=wasm`, oficiální cíl | *"Go generates large Wasm files, with the smallest possible size being around ~2MB"* a *"10MB+ is common"*. Soubor `wasm_exec.js` musí pocházet z **téže hlavní verze** kompilátoru — *"Other combinations are not supported."* TinyGo se dostane na ~10 kB, ale je to jiný kompilátor s jiným podmnožinovým chováním. | [R37] |
+| **Java** | TeaVM — *"an ahead-of-time compiler for Java bytecode that emits JavaScript and WebAssembly that runs in a browser"* | Projekt třetí strany, ne oficiální cesta jazyka. Konkrétní omezení a velikosti výstupu se na úvodní stránce nedokládají — **mezera v evidenci**, hodnocení proto stojí jen na tom, že cesta existuje a je aktivní. | [R41] |
+| **Kotlin** | Kotlin/Wasm, first-party, plus Compose Multiplatform | **Stav Beta** podle vlastní dokumentace. Vyžaduje *"a browser version that supports WebAssembly's garbage collection and legacy exception handling proposals"* — tedy podmínku na straně návštěvníka. Kotlin/JS jako druhá cesta v tomto kole nezjišťován. | [R36] |
+| **PHP** | `php-wasm` | Jednoznačně nejtenčí cesta z osmi: projekt třetí strany pod Apache-2.0, fakticky jednoho udržovatele. Pokrývá PHP 8.0–8.5, vazba na DOM jde přes samostatný balíček. Existuje a je aktivní — ale psát v tom uživatelské rozhraní je něco jiného než umět v prohlížeči spustit PHP. | [R42] |
+| **Python** | Pyodide — *"a port of CPython to WebAssembly/Emscripten"* | Zralejší, než se čeká: *"Any pure Python package with a wheel available on PyPi is supported"*, včetně NumPy, pandas, SciPy a scikit-learn, plus obousměrné rozhraní na JavaScript a *"full access to the Web APIs"*. **Velikost stahovaného runtime se nepodařilo doložit** — stránka s údaji vrátila 403, takže žádné číslo netvrdím. | [R38] |
+| **Rust** | `wasm32`, plus frameworky mimo standardní knihovnu | Doložený signál je nepříjemný, ale úzký: oficiální kniha pracovní skupiny Rust a WebAssembly nese oznámení *"This project and website is no longer maintained."* **Pozor na rozsah — to je o té knize a webu, ne o cílové platformě ani o frameworcích**, které zjišťovány nebyly. Buňka proto stojí na neúplné evidenci. | [R40] |
+| **TypeScript** | Žádná — prohlížeč **je** cíl | *"TypeScript is JavaScript's runtime with a compile-time type checker"*; typy se při překladu mažou a výstupem je prostý JavaScript, který *"is **guaranteed** to run the same way"*. Cena nula, a je to jediná nula v tomto sloupci. | [R39] |
+
+**Co z toho plyne.** Frontend je zrcadlovým obrazem CLI: tam měly nulovou cenu Go a Rust, tady ji má jedině TypeScript. A protože §2.3 sčítá vážené ceny, rozhodne se verdikt na tom, jestli je nula v CLI (váha 3) cennější než nula ve frontendu (váha 2) — což při zadaných vahách vychází ve prospěch CLI, ale ne o tolik, aby to bylo bez debaty.
+
+**Tři buňky tohoto sloupce označuji za nejisté a posílám je do adversariálního průchodu (M5):** ❌ u Go (stojí na doložených velikostech, ale TinyGo je nezkoumaná úniková cesta), ❌ u PHP (stojí na tenkosti ekosystému, což je soud, ne měření) a 🟡 u Rustu (evidence je úzká a týká se dokumentace, ne platformy).
+
+**Poslední doména:** [OVĚŘIT] — kolo 5.
 
 ### 4.4 Kdo ekosystém platí (ověřeno 2026-08-22)
 
@@ -294,12 +313,23 @@ Ověřeno k 2026-08-22 (kolo 1 — brána B2, §4.4 a §4.5).
 **Frameworky a jejich závazky podpory (kolo 3, doména backend)**
 
 - [R28] Symfony — Releases (standardní vydání 8 měsíců oprav a 14 měsíců bezpečnosti; LTS 3 roky oprav a 4 roky bezpečnosti). Ověřeno 2026-08-22: <https://symfony.com/releases>
-- [R29] Laravel — Release Notes, sekce Support Policy (*„bug fixes are provided for 18 months and security fixes are provided for 2 years“*). Ověřeno 2026-08-22 na stránce dokumentace 12.x, která zároveň upozorňuje, že aktuální řadou je 13.x: <https://laravel.com/docs/12.x/releases>
+- [R29] Laravel — Release Notes, sekce Support Policy (*"bug fixes are provided for 18 months and security fixes are provided for 2 years"*). Ověřeno 2026-08-22 na stránce dokumentace 12.x, která zároveň upozorňuje, že aktuální řadou je 13.x: <https://laravel.com/docs/12.x/releases>
 - [R30] Django — Download, přehled podporovaných verzí a tříletého okna. Ověřeno 2026-08-22: <https://www.djangoproject.com/download/>
-- [R31] Spring Boot — Supported Versions (wiki projektu): minor *„at least 12 months“*, major *„at least 3 years“*. Ověřeno 2026-08-22: <https://github.com/spring-projects/spring-boot/wiki/Supported-Versions>
+- [R31] Spring Boot — Supported Versions (wiki projektu): minor *"at least 12 months"*, major *"at least 3 years"*. Ověřeno 2026-08-22: <https://github.com/spring-projects/spring-boot/wiki/Supported-Versions>
 - [R32] Fastify — Long Term Support. Ověřeno 2026-08-22: <https://fastify.dev/docs/latest/Reference/LTS/>
 - [R33] expressjs/express — výpis repozitáře; politika podpory nenalezena v kořeni ani v `.github`. **Závěr je slabý:** pozitivní kontrola u repozitáře `expressjs/expressjs.com` selhala (cesta `en` vrátila 404), takže o struktuře dokumentace nic netvrdím. Ověřeno 2026-08-22: <https://github.com/expressjs/express>
 - [R34] tokio-rs/axum — výpis repozitáře; datovaná politika podpory nenalezena v kořeni ani v adresáři crate `axum`. Pozitivní kontrola prošla (`Cargo.toml` přítomen v obou výpisech). Ověřeno 2026-08-22: <https://github.com/tokio-rs/axum>
+
+**Cesta do prohlížeče (kolo 4, doména frontend)**
+
+- [R35] ASP.NET Core — Host and deploy Blazor WebAssembly (stažení runtime, Webcil, trimming, komprese, `EmccMaximumHeapSize`). Ověřeno 2026-08-22: <https://learn.microsoft.com/en-us/aspnet/core/blazor/host-and-deploy/webassembly/>
+- [R36] Kotlin/Wasm overview — stav Beta a požadavky na prohlížeč. Ověřeno 2026-08-22: <https://kotlinlang.org/docs/wasm-overview.html>
+- [R37] Go Wiki — WebAssembly (velikost výstupu, vazba `wasm_exec.js` na verzi, TinyGo). Ověřeno 2026-08-22: <https://go.dev/wiki/WebAssembly>
+- [R38] pyodide/pyodide — README (port CPythonu do WebAssembly/Emscriptenu, podpora balíčků, přístup k Web API). Ověřeno 2026-08-22: <https://github.com/pyodide/pyodide>. *Stránka s údaji o velikosti* <https://pyodide.org/en/stable/project/about.html> *vrátila 403; žádné číslo o velikosti se proto v dokumentu netvrdí.*
+- [R39] TypeScript Handbook — TypeScript from Scratch (mazání typů, zachování běhového chování). Ověřeno 2026-08-22: <https://www.typescriptlang.org/docs/handbook/typescript-from-scratch.html>
+- [R40] Rust and WebAssembly (kniha pracovní skupiny) — nese oznámení, že projekt a web už nejsou udržovány. Ověřeno 2026-08-22: <https://rustwasm.github.io/docs/book/>
+- [R41] TeaVM — úvodní stránka (AOT překladač bytekódu Javy do JavaScriptu a WebAssembly). Ověřeno 2026-08-22: <https://teavm.org/>
+- [R42] seanmorris/php-wasm — README (pokrytí PHP 8.0–8.5, balíčky, licence Apache-2.0). Ověřeno 2026-08-22: <https://github.com/seanmorris/php-wasm>
 
 **Jazykové vlastnosti**
 
