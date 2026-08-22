@@ -2,7 +2,7 @@
 
 - **Verdikt:** ⏳ zatím žádný. Regret matrix je kompletní a **prozatímní pořadí vede TypeScript s váženou cenou 4** před Pythonem (5), viz §3.1 — pořadí ale zatím nesmí být verdiktem ze tří doložených důvodů uvedených tamtéž. **Předpověď zapsaná v §2.3 se nepotvrdila:** Go skončilo sedmé z osmi.
 - **Sycené rozhodnutí:** na čem stavět **nové** projekty (vlastní, firemní i cizí) v horizontu let — a čím ta volba argumentovat u někoho, kdo u úvahy nebyl.
-- **Fakta ověřena:** 🟡 2026-08-22, šest kol, reference [R1]–[R55]: financování, governance a závazky podpory (§4.4, §4.5); všechny čtyři domény (§4.3) a kompletní regret matrix včetně vážené ceny (§3, §3.1); přísnost podle rozkladu M2 (§4.1), která rozhodla tie-breaker mezi C#, Javou a Kotlinem. Otevřené `[OVĚŘIT]`: §4.2, §4.6–§4.8, §5. **Čtyři buňky označeny jako nejisté** a přednostně poslány do adversariálního průchodu: Rust v backendu, Go a PHP v prohlížeči (obě ❌), Rust v prohlížeči.
+- **Fakta ověřena:** 🟡 2026-08-22, sedm kol, reference [R1]–[R61]: financování, governance a závazky podpory (§4.4, §4.5); všechny čtyři domény (§4.3) a kompletní regret matrix (§3, §3.1); přísnost podle M2 (§4.1); souběžnost, nábor a frameworky (§4.2, §4.6, §4.7); datovaný snapshot (§5). Otevřené `[OVĚŘIT]`: §4.8. Neúplné a přiznané: C# a Rust v §4.2, úrovně PHPStan a Psalm v §4.1. **Čtyři buňky označeny jako nejisté** a přednostně poslány do adversariálního průchodu: Rust v backendu, Go a PHP v prohlížeči (obě ❌), Rust v prohlížeči.
 - **Adversariální průchod:** ❌ zatím neproběhl (povinný před verdiktem, §2.4 M5).
 - **Jazyk:** 🇨🇿 čeština (originál); 🇬🇧 kanonická anglická verze zatím nevznikla
 - **Autor:** Petr Kratochvíl — [krato.cz](https://krato.cz)
@@ -15,8 +15,8 @@
 - [x] **potvrdit rozhodovací pravidla (§2) uživatelem** — 2026-08-22: váhy domén doplněny (§2.3), B1 zúžena na backend (§2.2), agregace přepsána na váženou cenu; předpověď zapsána před rešerší
 - [ ] tabulka vlastností (§4.8) — po §3
 - [x] regret matrix (§3) včetně vážené ceny a čtení tabulky (§3.1) — kola 2 až 5, 2026-08-22
-- [~] trvanlivá vrstva (§4) — hotovo §4.1, §4.3, §4.4 a §4.5 (kola 1 až 6, 2026-08-22); zbývá §4.2, §4.6, §4.7
-- [ ] datovaný snapshot (§5)
+- [x] trvanlivá vrstva (§4) — §4.1 až §4.7 hotové (kola 1 až 7, 2026-08-22)
+- [x] datovaný snapshot (§5) — 2026-08-22
 - [ ] adversariální průchod (§2.4 M5), výsledek do hlavičky
 - [ ] verdikt (§6)
 - [ ] EN překlad (`README.md`) jako kanonická verze
@@ -207,9 +207,42 @@ Klasická stížnost na postupné typování — že se dolepuje na starý kód 
 
 Tie-breaker 1 (§2.3) je právě „přísnost vynutitelná v CI“ a rozhoduje o trojici na shodné vážené ceně 6. Podle rozkladu výše vychází pořadí **Kotlin › C# › Java**: Kotlin má nullabilitu v typovém systému a vynucenou kompilátorem, C# ji má jen jako věc překladu s dokumentovanými pastmi, ale generika mu za běhu drží, a Java nemá ani jedno — nullabilita v jazyce chybí a generika se mažou.
 
-### 4.2 Výkonový strop a model souběžnosti
+### 4.2 Výkonový strop a model souběžnosti (ověřeno 2026-08-22)
 
-[OVĚŘIT] — měkká osa (§1), strop popsaný čísly, ne dojmem.
+Výkon není v tomhle kontextu brána (§1), takže se neptám „který je rychlejší“, ale **co se stane, až budeš potřebovat dělat víc věcí najednou**. To je trvanlivá vlastnost jazyka, kdežto benchmark je snímek.
+
+| Model | Kdo | Doložení |
+|---|---|---|
+| **Lehká vlákna plánovaná runtimem** | Go, Java, Kotlin | Go: goroutina *"is lightweight, costing little more than the allocation of stack space"* a goroutiny jsou *"multiplexed onto multiple OS threads so if one should block, such as while waiting for I/O, others continue to run"* [R59]. Java od **JDK 21**: virtuální vlákna, kterých *"we can easily have a great many active virtual threads, even millions, running in the same Java process"* [R57]. |
+| **Smyčka událostí plus výslovní workeři** | TypeScript (Node) | *"Workers (threads) are useful for performing CPU-intensive JavaScript operations. They do not help much with I/O-intensive work. The Node.js built-in asynchronous I/O operations are more efficient than Workers can be."* Stabilita 2 — Stable [R58]. |
+| **Globální zámek, který se právě odstraňuje** | Python | Viz níže — nejzajímavější případ z celé osmičky. |
+| **Jen kooperativní souběžnost** | PHP | Fibers od **PHP 8.1** jsou přerušitelné funkce s vlastním zásobníkem [R60]; jde o kooperativní souběžnost, ne o paralelismus. |
+| *Nezjišťováno v tomto kole* | C#, Rust | `async`/`await` a `Task` u C#, `async` a vlákna u Rustu zjišťovány nebyly — buňky jsou neúplné. |
+
+**Poctivost k Javě, protože se to snadno přežene.** Dokumentace sama varuje před tím, jak se virtuální vlákna čtou: *"Virtual threads are not faster threads; they do not run code any faster than platform threads. They exist to provide scale (higher throughput), not speed (lower latency)."* [R57] Řeší tedy propustnost při čekání na I/O, ne výpočetní strop.
+
+**Python a GIL — učebnicový případ pravidla M1.** Volnovláknový build bez GIL existuje od **Pythonu 3.13**, ale **není výchozí** a dokumentace k němu uvádí dvě konkrétní ceny. Ekosystém: *"Some third-party packages, in particular ones with an extension module, may not be ready for use in a free-threaded build, and will re-enable the GIL."* — jedna nepřipravená C rozšíření tedy zámek **zapne zpátky**. A jednovláknový výkon: *"the average overhead ranges from about 1% on macOS aarch64 to 8% on x86-64 Linux systems"* [R56].
+
+To je přesně to, kvůli čemu M1 existuje: vlastnost je vydaná, ale ekosystém ji nedohnal a dokument to musí říct, místo aby napsal „Python už GIL nemá“.
+
+### 4.6 Náborový rybník, předatelnost, zaškolení (ověřeno 2026-08-22)
+
+Tahle osa má plnou váhu kvůli druhé roli ze §1 — doporučování ve firmách. Firma nepřebírá jazyk, přebírá jeho náborový rybník.
+
+**Trvanlivá část** (konkrétní procenta jsou perishable a jsou v §5): rozdíly mezi těmi osmi nejsou po procentech, ale **řádové**. Ve třech pásmech: TypeScript a Python s nejširší základnou; C#, Java a PHP ve středu; Go, Rust a Kotlin nejúžeji, přičemž **Kotlin má nejmenší základnu z celé osmičky** [R61].
+
+**A tady vzniká napětí, které musí verdikt vyřešit, ne zamlčet.** Tie-breaker 1 (přísnost, §4.1) rozhodl trojici na ceně 6 pořadím Kotlin › C# › Java. Tie-breaker 2 (nábor) ji řadí **přesně opačně** — C# a Java mají zhruba trojnásobnou základnu oproti Kotlinu. Pravidlo §2.3 má pořadí tie-breakerů pevně dané předem, takže **platí Kotlin**; ale pro firemní roli je to výsledek, který jde proti tomu, co by firma chtěla slyšet. Verdikt to musí uvést jako přiznaný důsledek pravidla, ne to schovat.
+
+*Omezení zdroje: jde o dobrovolnou anketu jedné komunity, ne o měření trhu práce, a „používá jazyk“ není totéž co „je na něj k sehnání“. Pro ČR specificky data v tomto kole zjišťována nebyla.*
+
+### 4.7 Zralost frameworků a knihoven (ověřeno 2026-08-22)
+
+Podklady jsou už v §4.3, kde se zjišťovaly kvůli doménám. Shrnuto do jedné osy:
+
+- **Nejzralejší a nejcelistvější:** C# (ASP.NET Core first-party, jeden kalendář s jazykem), Java a Kotlin (Spring Boot), PHP (Symfony a Laravel, obojí s vlastní datovanou politikou podpory), Python (Django).
+- **Nejméně tříštivé:** Go — webová vrstva je ve standardní knihovně, takže „framework“ jako samostatná závislost s vlastním životním cyklem tu vůbec nevzniká [R8].
+- **Nejtříštivější:** TypeScript. Vrstva frameworků je široká a bez společné politiky — Fastify má LTS zhruba na rok [R32], u Expressu se politiku nepodařilo najít [R33]. Ekosystém je největší z osmi a zároveň nejméně koordinovaný; pro sázku na dekádu je to obojí najednou.
+- **Nejtenčí ve dvou ze čtyř domén:** Rust (u Axumu nenalezen datovaný kalendář [R34]) a PHP mimo web.
 
 ### 4.3 Čím se platí za každou ze čtyř domén
 
@@ -365,9 +398,50 @@ Plánované řádky — tři skupiny:
 
 [OVĚŘIT] — tabulka se doplní po §3 a §4.1–§4.7.
 
-## 5. Datovaná vrstva (snapshot — rychle zastarává)
+## 5. Datovaná vrstva (snapshot k 2026-08-22 — rychle zastarává)
 
-[OVĚŘIT] — verze, termíny LTS, stav toolingu. Nenese verdikt.
+**Nenese verdikt.** Až tahle sekce zastará, §1 až §4 platí dál.
+
+### 5.1 Náborová základna (Stack Overflow Developer Survey 2025)
+
+Podíl **profesionálních vývojářů**, kteří jazyk uvádějí mezi používanými [R61]. Pořadí je abecední jako ve všech tabulkách dokumentu (§2.1), ne podle podílu — nejvyšší má Python, následuje TypeScript:
+
+| Jazyk | Podíl |
+|---|---|
+| **C#** | 29,9 % |
+| **Go** | 17,4 % |
+| **Java** | 29,6 % |
+| **Kotlin** | 11,5 % |
+| **PHP** | 19,1 % |
+| **Python** | 54,8 % |
+| **Rust** | 14,5 % |
+| **TypeScript** | 48,8 % |
+
+*(Pro kontext mimo osmičku: JavaScript 68,8 %.)* Anketa je z **ročníku 2025**, čtena v srpnu 2026 — novější ročník může existovat a nebyl ověřován. Jde o dobrovolnou anketu, ne o měření trhu práce.
+
+### 5.2 Aktuální verze a termíny podpory
+
+| Jazyk | Stav k 2026-08-22 | Zdroj |
+|---|---|---|
+| **C#** | .NET 10 (LTS) podporováno do 14. 11. 2028; .NET 8 i 9 do 10. 11. 2026 | [R9] |
+| **Go** | Go 1.27.0 vydáno 19. 8. 2026; podpora vždy jen pro dvě nejnovější hlavní verze | [R6] |
+| **Java** | Adoptium: JDK 25 nejméně do 9/2031, JDK 21 do 12/2029, JDK 17 do 10/2027 | [R11] |
+| **Kotlin** | Bez datované tabulky podpory; na JVM nejméně tři předchozí jazykové a API verze | [R14] |
+| **PHP** | 8.5 bezpečnostně do 31. 12. 2029; 8.4 do 31. 12. 2028; 8.2 končí 31. 12. 2026 | [R2] |
+| **Python** | Pětileté okno na vydání; volnovláknový build od 3.13, není výchozí | [R4][R56] |
+| **Rust** | Bez datované tabulky podpory; edice opt-in a vzájemně interoperabilní | [R16] |
+| **TypeScript** | Bez oficiální politiky podpory; runtime Node.js drží LTS 30 měsíců | [R18][R19] |
+
+### 5.3 Frameworky
+
+| Framework | Okno podpory | Zdroj |
+|---|---|---|
+| Symfony (LTS) | 3 roky oprav + 4 roky bezpečnosti | [R28] |
+| Django | 3 roky; od vydání 2028 na každé feature vydání | [R30] |
+| ASP.NET Core | shodné s .NET, LTS 36 měsíců | [R9] |
+| Laravel | 18 měsíců oprav + 2 roky bezpečnosti | [R29] |
+| Spring Boot | minor nejméně 12 měsíců, major nejméně 3 roky | [R31] |
+| Fastify | ~12 měsíců (6 + 6 po dalším major) | [R32] |
 
 ## 6. Verdikt (zatím žádný)
 
@@ -451,6 +525,15 @@ Ověřeno k 2026-08-22 (kolo 1 — brána B2, §4.4 a §4.5).
 - [R53] The Rust Programming Language — Defining an Enum (`Option<T>`, absence nullu). Ověřeno 2026-08-22: <https://doc.rust-lang.org/book/ch06-01-defining-an-enum.html>
 - [R54] The Go Programming Language Specification — nulové hodnoty, `nil`, typové parametry od Go 1.18. Ověřeno 2026-08-22: <https://go.dev/ref/spec>
 - [R55] The Java Tutorials — Type Erasure. Ověřeno 2026-08-22: <https://docs.oracle.com/javase/tutorial/java/generics/erasure.html>
+
+**Souběžnost, výkon a nábor (kolo 7, §4.2 a §4.6)**
+
+- [R56] Python — Free-threaded CPython HOWTO (build bez GIL od 3.13, znovuzapnutí GIL nepřipraveným rozšířením, režie 1–8 %). Ověřeno 2026-08-22: <https://docs.python.org/3/howto/free-threading-python.html>
+- [R57] Oracle — Virtual Threads (JDK 21; miliony vláken; „not faster threads… scale, not speed“). Ověřeno 2026-08-22: <https://docs.oracle.com/en/java/javase/21/core/virtual-threads.html>. *Primární JEP 444 na openjdk.org vrátil 403.*
+- [R58] Node.js — `worker_threads` (užitečné pro CPU, ne pro I/O; Stability 2 — Stable). Ověřeno 2026-08-22: <https://nodejs.org/api/worker_threads.html>
+- [R59] Effective Go — Concurrency (cena goroutiny, multiplexování na vlákna OS). Ověřeno 2026-08-22: <https://go.dev/doc/effective_go>
+- [R60] PHP Manual — Fibers (od PHP 8.1). Ověřeno 2026-08-22: <https://www.php.net/manual/en/language.fibers.php>
+- [R61] Stack Overflow Developer Survey 2025 — Technology, podíly u profesionálních vývojářů. Ověřeno 2026-08-22: <https://survey.stackoverflow.co/2025/technology>
 
 **Jazykové vlastnosti**
 
