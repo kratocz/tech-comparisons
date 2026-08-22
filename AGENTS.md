@@ -223,8 +223,10 @@ scripts/check-comparison.py storage-replication
 
 **Errors** (these fail the run): a table whose rows disagree on cell count; a
 `§N` or `§N.M` that resolves to no section or sub-section in that file; numbered
-sections that are not consecutive, or an ordered list whose numbers are out of
-order or repeated (a gap such as 1, 2, 4 passes); a relative link that does not
+sections that are not consecutive; sub-sections that do not count up from `N.1`
+within their parent in document order (a block pasted into the wrong place
+renders fine, so nothing else catches it); or an ordered list whose numbers are
+out of order or repeated (a gap such as 1, 2, 4 passes); a relative link that does not
 resolve; a URL mangled by a bulk edit; the two language versions disagreeing on
 section count, table-row count, section numbers or sub-section numbers;
 unbalanced Czech quotes; a comparison directory with no row in the root README
