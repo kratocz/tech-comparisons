@@ -1,6 +1,6 @@
 # Volba programovacího jazyka: jeden jazyk na dlouhá léta pro nové projekty
 
-- **Verdikt:** **TypeScript** (vážená cena 4, před Pythonem s 5) — pro profil ze §1 a s kompromisy vyjmenovanými v §6.2, z nichž nejdražší je, že překladač nemá žádný závazek podpory a typy se za běhu nevynucují. **Předpověď zapsaná v §2.3 se nepotvrdila:** Go skončilo poslední.
+- **Verdikt:** **TypeScript** (vážená cena 4, před Pythonem s 5) — pro profil ze §1 a s kompromisy vyjmenovanými v §6.2, z nichž nejdražší je, že překladač nemá žádný závazek podpory a typy se za běhu nevynucují. §6.3 přidává čtení po doménách a citlivost na váhy: vítězství drží ve třech ze sedmi zadání a padá jedině tehdy, když z požadavků vypadne prohlížeč. **Předpověď zapsaná v §2.3 se nepotvrdila:** Go skončilo poslední.
 - **Sycené rozhodnutí:** na čem stavět **nové** projekty (vlastní, firemní i cizí) v horizontu let — a čím ta volba argumentovat u někoho, kdo u úvahy nebyl.
 - **Fakta ověřena:** 🟡 2026-08-22, sedm kol, reference [R1]–[R64]: financování, governance a závazky podpory (§4.4, §4.5); všechny čtyři domény (§4.3) a kompletní regret matrix (§3, §3.1); přísnost podle M2 (§4.1); souběžnost, nábor a frameworky (§4.2, §4.6, §4.7); datovaný snapshot (§5). Otevřené `[OVĚŘIT]`: žádné. Neúplné a přiznané: C# a Rust v §4.2, úrovně PHPStan a Psalm v §4.1. **Čtyři buňky označeny jako nejisté** a přednostně poslány do adversariálního průchodu: Rust v backendu, Go a PHP v prohlížeči (obě ❌), Rust v prohlížeči.
 - **Adversariální průchod:** 🟡 proběhl 2026-08-23 (§6.1) — jedna ze čtyř nejistých buněk neobstála a byla opravena (PHP v prohlížeči), pořadí na prvních dvou místech se nezměnilo. **Omezení: průchod běžel ve stejném kontextu, který závěr vytvořil, ne v odděleném.**
@@ -18,7 +18,7 @@
 - [x] trvanlivá vrstva (§4) — §4.1 až §4.7 hotové (kola 1 až 7, 2026-08-22)
 - [x] datovaný snapshot (§5) — 2026-08-22
 - [x] adversariální průchod (§6.1) — 2026-08-23
-- [x] verdikt (§6.2) — 2026-08-23
+- [x] verdikt (§6.2) a čtení po doménách i citlivost na váhy (§6.3) — 2026-08-23
 - [ ] EN překlad (`README.md`) jako kanonická verze
 
 ## 1. Kontext: jaké rozhodnutí se tu doopravdy dělá
@@ -490,6 +490,47 @@ Druhá námitka téhož druhu: vedoucí dvojice, TypeScript a Python, jsou **oba
 - **Vynucení typů za běhu má pro tebe větší cenu než šířka záběru.** Pak nejsou špatně čísla, ale váhy: vybíraly šířku, a ta v roce 2026 vede na dva jazyky, které typy za běhu nekontrolují. S jinými vahami vychází Kotlin, C# nebo Rust. Váhy jsi zadal před rešerší a přepisovat je teď by zničilo jedinou vlastnost, kvůli které se píšou dopředu — ale rozhodnout se je změnit a **spustit výpočet znovu s datem** je legitimní, pokud se to zapíše jako nové zadání, ne jako oprava.
 - **Doména prohlížeče z tvého zadání vypadne.** Nula TypeScriptu je jen tam; bez frontendu klesá na 3, ale Go padá z 9 na 3 a Rust ze 7 na 5 — pořadí se přeskládá celé.
 - **❌ u Go v prohlížeči padne** (§6.1). Samo o sobě verdikt nezmění, ale zúží odstup.
+
+### 6.3 Verdikt po doménách a citlivost na váhy (2026-08-23)
+
+Jeden verdikt odpovídá na jednu otázku — „co když mám jiné zadání než tvoje?“ je otázka jiná a zaslouží si vlastní odpověď. Obojí níže je **čtení matice ze §3**, ne nová tvrzení: nepřibyl ani jeden zdroj.
+
+#### Po doménách — pásma, ne pořadí
+
+**Proč pásma a ne první, druhá a třetí volba.** Matice má tři hodnoty, ne žebříček. V backendu je sedm z osmi kandidátů na ✅, což **není** první až sedmá volba, ale sedmičlenná shoda. Seřadit je by znamenalo vymyslet si rozdíly, které dokument neměřil — a to je přesně ten žebříček bez poraženého, kterému se §3 vyhýbá.
+
+| Doména | Platí nulu | Platí | Platí nejvíc |
+|---|---|---|---|
+| **Backend a API** (×4) | C#, Go, Java, Kotlin, PHP, Python, TypeScript | Rust | — |
+| **CLI a automatizace** (×3) | Go, Rust | C#, Java, Kotlin, PHP, Python, TypeScript | — |
+| **Frontend v prohlížeči** (×2) | TypeScript | C#, Java, Kotlin, PHP, Python, Rust | Go |
+| **Data, ML, dávky** (×1) | Python | C#, Java, Kotlin, Rust, TypeScript | Go, PHP |
+
+Čte se to takhle: **kdyby ses rozhodoval jen podle jedné domény**, v backendu bys volil skoro cokoli, v CLI Go nebo Rust, v prohlížeči TypeScript a v datech Python. Verdikt v §6.2 je odpověď na otázku, co dělat, když musíš mít **jeden jazyk na všechny čtyři najednou** — a to je jiná otázka než kterýkoli řádek téhle tabulky.
+
+#### Citlivost na váhy — několik verdiktů, každý s vlastním zadáním
+
+Tytéž buňky, jiné váhy. Sloupec vah je v pořadí backend · CLI · frontend · data.
+
+| Zadání | Váhy | Vítěz | Pořadí |
+|---|---|---|---|
+| **Tvoje zadání (§2.3)** | 4 · 3 · 2 · 1 | **TypeScript** (4) | TS 4, Python 5, C# 6, Java 6, Kotlin 6, Rust 7, PHP 8, Go 9 |
+| Všechny domény stejně | 1 · 1 · 1 · 1 | **Python + TypeScript** (2) | Python 2, TS 2, C# 3, Java 3, Kotlin 3, Rust 3, PHP 5, Go 6 |
+| Bez prohlížeče | 4 · 3 · 0 · 1 | **Go + Python** (3) | Go 3, Python 3, C# 4, Java 4, Kotlin 4, TS 4, Rust 5, PHP 6 |
+| Bez dat a ML | 4 · 3 · 2 · 0 | **TypeScript** (3) | TS 3, C# 5, Java 5, Kotlin 5, PHP 5, Python 5, Go 6, Rust 6 |
+| Jen backend | 1 · 0 · 0 · 0 | **sedmičlenná shoda** (0) | vše kromě Rustu 0, Rust 1 |
+| Prohlížeč nejvýš | 2 · 3 · 4 · 1 | **TypeScript** (4) | TS 4, Python 7, Rust 7, C# 8, Java 8, Kotlin 8, PHP 10, Go 15 |
+| Data nejvýš | 2 · 1 · 3 · 4 | **Python** (4) | Python 4, TS 5, C# 8, Java 8, Kotlin 8, Rust 9, PHP 16, Go 21 |
+
+#### Co z toho plyne
+
+**Vítězství TypeScriptu je robustní vůči všemu kromě jedné změny.** Vyhrává ve třech ze sedmi zadání, v jednom dalším dělí první místo a nikdy neklesne pod druhé — s jedinou výjimkou: **jakmile z požadavků vypadne prohlížeč, klesá na čtvrté místo a vede Go s Pythonem.** To je celý jeho nárok a zároveň jeho jediná zranitelnost. Kdo prohlížeč nepotřebuje, má úplně jiný verdikt.
+
+**Nejméně stabilní kandidát celého dokumentu je Go.** Kolísá mezi posledním místem (9 při zadaných vahách, 15 a 21 při dvou dalších) a **děleným prvním** (3 bez prohlížeče). Žádný jiný kandidát se nehýbe takhle. Znamená to, že tvrzení „Go je pro tenhle profil špatná volba“ platí **výhradně kvůli prohlížeči a datům** — v obou nejvýš vážených doménách je totiž na nule.
+
+**Řádek „jen backend“ je důkaz nálezu z kola 3.** Sedmičlenná shoda na nule ukazuje černé na bílém, že nejvýš vážená doména o pořadí nerozhoduje: rozptyl uvnitř sloupce dělá vliv, ne váha sloupce.
+
+**Python je nejodolnější kandidát.** Vyhrává nebo dělí první místo ve třech zadáních a nikdy neklesne pod páté. Kdo neví, jaké budou jeho váhy za pět let, kupuje Pythonem nejméně rizika — což je argument, který se ve verdiktu podle zadaných vah neobjeví, protože ten měří jedno konkrétní zadání, ne odolnost napříč zadáními.
 
 **Vymezení platnosti.** Verdikt platí pro profil ze §1: **nové projekty na zelené louce**, čtyři domény s vahami 4 · 3 · 2 · 1, výkon jako měkká osa. Neplatí pro migraci existujícího systému a neplatí pro jiné váhy. A stojí na jednom rozhodnutí zadavatele z 2026-08-22 — úpravě brány B2 (§2.2) — bez něhož by byl vítěz vyřazen dřív, než se cokoli spočítalo.
 
