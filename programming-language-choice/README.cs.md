@@ -1,6 +1,6 @@
 # Volba programovacího jazyka: jeden jazyk na dlouhá léta pro nové projekty
 
-- **Verdikt:** **TypeScript** (vážená cena 4, před Pythonem s 5) — pro profil ze §1 a s kompromisy vyjmenovanými v §6.2, z nichž nejdražší je, že překladač nemá žádný závazek podpory a typy se za běhu nevynucují. §6.3 přidává čtení po doménách a citlivost na váhy: vítězství drží ve třech ze sedmi zadání a padá jedině tehdy, když z požadavků vypadne prohlížeč. **Předpověď zapsaná v §2.3 se nepotvrdila:** Go skončilo poslední.
+- **Verdikt (dvě zadání, dva verdikty):** **první zadání — domény (§6.2): TypeScript.** **Druhé zadání — profesionalita jazyka (§7.5): Kotlin a Rust, dělené první místo.** Rozpor mezi nimi je nejdůležitější výstup dokumentu: vítěz prvního je v druhém sedmý. Původní znění prvního verdiktu: **TypeScript** (vážená cena 4, před Pythonem s 5) — pro profil ze §1 a s kompromisy vyjmenovanými v §6.2, z nichž nejdražší je, že překladač nemá žádný závazek podpory a typy se za běhu nevynucují. §6.3 přidává čtení po doménách a citlivost na váhy: vítězství drží ve třech ze sedmi zadání a padá jedině tehdy, když z požadavků vypadne prohlížeč. **Předpověď zapsaná v §2.3 se nepotvrdila:** Go skončilo poslední.
 - **Sycené rozhodnutí:** na čem stavět **nové** projekty (vlastní, firemní i cizí) v horizontu let — a čím ta volba argumentovat u někoho, kdo u úvahy nebyl.
 - **Fakta ověřena:** 🟡 2026-08-22, sedm kol, reference [R1]–[R64]: financování, governance a závazky podpory (§4.4, §4.5); všechny čtyři domény (§4.3) a kompletní regret matrix (§3, §3.1); přísnost podle M2 (§4.1); souběžnost, nábor a frameworky (§4.2, §4.6, §4.7); datovaný snapshot (§5). Otevřené `[OVĚŘIT]`: žádné. Neúplné a přiznané: C# a Rust v §4.2, úrovně PHPStan a Psalm v §4.1. **Čtyři buňky označeny jako nejisté** a přednostně poslány do adversariálního průchodu: Rust v backendu, Go a PHP v prohlížeči (obě ❌), Rust v prohlížeči.
 - **Oprava:** ⚠️ §8 (2026-08-23) — tvrzení, že TypeScript nemá závazek podpory, bylo nepravdivé; brána B2 vypálila na chybném faktu. Verdikt se nemění, jedna položka jeho účtu je levnější.
@@ -21,7 +21,7 @@
 - [x] adversariální průchod (§6.1) — 2026-08-23
 - [x] verdikt (§6.2) a čtení po doménách i citlivost na váhy (§6.3) — 2026-08-23
 - [x] **druhé zadání: pravidla profesionality (§7.1–§7.3) sepsána 2026-08-23 PŘED rešerší** — commitnuta zvlášť, aby to šlo ověřit z historie
-- [ ] rešerše profesionality (§7.4) a druhý verdikt (§7.5)
+- [x] rešerše profesionality (§7.4) a druhý verdikt (§7.5) — 2026-08-23: **dělené první místo Kotlin a Rust**
 - [x] **oprava §8 (2026-08-23): brána B2 vypálila na chybném faktu a vypálit neměla**
 - [ ] EN překlad (`README.md`) jako kanonická verze
 
@@ -578,13 +578,54 @@ Poučen tím, že předpověď v §2.3 selhala kvůli uvažování o silných st
 
 Pokud rešerše tuhle předpověď vyvrátí, zapíše se to jako výsledek, ne jako oprava předpovědi.
 
-### 7.4 Tabulka profesionality
+### 7.4 Tabulka profesionality (ověřeno 2026-08-23)
 
-[OVĚŘIT] — rešerše zatím neproběhla.
+Ceny: ✅ = 0 · 🟡 = 1 · ❌ = 3, součet přes čtyři kritéria, vyhrává nejnižší (§7.2).
 
-### 7.5 Verdikt druhého zadání
+| Jazyk | P1 kompilátor chytí | P2 čitelnost pro cizího | P3 bezpečný refaktoring | P4 doménový model | Součet |
+|---|---|---|---|---|---|
+| **C#** | 🟡 typy vynucuje běh, ale nullabilita jen překlad a `!` [R50] | ✅ `dotnet format` pod organizací `dotnet` [R75] | ✅ statické typy, Roslyn od Microsoftu [R75] | 🟡 součtové typy jsou zatím **návrh** `standard-unions.md` v `dotnet/csharplang` [R76] | **2** |
+| **Go** | 🟡 typy vynucuje běh, ale `nil` je nulová hodnota všeho referenčního [R54] | ✅ `gofmt` je součástí distribuce, *"uncontroversial"*, a FAQ dokládá záměrné vynechávání rysů [R73][R74] | ✅ statické typy, `gopls` pod organizací `golang` [R75] | ❌ FAQ: *"We considered adding variant types to Go, but after discussion decided to leave them out"* [R73] | **4** |
+| **Java** | 🟡 typy vynucuje běh, ale generika se mažou a nullabilita v jazyce chybí [R55] | ❌ oficiální formátovač neexistuje; `google-java-format` je Googlu [R75] | 🟡 statické typy, ale jazykový server je Eclipse, ne správce jazyka [R75] | ✅ sealed rozhraní (JDK 17) + vyčerpávající `switch` bez `default` (JDK 21) [R68][R69] | **5** |
+| **Kotlin** | ✅ nullabilita v typovém systému, vynucená kompilátorem; díra jsou platform types z Javy [R52] | ✅ `ktfmt` pod organizací `Kotlin` [R75] | ✅ statické typy, `kotlin-lsp` pod organizací `Kotlin` [R75] | ✅ sealed třídy, *"you don't need to add an `else` clause"* [R67] | **0** |
+| **PHP** | ❌ přísnost je direktiva po souborech, generika nemá [R49] | ❌ oficiální formátovač neexistuje; PHP-CS-Fixer je vlastní organizace [R75] | ❌ oficiální jazykový server nenalezen [R75] | ❌ enumy od 8.1 jsou *"backed by types of `int` or `string`"* — data nesou jen skalár [R70] | **12** |
+| **Python** | ❌ *"The Python runtime does not enforce… type annotations"* [R47] | ✅ `black` pod organizací `psf` [R75] | 🟡 dynamický; `pyright` je Microsoftu, ne PSF [R75] | 🟡 `match` a `assert_never` fungují, ale **jen ve statické kontrole** [R77] | **5** |
+| **Rust** | ✅ null neexistuje, `Option<T>`, *"Matches in Rust are exhaustive"* [R53][R72] | ✅ `rustfmt` pod organizací `rust-lang` [R75] | ✅ statické typy, `rust-analyzer` pod organizací `rust-lang` [R75] | ✅ enumy s daty + vyčerpávající `match` vynucený kompilátorem [R72] | **0** |
+| **TypeScript** | ❌ typy se mažou, výstupem je prostý JavaScript [R39] | ❌ oficiální formátovač neexistuje; Prettier je samostatná organizace [R75] | ✅ statické typy a nástroje od Microsoftu [R75] | ✅ diskriminované unie + kontrola vyčerpání přes `never` [R71] | **6** |
 
-[OVĚŘIT] — po §7.4 a po adversariálním průchodu.
+**Co P2 měří a co ne.** Hodnotil jsem **jen vlastnictví formátovače** — tedy zda existuje pod organizací samotného jazyka, což je zjistitelné. Druhá polovina otázky, *kolik magie musíš držet v hlavě*, se mi nepodařilo převést na checkovatelné kritérium a **měřená není**. Buňka Go je jediná, kde je navíc doložená i záměrná jednoduchost, protože ji tvrdí vlastní FAQ jazyka.
+
+**Vyhodnocení předpovědi ze §7.3 — tentokrát vyšla.** Předpověděl jsem Kotlin a Rust vpředu (**sedí, oba na nule**), že TypeScript nevyhraje (**sedí, sedmý**), největší rozptyl u P4 (**sedí** — hodnoty 0, 0, 0, 1, 1, 3, 3, 3) a že Go má nejprotichůdnější profil, kde P2 bojuje s P4 (**sedí** — ✅ ✅ v P2 a P3 proti ❌ v P4, výsledkem střed tabulky). Rozdíl proti selhavší předpovědi ze §2.3 je v tom, že tahle uvažovala o **rozptylu uvnitř kritérií**, ne o silných stránkách kandidátů.
+
+**Citlivost na váhy, jak jsem se v §7.2 zavázal.** Zdvojnásobení kteréhokoli jednoho ze čtyř kritérií vede **pokaždé k témuž vítězi**: Kotlin a Rust na nule. Mění se jen pořadí za nimi — třeba při dvojnásobné váze P4 padá Go až na sedmé místo, při dvojnásobné P2 je čtvrté. **Výsledek druhého zadání je tedy na vahách prakticky nezávislý**, což se o prvním zadání říct nedalo.
+
+### 7.5 Verdikt druhého zadání (2026-08-23)
+
+**Vyhrávají Kotlin a Rust, oba s nulou — a je to plná shoda, ne těsný náskok.** Jediné dva jazyky z osmi, které jsou ✅ ve všech čtyřech kritériích.
+
+**Pravidlo §7.2 tuhle shodu nerozhoduje.** Tie-breaker jsem pro druhé zadání nenapsal, což je mezera v mých vlastních pravidlech — a **doplnit ho teď, po zhlédnutí výsledku, je přesně to, co dokument celou dobu odmítá dělat.** Verdikt tedy zní: **dělené první místo**, a rozhodnutí mezi nimi patří zadavateli. Materiál k němu už v dokumentu je a shrnuji ho bez toho, abych z něj dělal pravidlo:
+
+- **Kotlin** má za sebou celý ekosystém JVM a Spring Boot (§4.3), ale **nejmenší náborovou základnu z osmi** — 11,5 % proti 14,5 % Rustu (§5.1) — datovanou tabulku podpory nemá (§4.5) a jeho jediná díra v přísnosti se otevírá právě při volání Javy, tedy toho ekosystému, kvůli kterému si ho vybíráš (§4.1).
+- **Rust** má nejsilnější záruky z celé osmičky a jako jediný nemá null vůbec (§4.1), ale v prvním zadání je jediný, kdo není ✅ v backendu — nejvýš vážené doméně (§3) — a datovanou tabulku podpory nemá také.
+
+**Rozpor mezi oběma verdikty je největší výstup celého dokumentu.** Není to chyba ani jednoho z nich; obě zadání jsou legitimní a každé měří něco jiného.
+
+| Jazyk | Pořadí: domény (§6.2) | Pořadí: profesionalita (§7.5) | Posun |
+|---|---|---|---|
+| **C#** | 3. | 3. | 0 |
+| **Go** | 8. | 4. | +4 |
+| **Java** | 4. | 5. | −1 |
+| **Kotlin** | 5. | 1. | +4 |
+| **PHP** | 7. | 8. | −1 |
+| **Python** | 2. | 6. | −4 |
+| **Rust** | 6. | 2. | +4 |
+| **TypeScript** | 1. | 7. | **−6** |
+
+**Vítěz prvního zadání je v druhém sedmý.** Vítězové druhého jsou v prvním pátý a šestý. Znamená to jedinou, ale zásadní věc: **žádný jazyk není zároveň nejlepším pokrytím tvých čtyř domén a nejprofesionálnějším nástrojem.** Ten obchod je skutečný obsah tohohle dokumentu, ne kterýkoli z obou verdiktů zvlášť.
+
+**Pozorování, výslovně ne třetí verdikt.** Sečtu-li obě pořadí, vyjde nejlíp C# a Kotlin (shodně 6), pak Rust, Python a TypeScript (8). **C# je přitom jediný kandidát, který je v první trojici obou zadání.** Zdůrazňuji, že tohle **není verdikt**: součet pořadí je agregace, kterou jsem vymyslel **až po zhlédnutí výsledků**, a jako taková nemá váhu pravidla sepsaného předem. Kdybys chtěl skutečný kombinovaný verdikt, musí dostat vlastní pravidlo, sepsané a datované dřív, než se spustí — a to je práce na další kolo, ne na tohle.
+
+**Vymezení platnosti.** Verdikt §7.5 platí pro čtyři kritéria ze §7.2 s rovnými vahami, pro těchže osm kandidátů. Neruší §6.2 a nemá na něj vliv. P2 je měřena neúplně (jen vlastnictví formátovače) a §8 se týká §4.5, ne tohoto zadání.
 
 ## 8. Oprava (2026-08-23): brána B2 neměla vypálit
 
@@ -690,6 +731,20 @@ Ověřeno k 2026-08-22 (kolo 1 — brána B2, §4.4 a §4.5).
 - [R59] Effective Go — Concurrency (cena goroutiny, multiplexování na vlákna OS). Ověřeno 2026-08-22: <https://go.dev/doc/effective_go>
 - [R60] PHP Manual — Fibers (od PHP 8.1). Ověřeno 2026-08-22: <https://www.php.net/manual/en/language.fibers.php>
 - [R61] Stack Overflow Developer Survey 2025 — Technology, podíly u profesionálních vývojářů. Ověřeno 2026-08-22: <https://survey.stackoverflow.co/2025/technology>
+
+**Profesionalita jazyka (§7.4)**
+
+- [R67] Kotlin — Sealed classes and interfaces (kompilátor zná všechny podtřídy; `when` bez `else`). Ověřeno 2026-08-23: <https://kotlinlang.org/docs/sealed-classes.html>
+- [R68] Oracle — Sealed Classes and Interfaces (JEP 409, povolené podtřídy). Ověřeno 2026-08-23: <https://docs.oracle.com/en/java/javase/21/language/sealed-classes-and-interfaces.html>
+- [R69] Oracle — Pattern Matching for switch (JEP 441, vyčerpávající pokrytí sealed typu bez `default`). Ověřeno 2026-08-23: <https://docs.oracle.com/en/java/javase/21/language/pattern-matching-switch.html>
+- [R70] PHP Manual — Backed enumerations (*"may be backed by types of `int` or `string`"*). Ověřeno 2026-08-23: <https://www.php.net/manual/en/language.enumerations.backed.php>
+- [R71] TypeScript Handbook — Narrowing (diskriminované unie, kontrola vyčerpání přes `never`). Ověřeno 2026-08-23: <https://www.typescriptlang.org/docs/handbook/2/narrowing.html>
+- [R72] The Rust Programming Language — The match Control Flow Construct (*"Matches in Rust are exhaustive"*). Ověřeno 2026-08-23: <https://doc.rust-lang.org/book/ch06-02-match.html>
+- [R73] Go FAQ — proč Go nemá variantní typy a záměrná jednoduchost. Ověřeno 2026-08-23: <https://go.dev/doc/faq>
+- [R74] The Go Blog — gofmt (součást distribuce; *"uncontroversial"*). Ověřeno 2026-08-23: <https://go.dev/blog/gofmt>
+- [R75] Vlastnictví nástrojů podle organizace na GitHubu, ověřeno přes API 2026-08-23 (pozitivní kontrola: všechny dotazy vrátily metadata repozitáře): `rust-lang/rustfmt`, `rust-lang/rust-analyzer`, `golang/tools` (gopls), `Kotlin/ktfmt`, `Kotlin/kotlin-lsp`, `psf/black`, `dotnet/format`, `microsoft/pyright` — proti `prettier/prettier`, `PHP-CS-Fixer/PHP-CS-Fixer` a `google/google-java-format`, které pod organizací svého jazyka **nejsou**.
+- [R76] dotnet/csharplang — `proposals/standard-unions.md`; součtové typy jsou v C# stále **návrh**, ne jazykový rys. Ověřeno 2026-08-23: <https://github.com/dotnet/csharplang/blob/main/proposals/standard-unions.md>
+- [R77] Python — `typing.assert_never` (kontrola vyčerpání, ale jen ve statické kontrole). Ověřeno 2026-08-23: <https://docs.python.org/3/library/typing.html>
 
 **Oprava (§8)**
 

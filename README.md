@@ -19,7 +19,7 @@ Real decision analyses from real projects — not neutral feature matrices. Each
 | **Storage replication** — incremental replication between two clusters: ZFS `send`/`recv` vs Ceph RBD and CephFS mirroring | ZFS `zfs send -i` | 2026-08-13 | 🇬🇧 [English](storage-replication/README.md) · 🇨🇿 [Čeština](storage-replication/README.cs.md) |
 | **Smartwatch platforms** — Garmin vs Apple vs Samsung, as input to an iPhone 15 Pro vs 16 Pro purchase decision | ⏳ in progress | 2026-08-09 (partial) | 🇨🇿 [Čeština](smartwatch-platforms/README.cs.md) |
 | **Voice dictation** — Wispr Flow vs Superwhisper vs Spokenly vs macOS Dictation vs VoiceInk vs FluidVoice, for Czech dictation on an Apple Silicon Mac | VoiceInk (built from source) | 2026-08-18 | 🇬🇧 [English](voice-dictation/README.md) · 🇨🇿 [Čeština](voice-dictation/README.cs.md) |
-| **Programming language choice** — one language to build new projects on for years, across web backend, browser frontend, CLI and data/ML | ⏳ in progress | 2026-08-22 (context and decision rules only; research not started) | 🇨🇿 [Čeština](programming-language-choice/README.cs.md) |
+| **Programming language choice** — one language to build new projects on for years, across web backend, browser frontend, CLI and data/ML | ⏳ in progress — two briefs, two verdicts: TypeScript on domain fit, Kotlin and Rust tied on language professionalism | 2026-08-23 (research complete, [R1]–[R77]; English version pending) | 🇨🇿 [Čeština](programming-language-choice/README.cs.md) |
 
 ## Languages
 
