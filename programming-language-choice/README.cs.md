@@ -19,6 +19,8 @@
 - [x] datovaný snapshot (§5) — 2026-08-22
 - [x] adversariální průchod (§6.1) — 2026-08-23
 - [x] verdikt (§6.2) a čtení po doménách i citlivost na váhy (§6.3) — 2026-08-23
+- [x] **druhé zadání: pravidla profesionality (§7.1–§7.3) sepsána 2026-08-23 PŘED rešerší** — commitnuta zvlášť, aby to šlo ověřit z historie
+- [ ] rešerše profesionality (§7.4) a druhý verdikt (§7.5)
 - [ ] EN překlad (`README.md`) jako kanonická verze
 
 ## 1. Kontext: jaké rozhodnutí se tu doopravdy dělá
@@ -534,7 +536,55 @@ Tytéž buňky, jiné váhy. Sloupec vah je v pořadí backend · CLI · fronten
 
 **Vymezení platnosti.** Verdikt platí pro profil ze §1: **nové projekty na zelené louce**, čtyři domény s vahami 4 · 3 · 2 · 1, výkon jako měkká osa. Neplatí pro migraci existujícího systému a neplatí pro jiné váhy. A stojí na jednom rozhodnutí zadavatele z 2026-08-22 — úpravě brány B2 (§2.2) — bez něhož by byl vítěz vyřazen dřív, než se cokoli spočítalo.
 
-## 7. Reference
+## 7. Druhé zadání: profesionalita jazyka (pravidla sepsána 2026-08-23 — PŘED rešerší)
+
+### 7.1 Proč je tu druhé zadání
+
+Zadavatel po dodání verdiktu §6.2 upřesnil, že **největší váhu pro něj má profesionalita jazyka, konkrétně jeho syntaxe** — tedy zda v něm lze přehledně programovat malé i velmi rozsáhlé projekty — a že je to otázka v podstatě nezávislá na doméně.
+
+**Je to oprávněná námitka a dokument se odchýlil.** V prvním zadání stálo *„malé i velké projekty… čitelnost kódu, bezchybnost v kódu“* a v původním návrhu z 8. 8. 2026 *„jak moc jsou profesionální moderní programovací jazyky“*. Tahle osa byla hlavní od začátku; §2.3 ji odsunula na **tie-breaker**, tedy na kritérium, které se spouští jen při shodě. Stalo se to proto, že z domén šel udělat mechanický verdikt — vyhrála měřitelnost nad relevancí.
+
+**Neopravuje se to přepsáním.** §6.2 na tenhle případ pamatuje předem: změna zadání se zapisuje jako **nové zadání s datem**, ne jako oprava starého, protože pravidlo upravené po zhlédnutí výsledku ztrácí to jediné, kvůli čemu se píše dopředu. **Verdikt §6.2 tedy platí dál jako odpověď na první zadání** a tohle je odpověď na druhé. Dokument ponese oba a případný rozpor mezi nimi zapíše.
+
+### 7.2 Rozhodovací pravidla druhého zadání
+
+**Kandidáti:** týchž osm, v témže abecedním pořadí (§2.1). **Metodická pravidla M1 až M5 (§2.4) platí beze změny** — včetně povinného adversariálního průchodu a zákazu, aby inference nosila kostým faktu.
+
+**Kritéria.** Zadavatel 2026-08-23 vybral **všechna čtyři** z nabídnutých čtení, bez určení pořadí:
+
+| # | Kritérium | Co se měří (checkovatelně, ne dojmem) |
+|---|---|---|
+| **P1** | Kompilátor chytí chybu dřív než uživatel | Hranice vynucení (§4.1 bod a), nullabilita v typovém systému, vyčerpávající větvení |
+| **P2** | Kód přečte cizí člověk bez kontextu | Existence **oficiálního** formátovače, velikost a jednoduchost jazyka, možnost měnit chování za běhu |
+| **P3** | Velký refaktoring je bezpečný | Statické typy plus existence **oficiálního** jazykového serveru; zda překladač najde všechna volání |
+| **P4** | Typový systém unese doménový model | Součtové typy s daty, vyčerpávající větvení nad nimi, neměnnost |
+
+**Váhy: všechna čtyři kritéria stejně (1 · 1 · 1 · 1).** Zadavatel je vybral bez určení pořadí, takže rovnoměrné váhy jsou nejmenší domýšlení. **Je to ale volba, ne fakt** — a poučen §6.3 se k ní rovnou zavazuji doplnit citlivostní přehled, aby o výsledku nerozhodla tiše.
+
+**Cena a agregace** jsou totožné se §2.3, aby byla čísla srovnatelná: ✅ = 0 · 🟡 = 1 · ❌ = 3, součet přes čtyři kritéria, **vyhrává nejnižší** (rozsah 0 až 12).
+
+**Vymezení.** Tohle zadání **nemá domény ani jejich váhy** — je z podstaty nezávislé na doméně. Neruší §6.2 a nemá na něj vliv.
+
+### 7.3 Předpověď zapsaná před rešerší
+
+Poučen tím, že předpověď v §2.3 selhala kvůli uvažování o silných stránkách místo o rozptylu, uvažuji tentokrát o rozptylu uvnitř kritérií. **Jde o inferenci, ne o fakta.**
+
+- **Největší rozptyl čekám u P4**, kde jsou součtové typy buď v jazyce, nebo v něm nejsou vůbec. To by mělo rozhodnout pořadí víc než ostatní tři.
+- **Go je kandidát s nejprotichůdnějším profilem:** velmi silné P2 (záměrně malý jazyk, oficiální `gofmt`) a P3, ale P4 by mu mělo chybět. Jeho umístění tedy závisí na tom, zda P2 vyváží P4 — a to je při rovných vahách otevřené.
+- **Kotlin a Rust čekám vpředu**, protože jako jediné by měly být slušné ve všech čtyřech.
+- **Vítěz prvního zadání, TypeScript, tady podle mě nevyhraje**, protože P1 ho sráží (§4.1: typy se za běhu nevynucují). Očekávám tedy, že dokument skončí **se dvěma verdikty, které si odporují** — a ten rozpor bude užitečnější než kterýkoli z nich zvlášť.
+
+Pokud rešerše tuhle předpověď vyvrátí, zapíše se to jako výsledek, ne jako oprava předpovědi.
+
+### 7.4 Tabulka profesionality
+
+[OVĚŘIT] — rešerše zatím neproběhla.
+
+### 7.5 Verdikt druhého zadání
+
+[OVĚŘIT] — po §7.4 a po adversariálním průchodu.
+
+## Reference
 
 Ověřeno k 2026-08-22 (kolo 1 — brána B2, §4.4 a §4.5).
 
