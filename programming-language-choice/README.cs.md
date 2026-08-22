@@ -1,9 +1,9 @@
 # Volba programovacího jazyka: jeden jazyk na dlouhá léta pro nové projekty
 
-- **Verdikt:** ⏳ zatím žádný. Regret matrix je kompletní a **prozatímní pořadí vede TypeScript s váženou cenou 4** před Pythonem (5), viz §3.1 — pořadí ale zatím nesmí být verdiktem ze tří doložených důvodů uvedených tamtéž. **Předpověď zapsaná v §2.3 se nepotvrdila:** Go skončilo sedmé z osmi.
+- **Verdikt:** **TypeScript** (vážená cena 4, před Pythonem s 5) — pro profil ze §1 a s kompromisy vyjmenovanými v §6.2, z nichž nejdražší je, že překladač nemá žádný závazek podpory a typy se za běhu nevynucují. **Předpověď zapsaná v §2.3 se nepotvrdila:** Go skončilo poslední.
 - **Sycené rozhodnutí:** na čem stavět **nové** projekty (vlastní, firemní i cizí) v horizontu let — a čím ta volba argumentovat u někoho, kdo u úvahy nebyl.
 - **Fakta ověřena:** 🟡 2026-08-22, sedm kol, reference [R1]–[R64]: financování, governance a závazky podpory (§4.4, §4.5); všechny čtyři domény (§4.3) a kompletní regret matrix (§3, §3.1); přísnost podle M2 (§4.1); souběžnost, nábor a frameworky (§4.2, §4.6, §4.7); datovaný snapshot (§5). Otevřené `[OVĚŘIT]`: žádné. Neúplné a přiznané: C# a Rust v §4.2, úrovně PHPStan a Psalm v §4.1. **Čtyři buňky označeny jako nejisté** a přednostně poslány do adversariálního průchodu: Rust v backendu, Go a PHP v prohlížeči (obě ❌), Rust v prohlížeči.
-- **Adversariální průchod:** ❌ zatím neproběhl (povinný před verdiktem, §2.4 M5).
+- **Adversariální průchod:** 🟡 proběhl 2026-08-23 (§6.1) — jedna ze čtyř nejistých buněk neobstála a byla opravena (PHP v prohlížeči), pořadí na prvních dvou místech se nezměnilo. **Omezení: průchod běžel ve stejném kontextu, který závěr vytvořil, ne v odděleném.**
 - **Jazyk:** 🇨🇿 čeština (originál); 🇬🇧 kanonická anglická verze zatím nevznikla
 - **Autor:** Petr Kratochvíl — [krato.cz](https://krato.cz)
 
@@ -17,8 +17,8 @@
 - [x] regret matrix (§3) včetně vážené ceny a čtení tabulky (§3.1) — kola 2 až 5, 2026-08-22
 - [x] trvanlivá vrstva (§4) — §4.1 až §4.7 hotové (kola 1 až 7, 2026-08-22)
 - [x] datovaný snapshot (§5) — 2026-08-22
-- [ ] adversariální průchod (§2.4 M5), výsledek do hlavičky
-- [ ] verdikt (§6)
+- [x] adversariální průchod (§6.1) — 2026-08-23
+- [x] verdikt (§6.2) — 2026-08-23
 - [ ] EN překlad (`README.md`) jako kanonická verze
 
 ## 1. Kontext: jaké rozhodnutí se tu doopravdy dělá
@@ -107,17 +107,17 @@ Sloupce jsou seřazené **podle váhy domény sestupně** (4 · 3 · 2 · 1, §2
 | Jazyk | Backend a API (×4) | CLI a automatizace (×3) | Frontend v prohlížeči (×2) | Data, ML, dávky (×1) | Vážená cena |
 |---|---|---|---|---|---|
 | **C#** | ✅ ASP.NET Core je first-party, jeden kalendář s jazykem [R9] | 🟡 Native AOT, ale s toolchainem a zákazem dynamických rysů [R20] | 🟡 Blazor WASM: do prohlížeče jde runtime; past s heapem na iOS [R35] | 🟡 ML.NET first-party; ve Sparku ani Polars není [R43] | **6** |
-| **Go** | ✅ `net/http` ve stdlib — žádné druhé okno podpory [R8] | ✅ domovská; vždy křížový překlad [R24] | ❌ ~2 MB dno, 10 MB+ běžně; `wasm_exec.js` vázán na verzi — **nejistá, do M5** [R37] | ❌ chybí v seznamech Sparku i Polars [R44][R45] | **9** |
+| **Go** | ✅ `net/http` ve stdlib — žádné druhé okno podpory [R8] | ✅ domovská; vždy křížový překlad [R24] | ❌ ~2 MB dno, 10 MB+ běžně; obstálo v M5 s výhradou (§6.1) [R37] | ❌ chybí v seznamech Sparku i Polars [R44][R45] | **9** |
 | **Java** | ✅ Spring Boot; minor ale jen ≥12 měsíců OSS [R31] | 🟡 GraalVM, ale closed-world a JSON metadata [R21] | 🟡 TeaVM (třetí strana); omezení nedoložena [R41] | 🟡 první třída ve Sparku; modelování slabší [R44] | **6** |
 | **Kotlin** | ✅ táž cesta jako Java [R31] | 🟡 táž cesta a tytéž výhrady jako Java [R21] | 🟡 Kotlin/Wasm je Beta a klade podmínku na prohlížeč [R36] | 🟡 přes JVM na Java API Sparku (inference) [R44] | **6** |
-| **PHP** | ✅ Symfony či Laravel; volba mění okno 4 roky vs. 2 [R28][R29] | 🟡 binárka jen přes projekt třetí strany [R25] | ❌ jen `php-wasm`, fakticky jeden udržovatel — **nejistá, do M5** [R42] | ❌ chybí v seznamech Sparku i Polars [R44][R45] | **12** |
+| **PHP** | ✅ Symfony či Laravel; volba mění okno 4 roky vs. 2 [R28][R29] | 🟡 binárka jen přes projekt třetí strany [R25] | 🟡 `php-wasm` existuje a je živý; ❌ neobstálo v M5 (§6.1) [R42] | ❌ chybí v seznamech Sparku i Polars [R44][R45] | **8** |
 | **Python** | ✅ Django, tři roky na každé vydání [R30] | 🟡 bez křížového překladu [R26] | 🟡 Pyodide zralé, plný přístup k Web API; velikost nedoložena [R38] | ✅ jediný v obou seznamech; referenční ekosystém [R44][R45] | **5** |
-| **Rust** | 🟡 u Axumu nenalezen datovaný kalendář podpory; **buňka nejistá**, jde do M5 [R34] | ✅ domovská; Tier 1 napříč OS [R27] | 🟡 evidence úzká (nemaintainovaná kniha WG) — **nejistá, do M5** [R40] | 🟡 implementuje Polars; trénování nezjišťováno [R45] | **7** |
+| **Rust** | 🟡 kalendář podpory nenalezen u Axumu ani u Actixu; posíleno v M5 (§6.1) [R34][R65] | ✅ domovská; Tier 1 napříč OS [R27] | 🟡 evidence hodnotu buňky nedokládá; zůstává jako nejméně zavazující (§6.1) [R40] | 🟡 implementuje Polars; trénování nezjišťováno [R45] | **7** |
 | **TypeScript** | ✅ zralé, ale roztříštěné; Fastify ~rok, Express nenalezeno [R32][R33] | 🟡 Node SEA experimentální; `deno compile` zralé, ale jiný runtime [R22][R23] | ✅ prohlížeč je nativní cíl; jediná nula ve sloupci [R39] | 🟡 Polars přes Node.js, TensorFlow.js [R45][R46] | **4** ⬅ nejnižší |
 
-### 3.1 Jak tabulku číst (k 2026-08-22, prozatímní)
+### 3.1 Jak tabulku číst (k 2026-08-23, po adversariálním průchodu)
 
-**Prozatímní pořadí podle vážené ceny** (nižší je lepší, rozsah 0 až 30):
+**Pořadí podle vážené ceny** (nižší je lepší, rozsah 0 až 30):
 
 | # | Jazyk | Výpočet | Vážená cena |
 |---|---|---|---|
@@ -125,8 +125,10 @@ Sloupce jsou seřazené **podle váhy domény sestupně** (4 · 3 · 2 · 1, §2
 | 2. | **Python** | 0×4 + 1×3 + 1×2 + 0×1 | **5** |
 | 3.–5. | **C#**, **Java**, **Kotlin** | 0×4 + 1×3 + 1×2 + 1×1 | **6** |
 | 6. | **Rust** | 1×4 + 0×3 + 1×2 + 1×1 | **7** |
-| 7. | **Go** | 0×4 + 0×3 + 3×2 + 3×1 | **9** |
-| 8. | **PHP** | 0×4 + 1×3 + 3×2 + 3×1 | **12** |
+| 7. | **PHP** | 0×4 + 1×3 + 1×2 + 3×1 | **8** |
+| 8. | **Go** | 0×4 + 0×3 + 3×2 + 3×1 | **9** |
+
+*Pořadí po adversariálním průchodu (§6.1, 2026-08-23). Před ním mělo PHP 12 a bylo poslední; po zrušení nedoloženého ❌ v prohlížeči má 8 a poslední je Go. Vedoucí dvojice se nezměnila.*
 
 **Předpověď z §2.3 se nepotvrdila, a nejde o drobnost.** Psal jsem, že by mělo stoupnout Go. Skončilo sedmé z osmi. Důvod je přesně ten mechanismus, který odhalilo kolo 3: **obě nuly Go leží tam, kde nuly nic nevynášejí.** V backendu má nulu každý, takže se z ní pořadí neposune, a druhá nula je v CLI. Zato dvě ❌ v prohlížeči a v datech se do součtu propíšou plnou vahou. Předpověď selhala proto, že jsem uvažoval o silných stránkách kandidáta místo o rozptylu uvnitř sloupců. Zůstává zapsaná v §2.3 tak, jak byla napsána, a tohle je její vyhodnocení, ne oprava.
 
@@ -445,9 +447,51 @@ Podíl **profesionálních vývojářů**, kteří jazyk uvádějí mezi použí
 | Spring Boot | minor nejméně 12 měsíců, major nejméně 3 roky | [R31] |
 | Fastify | ~12 měsíců (6 + 6 po dalším major) | [R32] |
 
-## 6. Verdikt (zatím žádný)
+## 6. Adversariální průchod a verdikt
 
-Rešerše nezačala. Verdikt se doplní podle pravidla §2.3 a až po adversariálním průchodu (§2.4 M5).
+### 6.1 Adversariální průchod (M5, 2026-08-23)
+
+Zadání pro tenhle průchod znělo **vyvrátit**, ne potvrdit. Šel na čtyři buňky označené jako nejisté a na samotný závěr.
+
+**Omezení, které je nutné přiznat:** průchod proběhl **ve stejném kontextu, který závěr vytvořil**, ne v odděleném. Kodex doporučuje čerstvý kontext právě proto, že autor své vlastní argumenty vyvrací hůř než cizí člověk. Váha tohoto průchodu je tím menší a čtenář to má vědět.
+
+| Buňka | Výsledek | Co se stalo |
+|---|---|---|
+| **Rust v backendu** (🟡) | **Obstála, a je líp podložená** | Námitka byla nerovné měřítko: u TypeScriptu jsem hledal politiku podpory u dvou frameworků, u Rustu jen u jednoho. Doplněno stejnou metodou — Actix-web nemá datovaný kalendář podpory v kořeni ani v `.github`, pozitivní kontrola prošla (`Cargo.toml` ve výpisu) [R65]. Dva ze dvou tedy nezveřejňují nic, kdežto u TypeScriptu jeden ze dvou ano (Fastify). Rozdíl je reálný, 🟡 platí. |
+| **Go v prohlížeči** (❌) | **Obstála s výhradou** | Čísla jsou z vlastní wiki Go, to nejde zpochybnit. Ale tatáž wiki doporučuje kompresi a zmiňuje TinyGo s ~10 kB, a **ani jedno jsem nezkoumal**. ❌ tedy stojí na nekomprimovaném dnu a na neprozkoumané únikové cestě. Kdyby padlo na 🟡, Go jde z 9 na 7. |
+| **PHP v prohlížeči** (❌) | **NEOBSTÁLA — sníženo na 🟡** | Argument zněl „tenké, fakticky jeden udržovatel“. To je **soud, ne měření**, a doložit se nepodařilo. `php-wasm` přitom existuje, je aktivní a pokrývá PHP 8.0–8.5 [R42]. Podle pravidla, že inference nesmí nosit kostým faktu, se ❌ ruší. **Dopad: PHP z 12 na 8, tím přeskočilo Go a poslední je nově Go.** |
+| **Rust v prohlížeči** (🟡) | **Evidence hodnotu nedokládá** | Jediný doklad byl nemaintainovaný web pracovní skupiny, což nevypovídá o cílové platformě ani o frameworcích. Buňka zůstává 🟡 jako nejméně zavazující hodnota, ale **není doložená** a dokument to říká místo aby to zakryl. |
+
+**A teď nejsilnější námitka, kterou mám — míří na vítěze a nejde ji odbýt.**
+
+Vážená cena měří **výhradně padnutí do čtyř domén.** Trvanlivá vrstva §4.4 až §4.7 do skóre nevstupuje vůbec; dostane se ke slovu jen přes tie-breakery, a ty se spouštějí pouze při shodě. Z toho plyne nepříjemný důsledek: **největší slabina TypeScriptu — že pro překladač neexistuje žádný závazek podpory, tedy přesně to, na čem v kole 1 vypálila brána B2 — je ve skóre strukturálně neviditelná.**
+
+Není to porušení pravidla. Pravidla byla takhle napsaná předem a po výsledku se nepřepisují. Ale znamená to, že **číslo 4 není celá pravda**, a verdikt to musí říct nahlas, ne to schovat do poznámky.
+
+Druhá námitka téhož druhu: vedoucí dvojice, TypeScript a Python, jsou **oba ve skupině, která typy za běhu nevynucuje** (§4.1 bod a). Zvolené váhy vybírají šířku záběru, a šířka v roce 2026 znamená právě tyhle dva jazyky.
+
+### 6.2 Verdikt (2026-08-23)
+
+**Podle pravidla §2.3 vychází verdikt na TypeScript** s váženou cenou 4, před Pythonem s 5.
+
+**Co za to platíš — přijaté kompromisy, vyjmenované, ne naznačené:**
+
+1. **Žádný závazek podpory pro překladač.** Tým TypeScriptu sám uvádí, že oficiální politika neexistuje (§4.5). Životní cyklus, o který se opíráš, je životní cyklus **runtime** — Node.js s LTS 30 měsíců. Tohle je ten kompromis, kvůli kterému bys jinak neprošel bránou B2, a přijímáš ho vědomě.
+2. **Typy se za běhu nevynucují.** Mažou se při překladu a výstupem je prostý JavaScript (§4.1). Ochrana končí na hranici, kde data vstupují zvenčí; validace na té hranici je tvoje práce, ne práce jazyka. Pro někoho, kdo celý dokument navrhl kolem otázky přísnosti, je to ta nejdražší položka na seznamu.
+3. **Nejtříštivější vrstva frameworků z osmi** (§4.7). Největší ekosystém a zároveň nejméně koordinovaný — Fastify má okno zhruba rok, u Expressu se politiku nepodařilo najít.
+4. **CLI se platí volbou** (§4.3): buď experimentální Node SEA, nebo `deno compile`, tedy jiný runtime než Node. Při váze 3 je to druhá nejdražší položka verdiktu.
+
+**Co za to dostáváš:** jediný kandidát, který pokrývá prohlížeč bez daně (§4.3), druhá nejširší náborová základna (§5.1) a nulová cena v nejvýš vážené doméně.
+
+**Runner-up: Python (5).** Vyhrává data, kde má TypeScript 🟡, a prohrává prohlížeč. Trpí toutéž slabinou v bodě 2 — runtime typy nevynucuje — a k tomu GIL, jehož odstranění je vydané, ale ekosystém ho nedohnal (§4.2).
+
+**Změním názor, když** — a tohle je falzifikace, ne alibi:
+
+- **Vynucení typů za běhu má pro tebe větší cenu než šířka záběru.** Pak nejsou špatně čísla, ale váhy: vybíraly šířku, a ta v roce 2026 vede na dva jazyky, které typy za běhu nekontrolují. S jinými vahami vychází Kotlin, C# nebo Rust. Váhy jsi zadal před rešerší a přepisovat je teď by zničilo jedinou vlastnost, kvůli které se píšou dopředu — ale rozhodnout se je změnit a **spustit výpočet znovu s datem** je legitimní, pokud se to zapíše jako nové zadání, ne jako oprava.
+- **Doména prohlížeče z tvého zadání vypadne.** Nula TypeScriptu je jen tam; bez frontendu klesá na 3, ale Go padá z 9 na 3 a Rust ze 7 na 5 — pořadí se přeskládá celé.
+- **❌ u Go v prohlížeči padne** (§6.1). Samo o sobě verdikt nezmění, ale zúží odstup.
+
+**Vymezení platnosti.** Verdikt platí pro profil ze §1: **nové projekty na zelené louce**, čtyři domény s vahami 4 · 3 · 2 · 1, výkon jako měkká osa. Neplatí pro migraci existujícího systému a neplatí pro jiné váhy. A stojí na jednom rozhodnutí zadavatele z 2026-08-22 — úpravě brány B2 (§2.2) — bez něhož by byl vítěz vyřazen dřív, než se cokoli spočítalo.
 
 ## 7. Reference
 
@@ -536,6 +580,10 @@ Ověřeno k 2026-08-22 (kolo 1 — brána B2, §4.4 a §4.5).
 - [R59] Effective Go — Concurrency (cena goroutiny, multiplexování na vlákna OS). Ověřeno 2026-08-22: <https://go.dev/doc/effective_go>
 - [R60] PHP Manual — Fibers (od PHP 8.1). Ověřeno 2026-08-22: <https://www.php.net/manual/en/language.fibers.php>
 - [R61] Stack Overflow Developer Survey 2025 — Technology, podíly u profesionálních vývojářů. Ověřeno 2026-08-22: <https://survey.stackoverflow.co/2025/technology>
+
+**Adversariální průchod (§6.1)**
+
+- [R65] actix/actix-web — výpis repozitáře; datovaná politika podpory nenalezena v kořeni ani v `.github`. Pozitivní kontrola prošla (`Cargo.toml` ve výpisu). Ověřeno 2026-08-23: <https://github.com/actix/actix-web>
 
 **Vlastnosti jako jazykový rys (kolo 8, §4.8)**
 
