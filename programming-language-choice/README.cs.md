@@ -1,8 +1,8 @@
 # Volba programovacího jazyka: jeden jazyk na dlouhá léta pro nové projekty
 
-- **Verdikt:** ⏳ zatím žádný. Pravidla (§2) sepsána a potvrzena PŘED rešerší. Kolo 1 (§4.4, §4.5) hotové: **brána B2 vypálila proti TypeScriptu** — rozhodnutí o úpravě pravidla čeká na zadavatele a nebude provedeno tiše (§4.5).
+- **Verdikt:** ⏳ zatím žádný. Regret matrix je kompletní a **prozatímní pořadí vede TypeScript s váženou cenou 4** před Pythonem (5), viz §3.1 — pořadí ale zatím nesmí být verdiktem ze tří doložených důvodů uvedených tamtéž. **Předpověď zapsaná v §2.3 se nepotvrdila:** Go skončilo sedmé z osmi.
 - **Sycené rozhodnutí:** na čem stavět **nové** projekty (vlastní, firemní i cizí) v horizontu let — a čím ta volba argumentovat u někoho, kdo u úvahy nebyl.
-- **Fakta ověřena:** 🟡 2026-08-22, čtyři kola, reference [R1]–[R42]: financování, governance a závazky podpory (§4.4, §4.5); domény CLI, backend a frontend (§4.3 a tytéž sloupce v §3). Otevřené `[OVĚŘIT]`: §3 (doména dat a vážená cena), §4.1, §4.2, zbytek §4.3, §4.6–§4.8, §5. **Čtyři buňky označeny jako nejisté** a přednostně poslány do adversariálního průchodu: Rust v backendu, Go a PHP ve frontendu (obě ❌), Rust ve frontendu.
+- **Fakta ověřena:** 🟡 2026-08-22, pět kol, reference [R1]–[R46]: financování, governance a závazky podpory (§4.4, §4.5); všechny čtyři domény (§4.3) a kompletní regret matrix včetně vážené ceny (§3, §3.1). Otevřené `[OVĚŘIT]`: §4.1, §4.2, §4.6–§4.8, §5. **Čtyři buňky označeny jako nejisté** a přednostně poslány do adversariálního průchodu: Rust v backendu, Go a PHP v prohlížeči (obě ❌), Rust v prohlížeči.
 - **Adversariální průchod:** ❌ zatím neproběhl (povinný před verdiktem, §2.4 M5).
 - **Jazyk:** 🇨🇿 čeština (originál); 🇬🇧 kanonická anglická verze zatím nevznikla
 - **Autor:** Petr Kratochvíl — [krato.cz](https://krato.cz)
@@ -14,8 +14,8 @@
 - [x] řádek v kořenovém README — 2026-08-22
 - [x] **potvrdit rozhodovací pravidla (§2) uživatelem** — 2026-08-22: váhy domén doplněny (§2.3), B1 zúžena na backend (§2.2), agregace přepsána na váženou cenu; předpověď zapsána před rešerší
 - [ ] tabulka vlastností (§4.8) — po §3
-- [~] regret matrix (§3) — sloupce backend, CLI a frontend hotové (kola 2 až 4, 2026-08-22); zbývá doména dat a vážená cena
-- [~] trvanlivá vrstva (§4) — hotovo §4.4, §4.5 (kolo 1) a tři domény v §4.3 (kola 2 až 4), vše 2026-08-22; zbývá §4.1, §4.2, doména dat v §4.3, §4.6, §4.7
+- [x] regret matrix (§3) včetně vážené ceny a čtení tabulky (§3.1) — kola 2 až 5, 2026-08-22
+- [~] trvanlivá vrstva (§4) — hotovo §4.3, §4.4 a §4.5 (kola 1 až 5, 2026-08-22); zbývá §4.1 (přísnost podle M2), §4.2, §4.6, §4.7
 - [ ] datovaný snapshot (§5)
 - [ ] adversariální průchod (§2.4 M5), výsledek do hlavičky
 - [ ] verdikt (§6)
@@ -100,24 +100,43 @@ Tabulka se **neptá, jak je jazyk v doméně dobrý**. Ptá se: *kolik mě stoj�
 
 Symboly: ✅ domovská doména, cena blízko nule · 🟡 použitelné, ale s pojmenovanou cenou · ❌ cena tak vysoká, že bys pro tuhle doménu sáhl po jiném jazyce. Hodnoceno **pro kontext §1** (zelená louka, výkon jako měkká osa), ne obecně.
 
-Stav vyplňování: sloupce **backend, CLI a frontend ověřeny 2026-08-22** (kola 2 až 4, §4.3); zbývá doména dat a vážená cena.
+Stav vyplňování: **všechny čtyři sloupce ověřeny 2026-08-22** (kola 2 až 5, §4.3), vážená cena spočtena podle §2.3. Ceny buněk jsou ✅ = 0, 🟡 = 1, ❌ = 3; váhy 4 · 3 · 2 · 1. **Pořadí je prozatímní** — čtyři buňky čekají na adversariální průchod (M5) a trvanlivá vrstva §4.1, §4.2, §4.6 a §4.7 zatím nemá vstup do tie-breakerů.
 
 Sloupce jsou seřazené **podle váhy domény sestupně** (4 · 3 · 2 · 1, §2.3), aby se tabulka četla zleva od toho, co rozhoduje nejvíc. Poslední sloupec je vážená cena podle §2.3 — nižší je lepší, rozsah 0 až 30.
 
 | Jazyk | Backend a API (×4) | CLI a automatizace (×3) | Frontend v prohlížeči (×2) | Data, ML, dávky (×1) | Vážená cena |
 |---|---|---|---|---|---|
-| **C#** | ✅ ASP.NET Core je first-party, jeden kalendář s jazykem [R9] | 🟡 Native AOT, ale s toolchainem a zákazem dynamických rysů [R20] | 🟡 Blazor WASM: do prohlížeče jde runtime; past s heapem na iOS [R35] | [OVĚŘIT] | [OVĚŘIT] |
-| **Go** | ✅ `net/http` ve stdlib — žádné druhé okno podpory [R8] | ✅ domovská; vždy křížový překlad [R24] | ❌ ~2 MB dno, 10 MB+ běžně; `wasm_exec.js` vázán na verzi — **nejistá, do M5** [R37] | [OVĚŘIT] | [OVĚŘIT] |
-| **Java** | ✅ Spring Boot; minor ale jen ≥12 měsíců OSS [R31] | 🟡 GraalVM, ale closed-world a JSON metadata [R21] | 🟡 TeaVM (třetí strana); omezení nedoložena [R41] | [OVĚŘIT] | [OVĚŘIT] |
-| **Kotlin** | ✅ táž cesta jako Java [R31] | 🟡 táž cesta a tytéž výhrady jako Java [R21] | 🟡 Kotlin/Wasm je Beta a klade podmínku na prohlížeč [R36] | [OVĚŘIT] | [OVĚŘIT] |
-| **PHP** | ✅ Symfony či Laravel; volba mění okno 4 roky vs. 2 [R28][R29] | 🟡 binárka jen přes projekt třetí strany [R25] | ❌ jen `php-wasm`, fakticky jeden udržovatel — **nejistá, do M5** [R42] | [OVĚŘIT] | [OVĚŘIT] |
-| **Python** | ✅ Django, tři roky na každé vydání [R30] | 🟡 bez křížového překladu [R26] | 🟡 Pyodide zralé, plný přístup k Web API; velikost nedoložena [R38] | [OVĚŘIT] | [OVĚŘIT] |
-| **Rust** | 🟡 u Axumu nenalezen datovaný kalendář podpory; **buňka nejistá**, jde do M5 [R34] | ✅ domovská; Tier 1 napříč OS [R27] | 🟡 evidence úzká (nemaintainovaná kniha WG) — **nejistá, do M5** [R40] | [OVĚŘIT] | [OVĚŘIT] |
-| **TypeScript** | ✅ zralé, ale roztříštěné; Fastify ~rok, Express nenalezeno [R32][R33] | 🟡 Node SEA experimentální; `deno compile` zralé, ale jiný runtime [R22][R23] | ✅ prohlížeč je nativní cíl; jediná nula ve sloupci [R39] | [OVĚŘIT] | [OVĚŘIT] |
+| **C#** | ✅ ASP.NET Core je first-party, jeden kalendář s jazykem [R9] | 🟡 Native AOT, ale s toolchainem a zákazem dynamických rysů [R20] | 🟡 Blazor WASM: do prohlížeče jde runtime; past s heapem na iOS [R35] | 🟡 ML.NET first-party; ve Sparku ani Polars není [R43] | **6** |
+| **Go** | ✅ `net/http` ve stdlib — žádné druhé okno podpory [R8] | ✅ domovská; vždy křížový překlad [R24] | ❌ ~2 MB dno, 10 MB+ běžně; `wasm_exec.js` vázán na verzi — **nejistá, do M5** [R37] | ❌ chybí v seznamech Sparku i Polars [R44][R45] | **9** |
+| **Java** | ✅ Spring Boot; minor ale jen ≥12 měsíců OSS [R31] | 🟡 GraalVM, ale closed-world a JSON metadata [R21] | 🟡 TeaVM (třetí strana); omezení nedoložena [R41] | 🟡 první třída ve Sparku; modelování slabší [R44] | **6** |
+| **Kotlin** | ✅ táž cesta jako Java [R31] | 🟡 táž cesta a tytéž výhrady jako Java [R21] | 🟡 Kotlin/Wasm je Beta a klade podmínku na prohlížeč [R36] | 🟡 přes JVM na Java API Sparku (inference) [R44] | **6** |
+| **PHP** | ✅ Symfony či Laravel; volba mění okno 4 roky vs. 2 [R28][R29] | 🟡 binárka jen přes projekt třetí strany [R25] | ❌ jen `php-wasm`, fakticky jeden udržovatel — **nejistá, do M5** [R42] | ❌ chybí v seznamech Sparku i Polars [R44][R45] | **12** |
+| **Python** | ✅ Django, tři roky na každé vydání [R30] | 🟡 bez křížového překladu [R26] | 🟡 Pyodide zralé, plný přístup k Web API; velikost nedoložena [R38] | ✅ jediný v obou seznamech; referenční ekosystém [R44][R45] | **5** |
+| **Rust** | 🟡 u Axumu nenalezen datovaný kalendář podpory; **buňka nejistá**, jde do M5 [R34] | ✅ domovská; Tier 1 napříč OS [R27] | 🟡 evidence úzká (nemaintainovaná kniha WG) — **nejistá, do M5** [R40] | 🟡 implementuje Polars; trénování nezjišťováno [R45] | **7** |
+| **TypeScript** | ✅ zralé, ale roztříštěné; Fastify ~rok, Express nenalezeno [R32][R33] | 🟡 Node SEA experimentální; `deno compile` zralé, ale jiný runtime [R22][R23] | ✅ prohlížeč je nativní cíl; jediná nula ve sloupci [R39] | 🟡 Polars přes Node.js, TensorFlow.js [R45][R46] | **4** ⬅ nejnižší |
 
-### 3.1 Jak tabulku číst
+### 3.1 Jak tabulku číst (k 2026-08-22, prozatímní)
 
-[OVĚŘIT] — doplní se po rešerši: kdo vyhrává kde, kdo padl na B1 a proč, a která doména se ukázala jako ta, o kterou se verdikt láme.
+**Prozatímní pořadí podle vážené ceny** (nižší je lepší, rozsah 0 až 30):
+
+| # | Jazyk | Výpočet | Vážená cena |
+|---|---|---|---|
+| 1. | **TypeScript** | 0×4 + 1×3 + 0×2 + 1×1 | **4** |
+| 2. | **Python** | 0×4 + 1×3 + 1×2 + 0×1 | **5** |
+| 3.–5. | **C#**, **Java**, **Kotlin** | 0×4 + 1×3 + 1×2 + 1×1 | **6** |
+| 6. | **Rust** | 1×4 + 0×3 + 1×2 + 1×1 | **7** |
+| 7. | **Go** | 0×4 + 0×3 + 3×2 + 3×1 | **9** |
+| 8. | **PHP** | 0×4 + 1×3 + 3×2 + 3×1 | **12** |
+
+**Předpověď z §2.3 se nepotvrdila, a nejde o drobnost.** Psal jsem, že by mělo stoupnout Go. Skončilo sedmé z osmi. Důvod je přesně ten mechanismus, který odhalilo kolo 3: **obě nuly Go leží tam, kde nuly nic nevynášejí.** V backendu má nulu každý, takže se z ní pořadí neposune, a druhá nula je v CLI. Zato dvě ❌ v prohlížeči a v datech se do součtu propíšou plnou vahou. Předpověď selhala proto, že jsem uvažoval o silných stránkách kandidáta místo o rozptylu uvnitř sloupců. Zůstává zapsaná v §2.3 tak, jak byla napsána, a tohle je její vyhodnocení, ne oprava.
+
+**Vyhrává zatím TypeScript, a je to jediný kandidát s nulou tam, kde ji nemá nikdo jiný** (§4.3, prohlížeč). Platí jen v CLI a v datech.
+
+**Tři věci, které to pořadí zatím nesmí učinit verdiktem.**
+
+1. **Vítěz je ten, proti komu v kole 1 vypálila brána B2** (§4.5). Kdyby zadavatel zvolil variantu „nechat pravidlo platit“, byl by dnešní vítěz vyřazen dřív, než se cokoli spočítalo. Citlivost verdiktu na jedno rozhodnutí o pravidle je tím doložená, ne domnělá — a patří do verdiktu jako přiznaný předpoklad.
+2. **Čtyři buňky jsou označené jako nejisté** a jdou přednostně do M5: Rust v backendu, Go a PHP v prohlížeči, Rust v prohlížeči. Kdyby ❌ u Go v prohlížeči neobstálo, Go se posouvá z 9 na 7 nebo 5.
+3. **Tie-breakery zatím nemají vstup.** Trojice C#, Java a Kotlin je na shodných 6 a rozhodne o ní až §4.1, §4.6 a §4.7 — tedy přísnost vynutitelná v CI, náborový rybník a zralost frameworků.
 
 ## 4. Trvanlivá vrstva (nese verdikt)
 
@@ -190,7 +209,27 @@ Jediná doména, kde má jeden kandidát výhodu, kterou mu ostatní nemohou vz�
 
 **Tři buňky tohoto sloupce označuji za nejisté a posílám je do adversariálního průchodu (M5):** ❌ u Go (stojí na doložených velikostech, ale TinyGo je nezkoumaná úniková cesta), ❌ u PHP (stojí na tenkosti ekosystému, což je soud, ne měření) a 🟡 u Rustu (evidence je úzká a týká se dokumentace, ne platformy).
 
-**Poslední doména:** [OVĚŘIT] — kolo 5.
+**▸ Data, ML a dávkové zpracování (váha 1) — ověřeno 2026-08-22**
+
+Doména se ve skutečnosti skládá ze tří různých úloh a každá má jiného vítěze, což běžná zkratka „na data se používá Python“ zakrývá. Hodnotil jsem podle dvou referenčních nástrojů, u nichž je seznam podporovaných jazyků v dokumentaci **vyjmenovaný**, takže z něj lze číst i nepřítomnost.
+
+- **Apache Spark** (dávkové zpracování): *"It provides high-level APIs in Java, Scala, Python and R"*; nativním implementačním jazykem je Scala [R44].
+- **Polars** (dataframy): *"an analytical query engine for DataFrames, written in Rust"*, s vazbami pro *"Python, Rust, Node.js, R, and SQL"* [R45].
+
+Z těch dvou seznamů plyne rozdělení: **Python je v obou. Java je ve Sparku. Rust Polars přímo implementuje. TypeScript má vazbu na Polars přes Node.js a k tomu TensorFlow.js pro prohlížeč i Node [R46]. C# má vlastní first-party ML.NET, používaný podle Microsoftu v Power BI, Defenderu, Outlooku a Bingu, ale s pozicí integrátora TensorFlow a ONNX, ne jejich náhrady [R43]. Go a PHP nejsou ani v jednom z obou seznamů.**
+
+| Jazyk | Doložená pozice | Zdroj |
+|---|---|---|
+| **C#** | ML.NET, first-party a provozně prověřený; v seznamech Sparku ani Polars není | [R43][R44][R45] |
+| **Go** | Není v seznamu jazyků Sparku ani Polars | [R44][R45] |
+| **Java** | První třída ve Sparku pro dávkové zpracování; modelování slabší | [R44] |
+| **Kotlin** | Přes JVM dosáhne na Java API Sparku *(inference — Kotlin sám v seznamu jmenován není)* | [R44] |
+| **PHP** | Není v seznamu jazyků Sparku ani Polars | [R44][R45] |
+| **Python** | Jediný jazyk přítomný v obou seznamech; referenční ekosystém domény | [R44][R45] |
+| **Rust** | Implementuje Polars. Ekosystém pro trénování modelů v tomto kole nezjišťován | [R45] |
+| **TypeScript** | Vazba na Polars přes Node.js; TensorFlow.js pro prohlížeč i Node | [R45][R46] |
+
+**Rozsah tohoto hodnocení je úmyslně úzký.** Stojí na dvou nástrojích, ne na průzkumu celé domény, a nepřítomnost v seznamu znamená nepřítomnost **v tom seznamu** — ne, že v jazyce nejde zpracovat data. Při váze 1 je to úměrná investice; kdyby doména vážila víc, tenhle podklad by nestačil.
 
 ### 4.4 Kdo ekosystém platí (ověřeno 2026-08-22)
 
@@ -330,6 +369,13 @@ Ověřeno k 2026-08-22 (kolo 1 — brána B2, §4.4 a §4.5).
 - [R40] Rust and WebAssembly (kniha pracovní skupiny) — nese oznámení, že projekt a web už nejsou udržovány. Ověřeno 2026-08-22: <https://rustwasm.github.io/docs/book/>
 - [R41] TeaVM — úvodní stránka (AOT překladač bytekódu Javy do JavaScriptu a WebAssembly). Ověřeno 2026-08-22: <https://teavm.org/>
 - [R42] seanmorris/php-wasm — README (pokrytí PHP 8.0–8.5, balíčky, licence Apache-2.0). Ověřeno 2026-08-22: <https://github.com/seanmorris/php-wasm>
+
+**Data, ML a dávkové zpracování (kolo 5)**
+
+- [R43] ML.NET — přehled na dotnet.microsoft.com (first-party rámec, podporované scénáře, nasazení v produktech Microsoftu). Ověřeno 2026-08-22: <https://dotnet.microsoft.com/en-us/apps/ai/ml-dotnet>
+- [R44] Apache Spark — dokumentace, seznam jazykových API a nativní implementační jazyk. Ověřeno 2026-08-22: <https://spark.apache.org/docs/latest/>
+- [R45] pola-rs/polars — README (dotazovací engine psaný v Rustu, seznam jazykových vazeb). Ověřeno 2026-08-22: <https://github.com/pola-rs/polars>
+- [R46] TensorFlow.js — přehled (ML v prohlížeči i v Node.js). Ověřeno 2026-08-22: <https://www.tensorflow.org/js>
 
 **Jazykové vlastnosti**
 
