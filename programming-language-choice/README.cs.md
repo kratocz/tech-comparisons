@@ -2,7 +2,7 @@
 
 - **Verdikt:** ⏳ zatím žádný. Regret matrix je kompletní a **prozatímní pořadí vede TypeScript s váženou cenou 4** před Pythonem (5), viz §3.1 — pořadí ale zatím nesmí být verdiktem ze tří doložených důvodů uvedených tamtéž. **Předpověď zapsaná v §2.3 se nepotvrdila:** Go skončilo sedmé z osmi.
 - **Sycené rozhodnutí:** na čem stavět **nové** projekty (vlastní, firemní i cizí) v horizontu let — a čím ta volba argumentovat u někoho, kdo u úvahy nebyl.
-- **Fakta ověřena:** 🟡 2026-08-22, pět kol, reference [R1]–[R46]: financování, governance a závazky podpory (§4.4, §4.5); všechny čtyři domény (§4.3) a kompletní regret matrix včetně vážené ceny (§3, §3.1). Otevřené `[OVĚŘIT]`: §4.1, §4.2, §4.6–§4.8, §5. **Čtyři buňky označeny jako nejisté** a přednostně poslány do adversariálního průchodu: Rust v backendu, Go a PHP v prohlížeči (obě ❌), Rust v prohlížeči.
+- **Fakta ověřena:** 🟡 2026-08-22, šest kol, reference [R1]–[R55]: financování, governance a závazky podpory (§4.4, §4.5); všechny čtyři domény (§4.3) a kompletní regret matrix včetně vážené ceny (§3, §3.1); přísnost podle rozkladu M2 (§4.1), která rozhodla tie-breaker mezi C#, Javou a Kotlinem. Otevřené `[OVĚŘIT]`: §4.2, §4.6–§4.8, §5. **Čtyři buňky označeny jako nejisté** a přednostně poslány do adversariálního průchodu: Rust v backendu, Go a PHP v prohlížeči (obě ❌), Rust v prohlížeči.
 - **Adversariální průchod:** ❌ zatím neproběhl (povinný před verdiktem, §2.4 M5).
 - **Jazyk:** 🇨🇿 čeština (originál); 🇬🇧 kanonická anglická verze zatím nevznikla
 - **Autor:** Petr Kratochvíl — [krato.cz](https://krato.cz)
@@ -15,7 +15,7 @@
 - [x] **potvrdit rozhodovací pravidla (§2) uživatelem** — 2026-08-22: váhy domén doplněny (§2.3), B1 zúžena na backend (§2.2), agregace přepsána na váženou cenu; předpověď zapsána před rešerší
 - [ ] tabulka vlastností (§4.8) — po §3
 - [x] regret matrix (§3) včetně vážené ceny a čtení tabulky (§3.1) — kola 2 až 5, 2026-08-22
-- [~] trvanlivá vrstva (§4) — hotovo §4.3, §4.4 a §4.5 (kola 1 až 5, 2026-08-22); zbývá §4.1 (přísnost podle M2), §4.2, §4.6, §4.7
+- [~] trvanlivá vrstva (§4) — hotovo §4.1, §4.3, §4.4 a §4.5 (kola 1 až 6, 2026-08-22); zbývá §4.2, §4.6, §4.7
 - [ ] datovaný snapshot (§5)
 - [ ] adversariální průchod (§2.4 M5), výsledek do hlavičky
 - [ ] verdikt (§6)
@@ -140,9 +140,72 @@ Sloupce jsou seřazené **podle váhy domény sestupně** (4 · 3 · 2 · 1, §2
 
 ## 4. Trvanlivá vrstva (nese verdikt)
 
-### 4.1 Přísnost, kterou lze zapnout a vynutit
+### 4.1 Přísnost, kterou lze zapnout a vynutit (ověřeno 2026-08-22)
 
-[OVĚŘIT] — rozklad podle M2 (§2.4) na všech osm kandidátů: běh vs. kontrola, expresivita, nakažlivost neotypovaných závislostí, vynutitelnost v CI a ráčna, cena na zelené louce.
+Otázka „řeší to typy?“ nemá odpověď ano/ne. Podle pravidla M2 (§2.4) se rozpadá na pět podotázek a **každá má jiného vítěze**. Rozklad je puštěný na všech osm stejně — včetně těch, u kterých se přísnost automaticky předpokládá.
+
+#### (a) Vynucuje se to za běhu, nebo jen při kontrole?
+
+Nejsou dvě skupiny, jak by se čekalo, ale **tři** — a ta prostřední je ta, o které se nemluví.
+
+| Skupina | Kdo | Doložení |
+|---|---|---|
+| **Vynucuje běh** | Java, Kotlin, C#, Go, Rust | Špatný typ neprojde, protože ho odmítne runtime nebo se k němu vůbec nedá dostat. **Ale každý má výjimku, viz níže.** |
+| **Vynucuje běh jen po souborech** | PHP | Typy se kontrolují za běhu — *"ensure that the value is of the specified type at call time, otherwise a `TypeError` is thrown"*. Jenže přísný režim je direktiva **na soubor**: *"Strict typing only applies to function calls made within the file with strict typing enabled. Callers without strict typing will still coerce values."* Bez direktivy PHP hodnoty **koeruje** — `sum(1.5, 2.5)` vrátí `int(3)` [R49]. |
+| **Nevynucuje vůbec** | Python, TypeScript | Python: *"The Python runtime does not enforce function and variable type annotations. They can be used by third party tools such as type checkers, IDEs, linters, etc."* [R47] TypeScript: typy se při překladu mažou a výstupem je prostý JavaScript [R39]. |
+
+**Výjimky u té první skupiny jsou podstatné a u dvou z nich zásadní:**
+
+- **Java — generika se za běhu mažou.** Type erasure nahradí typové parametry jejich mezí nebo `Object`em; `List<String>` je v bytekódu jen `List` a *"generics incur no runtime overhead"*. Typová bezpečnost generik je tedy u Javy **stejně jako u Pythonu věcí kontroly, ne běhu** [R55].
+- **C# — nullabilita se za běhu nevynucuje vůbec.** Dokumentace to říká rovnou: *"The runtime behavior of your program is unchanged. Nullable reference types are entirely a compile-time feature."* [R50]
+- **Kotlin — díra je Java.** Nullabilita je součástí typového systému a kompilátor ji vynucuje, ale při volání javového kódu vznikají **platform types** bez informace o nullabilitě, a to je jedna z mála cest, jak v Kotlinu dostat NPE [R52].
+- **Go — nemá null safety.** `nil` je nulová hodnota ukazatelů, řezů, map, kanálů, rozhraní i funkcí, takže neinicializovaná proměnná těchto typů je `nil` a jazyk před tím nechrání [R54].
+- **Rust — jediný, kdo tu díru nemá.** *"Rust doesn't have the null feature that many other languages have"*; místo toho `Option<T>`, přičemž *"the compiler won't let us use an `Option<T>` value as if it were definitely a valid value"* a hodnotu, která smí chybět, musíš **explicitně opt-in** [R53].
+
+#### (b) Co typový systém umí vyjádřit
+
+| Jazyk | Nullabilita v typovém systému | Generika | Poznámka |
+|---|---|---|---|
+| **C#** | Ano, anotacemi a analýzou toku [R50] | Ano, za běhu skutečná | Dvě doložené pasti, viz (c) |
+| **Go** | Ne — `nil` je nulová hodnota [R54] | Ano, od **Go 1.18** [R54] | |
+| **Java** | Ne v jazyce | Ano, ale **mazaná** [R55] | |
+| **Kotlin** | Ano, vynucená kompilátorem [R52] | Ano (JVM, tedy s mazáním) | Nejsilnější nullabilita na JVM |
+| **PHP** | Částečně (`?int`), za běhu | **Nemá vůbec** — v jazyce neexistují; žijí jen jako komentáře pro statickou analýzu [R49] | Největší mezera z osmi |
+| **Python** | Ano v anotacích, nevynucená | Ano v anotacích, nevynucená | Vše stojí na kontrole |
+| **Rust** | Nemá null; `Option<T>` [R53] | Ano | Nejsilnější z osmi |
+| **TypeScript** | Ano, `strictNullChecks` [R51] | Ano, mazaná | |
+
+#### (c) Jak nakažlivá je neotypovaná závislost a kudy vede únik
+
+- **Python — `Any` je nakažlivé z definice.** *"A static type checker will treat every type as assignable to `Any` and `Any` as assignable to every type"*, a co je horší: *"no type checking is performed when assigning a value of type `Any` to a more precise type"* [R47]. Jedna neotypovaná knihovna tedy tiše vypne kontrolu všemu, co skrz ni protéká, a **nikde to nesvítí červeně**.
+- **C# — `!` a dvě pasti.** Operátor odpuštění nullu je popsán bez příkras: *"Each occurrence is a place the compiler can no longer protect you."* K tomu dvě doložené situace, kdy nenullovatelná reference drží `null` **bez varování**: struktura vytvořená přes `default` a nové pole referenčního typu, jehož prvky jsou do přiřazení `null` [R50]. Na druhou stranu od .NET 5 jsou anotované všechny běhové knihovny .NET, takže nakažlivost z ekosystému je tu menší než u Pythonu [R50].
+- **Kotlin** — únikem jsou platform types z Javy a `!!` [R52]. **PHP** — volající ze souboru bez direktivy koeruje [R49]. **TypeScript** — `any` a `@ts-expect-error`. **Java** — mazání a raw typy [R55]. **Go** — `any` a typové aserce. **Rust** — `unwrap()` a `unsafe`.
+
+#### (d) Dá se to vynutit pro všechny v CI a existuje ráčna?
+
+**A tady je přímá odpověď na otázku, kvůli které tenhle dokument vznikl: nakolik to mypy doopravdy řeší.**
+
+`mypy --strict` zapíná dvanáct volitelných kontrol včetně `--disallow-untyped-defs`, `--disallow-untyped-calls`, `--disallow-any-generics` a `--warn-return-any`. Ráčna proti couvání existuje a je přímo v `--strict`: `--warn-unused-ignores` *"will make mypy report an error whenever your code uses a `# type: ignore` comment on a line that is not actually generating an error message"* [R48].
+
+Jenže **`--strict` sám vymezuje, kde jeho záruka končí**, a stojí to v jeho vlastním popisu: *"strict will catch type errors as long as intentional methods like type ignore or casting were not used."* [R48] A ještě jedna věc, která překvapí: **`--disallow-any-explicit` v `--strict` není.** Explicitní `Any` tedy přísný režim nezakazuje; musíš ho zapnout zvlášť.
+
+Souhrnná odpověď: **mypy řeší body (b), (d) a částečně (c). Bod (a) neřeší vůbec a řešit ho nemůže.** Hodnota, která přijde z JSONu, z databázového driveru nebo z neotypované knihovny, vstupuje jako `Any` a mypy o ní z principu mlčí. Převádí tedy „typy jsou dokumentace“ na „typy jsou kontrolované při buildu, pro kód, který vlastníš, minus explicitní úniky“ — což je hodně, ale není to „runtime odmítne špatnou hodnotu“.
+
+**Týž rozklad na C#, jak slibuje M2.** Nullable reference types jsou *"entirely a compile-time feature"*, `!` vypíná ochranu po jednotlivých výskytech a dvě doložené pasti vyrobí `null` v nenullovatelné referenci beze slova [R50]. C# je na tom v (a) u nullability **stejně jako Python u typů** — s tím rozdílem, že zbytek typového systému mu runtime vynucuje.
+
+**TypeScript** má `strict` jako rodinu přepínačů se *"stronger guarantees of program correctness"*, ale dokumentace k němu přidává vlastní cenu: *"Future versions of TypeScript may introduce additional stricter checking under this flag, so upgrades of TypeScript might result in new type errors in your program."* [R51] Přísnost, která ti pod rukama roste — u projektu na dekádu je to náklad, ne detail.
+
+*Úrovně PHPStan a Psalm pro PHP v tomto kole zjišťovány nebyly; buňka PHP v tomto bodě je proto neúplná.*
+
+#### (e) Cena na zelené louce
+
+Klasická stížnost na postupné typování — že se dolepuje na starý kód — se **v tomhle kontextu neuplatní** (§1: všechny projekty jsou nové). Na zelené louce jde jet přísně od prvního řádku a pokrytí anotacemi je otázkou disciplíny, ne migrace. To Python a TypeScript posiluje víc, než jak se o nich obvykle mluví.
+
+**Ale — a tohle je celý rozdíl — zelená louka opravuje pokrytí, ne hranici vynucení.** Ať je CI jakkoli přísné, bod (a) zůstává tam, kde byl: v Pythonu a TypeScriptu runtime typy nekontroluje, takže špatná hodnota z neověřené hranice projde dovnitř a spadne daleko od místa vzniku.
+
+#### Důsledek pro tie-breaker
+
+Tie-breaker 1 (§2.3) je právě „přísnost vynutitelná v CI“ a rozhoduje o trojici na shodné vážené ceně 6. Podle rozkladu výše vychází pořadí **Kotlin › C# › Java**: Kotlin má nullabilitu v typovém systému a vynucenou kompilátorem, C# ji má jen jako věc překladu s dokumentovanými pastmi, ale generika mu za běhu drží, a Java nemá ani jedno — nullabilita v jazyce chybí a generika se mažou.
 
 ### 4.2 Výkonový strop a model souběžnosti
 
@@ -376,6 +439,18 @@ Ověřeno k 2026-08-22 (kolo 1 — brána B2, §4.4 a §4.5).
 - [R44] Apache Spark — dokumentace, seznam jazykových API a nativní implementační jazyk. Ověřeno 2026-08-22: <https://spark.apache.org/docs/latest/>
 - [R45] pola-rs/polars — README (dotazovací engine psaný v Rustu, seznam jazykových vazeb). Ověřeno 2026-08-22: <https://github.com/pola-rs/polars>
 - [R46] TensorFlow.js — přehled (ML v prohlížeči i v Node.js). Ověřeno 2026-08-22: <https://www.tensorflow.org/js>
+
+**Přísnost a typové systémy (kolo 6, §4.1)**
+
+- [R47] Python — `typing` (runtime nevynucuje anotace; chování `Any`). Ověřeno 2026-08-22: <https://docs.python.org/3/library/typing.html>
+- [R48] mypy — Command line (obsah `--strict`, `--warn-unused-ignores`, vymezení záruky). Ověřeno 2026-08-22: <https://mypy.readthedocs.io/en/stable/command_line.html>
+- [R49] PHP Manual — Type declarations (`TypeError` při volání, `declare(strict_types=1)` po souborech, koerce, absence generik). Ověřeno 2026-08-22: <https://www.php.net/manual/en/language.types.declarations.php>
+- [R50] C# — Nullable reference types (výhradně věc překladu, operátor `!`, pasti u `default` struktur a polí, anotované knihovny od .NET 5). Ověřeno 2026-08-22: <https://learn.microsoft.com/en-us/dotnet/csharp/nullable-references>
+- [R51] TypeScript — TSConfig `strict` (rodina přepínačů; upozornění na růst přísnosti mezi verzemi). Ověřeno 2026-08-22: <https://www.typescriptlang.org/tsconfig/strict.html>
+- [R52] Kotlin — Null safety (nullabilita v typovém systému, platform types při interoperabilitě s Javou). Ověřeno 2026-08-22: <https://kotlinlang.org/docs/null-safety.html>
+- [R53] The Rust Programming Language — Defining an Enum (`Option<T>`, absence nullu). Ověřeno 2026-08-22: <https://doc.rust-lang.org/book/ch06-01-defining-an-enum.html>
+- [R54] The Go Programming Language Specification — nulové hodnoty, `nil`, typové parametry od Go 1.18. Ověřeno 2026-08-22: <https://go.dev/ref/spec>
+- [R55] The Java Tutorials — Type Erasure. Ověřeno 2026-08-22: <https://docs.oracle.com/javase/tutorial/java/generics/erasure.html>
 
 **Jazykové vlastnosti**
 
