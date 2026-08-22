@@ -3,6 +3,7 @@
 - **Verdikt:** **TypeScript** (vážená cena 4, před Pythonem s 5) — pro profil ze §1 a s kompromisy vyjmenovanými v §6.2, z nichž nejdražší je, že překladač nemá žádný závazek podpory a typy se za běhu nevynucují. §6.3 přidává čtení po doménách a citlivost na váhy: vítězství drží ve třech ze sedmi zadání a padá jedině tehdy, když z požadavků vypadne prohlížeč. **Předpověď zapsaná v §2.3 se nepotvrdila:** Go skončilo poslední.
 - **Sycené rozhodnutí:** na čem stavět **nové** projekty (vlastní, firemní i cizí) v horizontu let — a čím ta volba argumentovat u někoho, kdo u úvahy nebyl.
 - **Fakta ověřena:** 🟡 2026-08-22, sedm kol, reference [R1]–[R64]: financování, governance a závazky podpory (§4.4, §4.5); všechny čtyři domény (§4.3) a kompletní regret matrix (§3, §3.1); přísnost podle M2 (§4.1); souběžnost, nábor a frameworky (§4.2, §4.6, §4.7); datovaný snapshot (§5). Otevřené `[OVĚŘIT]`: žádné. Neúplné a přiznané: C# a Rust v §4.2, úrovně PHPStan a Psalm v §4.1. **Čtyři buňky označeny jako nejisté** a přednostně poslány do adversariálního průchodu: Rust v backendu, Go a PHP v prohlížeči (obě ❌), Rust v prohlížeči.
+- **Oprava:** ⚠️ §8 (2026-08-23) — tvrzení, že TypeScript nemá závazek podpory, bylo nepravdivé; brána B2 vypálila na chybném faktu. Verdikt se nemění, jedna položka jeho účtu je levnější.
 - **Adversariální průchod:** 🟡 proběhl 2026-08-23 (§6.1) — jedna ze čtyř nejistých buněk neobstála a byla opravena (PHP v prohlížeči), pořadí na prvních dvou místech se nezměnilo. **Omezení: průchod běžel ve stejném kontextu, který závěr vytvořil, ne v odděleném.**
 - **Jazyk:** 🇨🇿 čeština (originál); 🇬🇧 kanonická anglická verze zatím nevznikla
 - **Autor:** Petr Kratochvíl — [krato.cz](https://krato.cz)
@@ -21,6 +22,7 @@
 - [x] verdikt (§6.2) a čtení po doménách i citlivost na váhy (§6.3) — 2026-08-23
 - [x] **druhé zadání: pravidla profesionality (§7.1–§7.3) sepsána 2026-08-23 PŘED rešerší** — commitnuta zvlášť, aby to šlo ověřit z historie
 - [ ] rešerše profesionality (§7.4) a druhý verdikt (§7.5)
+- [x] **oprava §8 (2026-08-23): brána B2 vypálila na chybném faktu a vypálit neměla**
 - [ ] EN překlad (`README.md`) jako kanonická verze
 
 ## 1. Kontext: jaké rozhodnutí se tu doopravdy dělá
@@ -342,17 +344,17 @@ Otázka pro bránu B2 nezní „je to open source“, ale **kdo platí lidi, kte
 | **PHP** | 2 roky aktivní podpory + 2 roky bezpečnostních oprav = **4 roky** | 8.4 bezpečnostně do 31. 12. 2028 · 8.5 do 31. 12. 2029 · 8.2 končí 31. 12. 2026 | — nezjišťováno v tomto kole | [R2] |
 | **Python** | PEP 602: ~2 roky oprav chyb + ~3 roky bezpečnostních = **5 let**, *"Five years after a release, support ends"* | Nejdelší okno z celé osmičky | — nezjišťováno v tomto kole | [R4] |
 | **Rust** | Bez datované tabulky LTS | — | Nejsilnější formulace z celé osmičky: *"once a feature is released through stable, contributors will continue to support that feature for all future releases"*. Nekompatibilní změny jdou do **edicí**, které jsou opt-in a **navzájem plně interoperabilní** — každý crate se stěhuje nezávisle | [R16] |
-| **TypeScript** | **Žádná oficiální politika** — viz níže | — | — nezjišťováno v tomto kole | [R17][R18] |
+| **TypeScript** | ⚠️ opraveno v §8: politika **existuje**, ale je podmíněná dodáním v produktu Microsoftu a nedává verzím vlastní kalendář | — | — nezjišťováno v tomto kole | [R17][R18][R66] |
 
 **Dvě věci, které tahle tabulka odhalila a které jsem nečekal.**
 
 **Za prvé: „podpora“ znamená u kompilátoru něco jiného než u běhového prostředí, a brána B2 ten rozdíl nerozlišuje.** U PHP, Pythonu, Javy a .NET je podpora hodinami tikající povinnost — neaktualizovaná verze je bezpečnostní dluh vystavený internetu. U Go, Rustu, Kotlinu a TypeScriptu je nosnějším závazkem **slib kompatibility**: starý kód se dál překládá a artefakt běží dál. Rustova formulace („co jednou vyjde jako stabilní, podporujeme ve všech budoucích vydáních“) je věcně silnější závazek k dekádě než kterákoli datovaná tabulka LTS, přestože žádnou tabulku nemá. Krátké podpůrné okno Go tedy **není** slabina, za jakou by ho tabulka na první pohled vydávala — jde o jiný model, kde se povyšuje často, ale levně.
 
-**Za druhé: TypeScript jako jediný nemá žádný závazek, a je to doloženo primárním zdrojem, ne prázdným hledáním.** V issue microsoft/TypeScript #49088 („Document TypeScript version lifetime and EOL“, stav: uzavřeno) odpovídá Ryan Cavanaugh z týmu TypeScriptu: *"To my knowledge, we don't have an official policy beyond the one implied by the fact that we ship our components in Visual Studio. Security fixes are backported I believe for the last year of releases; non-security fixes are not backported."* [R18] Formulaci nechávám i s jejím zaváháním („I believe“) — zdroj si tím není jistý a dokument to nesmí ztvrdit.
+**Za druhé: TypeScript jako jediný nemá žádný závazek, a je to doloženo primárním zdrojem, ne prázdným hledáním.** ⚠️ **Toto tvrzení bylo 2026-08-23 opraveno jako nepravdivé — viz §8. Politika existuje, jen je podmíněná. Odstavec níže zůstává v původním znění, aby bylo vidět, co se opravovalo.** V issue microsoft/TypeScript #49088 („Document TypeScript version lifetime and EOL“, stav: uzavřeno) odpovídá Ryan Cavanaugh z týmu TypeScriptu: *"To my knowledge, we don't have an official policy beyond the one implied by the fact that we ship our components in Visual Studio. Security fixes are backported I believe for the last year of releases; non-security fixes are not backported."* [R18] Formulaci nechávám i s jejím zaváháním („I believe“) — zdroj si tím není jistý a dokument to nesmí ztvrdit.
 
 Pozor ale na rozsah tohoto tvrzení: **týká se kompilátoru, ne běhového prostředí.** Kód v TypeScriptu běží na Node.js nebo v prohlížeči a životní cyklus má ten runtime — Node.js drží LTS **30 měsíců** [R19]. Tvrzení „TypeScript nemá LTS“ tedy neznamená „aplikace v TypeScriptu nemá podporovaný runtime“; znamená, že závazek nemá ten překladač, který pouštíš při buildu.
 
-**Výsledek brány B2 (zapsáno 2026-08-22).** Pravidlo zní: chybí identifikovatelný plátce **nebo** doložitelný závazek k dlouhodobé podpoře → vyřazen. Plátce má všech osm (§4.4). Závazek k podpoře má sedm z osmi — buď datovanou tabulkou (C#, Java, PHP, Python), nebo slibem kompatibility (Go, Kotlin, Rust). **Osmý, TypeScript, jej podle vlastního vyjádření týmu nemá, a brána B2 tak vypálila proti němu.**
+**Výsledek brány B2 (zapsáno 2026-08-22; ⚠️ 2026-08-23 se ukázalo, že vypálit neměla — §8).** Pravidlo zní: chybí identifikovatelný plátce **nebo** doložitelný závazek k dlouhodobé podpoře → vyřazen. Plátce má všech osm (§4.4). Závazek k podpoře má sedm z osmi — buď datovanou tabulkou (C#, Java, PHP, Python), nebo slibem kompatibility (Go, Kotlin, Rust). **Osmý, TypeScript, jej podle vlastního vyjádření týmu nemá, a brána B2 tak vypálila proti němu.**
 
 Rozhodnutí, co s tím, **nepatří mně a nebude provedeno tiše**: B2 se ukázala jako nástroj, který u překladačů měří něco jiného než u běhových prostředí, a to je vada v návrhu pravidla, ne ve faktech pod ním. Pravidlo proto zůstává zapsané přesně tak, jak bylo, i s poznámkou, že vypálilo. Případná úprava bude zaznamenána jako **dodatečná, s datem a důvodem** — ne jako by tam byla od začátku.
 
@@ -584,6 +586,23 @@ Pokud rešerše tuhle předpověď vyvrátí, zapíše se to jako výsledek, ne 
 
 [OVĚŘIT] — po §7.4 a po adversariálním průchodu.
 
+## 8. Oprava (2026-08-23): brána B2 neměla vypálit
+
+**Co bylo špatně.** §4.5 tvrdila, že TypeScript jako jediný z osmi nemá doložitelný závazek podpory, a brána B2 na tom 2026-08-22 vypálila proti němu. **Tvrzení je nepravdivé.** V kořeni repozitáře `microsoft/TypeScript` je soubor `SUPPORT.md` se sekcí *"Microsoft Support Policy"*, která říká: *"When included with a Microsoft product, TypeScript support and servicing is offered under the [Modern Support Policy]. For Visual Studio, servicing fixes are limited to security fixes for versions of TypeScript included in under-support releases of Visual Studio."* [R66]
+
+**Jak k tomu došlo — a je to poučnější než sama chyba.** Hledal jsem na dvou místech: na wiki stránce o vydávání [R17] a v issue #49088 z roku 2022 [R18]. Obě mlčela, a já z toho udělal závěr o nepřítomnosti. **Nezkontroloval jsem `SUPPORT.md` v kořeni repozitáře — tedy standardní místo přesně pro tenhle údaj.** U Expressu a Axumu jsem přitom kořen repozitáře prohlížel a dokonce jsem u nich hlídal pozitivní kontrolu; u TypeScriptu jsem to neudělal, protože jsem měl citát od člena týmu a považoval jsem otázku za uzavřenou. **Silně znějící zdroj mě odradil od dalšího hledání** — a to je přesně ta past, kterou pravidlo „prázdný výsledek hledání není zdroj“ popisuje. Citát navíc nebyl v rozporu s nálezem: Ryan Cavanaugh v roce 2022 řekl, že politika neexistuje *"beyond the one implied by the fact that we ship our components in Visual Studio"* — a `SUPPORT.md` je právě tahle implikovaná politika, sepsaná.
+
+**Co platí místo toho.** TypeScript **má** doloženou politiku podpory, ale je **podmíněná**: váže se na dodání v produktu Microsoftu, u Visual Studia se omezuje na bezpečnostní opravy verzí zahrnutých v podporovaných vydáních VS, a **samostatně distribuovanému balíčku z npm nedává kalendář verzí** — nic jako datovanou tabulku EOL, jakou mají PHP, Python nebo .NET. Rozdíl proti ostatním sedmi tedy existuje, ale je to rozdíl *„podmíněná politika bez kalendáře verzí“* proti *„žádná politika“*, a to je jiné tvrzení.
+
+**Důsledek pro rozhodovací pravidlo.** Pravidlo B2 zůstává v §2.2 zapsané přesně tak, jak bylo, a **nepřepisuje se**. Ale je nutné nahlas říct: **B2 vypálila na základě chybného faktu a při správném faktu by nejspíš nevypálila vůbec.** Úprava B2, kterou zadavatel schválil 2026-08-22, tedy byla provedena na falešném předpokladu. Byla by zbytečná, ne škodlivá — vede k témuž výsledku (TypeScript prochází), jen po správné cestě. Zadavateli patří poznámka, že rozhodoval na základě mého chybného zjištění.
+
+**Důsledek pro verdikt (§6.2).** Verdikt se nemění — vážená cena governance nezahrnuje (§6.1). Mění se ale dvě formulace kolem něj:
+
+1. **Kompromis č. 1 v §6.2 byl přehnaný.** Neplatí „žádný závazek podpory pro překladač“; platí „podmíněná politika bez kalendáře verzí, plus životní cyklus runtime Node.js“. Ta položka účtu je **levnější**, než jak byla vyfakturovaná.
+2. **Námitka z §6.1 o strukturálně neviditelné slabině se tím oslabuje**, ne ruší. Argument, že vážená cena měří jen padnutí do domén a trvanlivá vrstva do ní nevstupuje, platí dál. Jen ta konkrétní slabina, kterou jsem jako příklad použil, je menší, než jsem tvrdil.
+
+**Co si z toho odnést do dalších kol.** Než prohlásím něco za neexistující, prohlédnu **standardní místa** pro ten typ údaje — u repozitáře kořen, `.github`, `SUPPORT.md`, `SECURITY.md` — a udělám to i tehdy, když už mám zdroj, který zní přesvědčivě. Ověřený citát o nepřítomnosti je pořád jen tvrzení o tom, co jeho autor v tu chvíli věděl.
+
 ## Reference
 
 Ověřeno k 2026-08-22 (kolo 1 — brána B2, §4.4 a §4.5).
@@ -671,6 +690,10 @@ Ověřeno k 2026-08-22 (kolo 1 — brána B2, §4.4 a §4.5).
 - [R59] Effective Go — Concurrency (cena goroutiny, multiplexování na vlákna OS). Ověřeno 2026-08-22: <https://go.dev/doc/effective_go>
 - [R60] PHP Manual — Fibers (od PHP 8.1). Ověřeno 2026-08-22: <https://www.php.net/manual/en/language.fibers.php>
 - [R61] Stack Overflow Developer Survey 2025 — Technology, podíly u profesionálních vývojářů. Ověřeno 2026-08-22: <https://survey.stackoverflow.co/2025/technology>
+
+**Oprava (§8)**
+
+- [R66] microsoft/TypeScript — `SUPPORT.md`, sekce „Microsoft Support Policy“. Ověřeno 2026-08-23: <https://github.com/microsoft/TypeScript/blob/main/SUPPORT.md>
 
 **Adversariální průchod (§6.1)**
 
