@@ -140,6 +140,17 @@ def check_section_refs(rel: str, text: str) -> None:
         elif numbers != list(range(first, first + len(numbers))):
             err(rel, f"section numbers are not consecutive from {first}: {numbers}")
 
+    # Sub-sections must count up from N.1 within their parent, in document
+    # order. A block pasted into the wrong place reads fine and renders fine —
+    # the ordering is the only thing that gives it away.
+    subs: dict[int, list[int]] = {}
+    for m in re.finditer(r"^### (\d+)\.(\d+)", text, re.M):
+        subs.setdefault(int(m.group(1)), []).append(int(m.group(2)))
+    for parent, minors in subs.items():
+        if minors != list(range(1, len(minors) + 1)):
+            err(rel, f"sub-sections of §{parent} are out of order or repeated: "
+                     f"{['%d.%d' % (parent, n) for n in minors]}")
+
 
 def check_ordered_lists(rel: str, lines: list[str]) -> None:
     """Top-level ordered lists must count up without gaps or repeats."""
