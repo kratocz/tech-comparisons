@@ -290,8 +290,16 @@ README index; a comparison directory holding neither `README.md` nor
 **Warnings** (reported, never fatal): open `[OVĚŘIT]` / `[VERIFY]` tags, with or
 without text inside the brackets; a comparison directory with no English version;
 a `§`-reference sitting next to a sibling document's name without a relative link,
-which would otherwise resolve against the wrong file; and a table row asserting
-an impossibility with no citation, `§`-reference or quoted wording behind it.
+which would otherwise resolve against the wrong file; a table row asserting
+an impossibility with no citation, `§`-reference or quoted wording behind it;
+and two tables in one file rating the same row on the same column with different
+symbols. That last one is a warning rather than an error because it is
+sometimes right: a glance table rated *for the reader's context* legitimately
+differs from a table of plain facts, as `smartwatch-platforms` does on Samsung's
+ECG (🟡 without a Samsung phone, ✅ as a certification). It is still worth a
+look, because the alternative cause is that a summary table and the table it
+summarises drifted apart — which nothing else catches, and which a document
+carrying a TL;DR is exposed to every time a cell is revised.
 
 What it does **not** check is prose. Every convention above that lives in a
 sentence rather than in structure is still on the writer. Run it before every commit that touches a

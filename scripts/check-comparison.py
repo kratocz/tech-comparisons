@@ -98,6 +98,73 @@ ABSOLUTE = re.compile(
 CITED = ("](", "§", '*"', '"*', "`")
 
 
+def check_cross_table_agreement(rel: str, lines: list[str]) -> None:
+    """Two tables rating the same rows on the same criteria must agree.
+
+    A summary table near the top and the full table it summarises hold the same
+    verdicts in two places, and nothing stops one of them being updated alone —
+    `programming-languages` already had a cell change during its adversarial
+    pass. Pairs of tables are matched on **shared column headers**, and rows
+    within a pair on a shared header whose column carries no symbols (the
+    option name), so a leading rank column in one of them does not throw the
+    keying off.
+
+    A warning rather than an error: a context-rated glance table and a table of
+    plain facts legitimately differ on the same row, because they answer
+    different questions. `smartwatch-platforms` rates Samsung's ECG 🟡 in the
+    glance table (the reader has no Samsung phone) and ✅ in the certification
+    snapshot (it is certified). That is defensible — and still worth a look,
+    because the two cells carry the same caveat text and only the symbol moves.
+    """
+    SYMBOLS = "✅🟡❌"
+
+    def parse(rows):
+        """(label column, [ (label, {header: symbol}) ]) or None."""
+        head = [c.strip() for c in rows[0].strip().strip("|").split("|")]
+        body = []
+        for row in rows[2:]:
+            cells = [c.strip() for c in row.strip().strip("|").split("|")]
+            if len(cells) == len(head):
+                body.append(cells)
+        if not body:
+            return None
+        # The label column is the first whose values are text and all distinct;
+        # that skips a leading rank column, whose values repeat on shared places.
+        for idx, name in enumerate(head):
+            values = [r[idx].strip("*").strip() for r in body]
+            if any(v[:1] in SYMBOLS for v in values) or "" in values:
+                continue
+            if len(set(values)) == len(values):
+                break
+        else:
+            return None
+        out = []
+        for cells in body:
+            syms = {h: c.strip()[:1] for h, c in zip(head, cells)
+                    if h and c.strip()[:1] in SYMBOLS}
+            if syms:
+                out.append((cells[idx].strip("*").strip(), syms))
+        return out or None
+
+    tables = [t for t in (parse(rows) for _, rows in table_blocks(lines)
+                          if len(rows) >= 3) if t]
+
+    for i, table_a in enumerate(tables):
+        for table_b in tables[i + 1:]:
+            index_b = dict(table_b)
+            for label, syms_a in table_a:
+                syms_b = index_b.get(label)
+                if not syms_b:
+                    continue
+                for col in set(syms_a) & set(syms_b):
+                    if syms_a[col] != syms_b[col]:
+                        warn(rel, f"two tables rate {label!r} / {col!r} "
+                                  f"differently ({syms_a[col]} vs {syms_b[col]}) "
+                                  f"— legitimate when they answer different "
+                                  f"questions, drift when they do not; say which "
+                                  f"in the table intro")
+
+
 def check_absolute_claims(rel: str, lines: list[str]) -> None:
     """Flag impossibility claims in table rows that carry no citation.
 
@@ -257,6 +324,7 @@ def check_document(path: str) -> None:
     lines = text.split("\n")
     check_tables(rel, lines)
     check_absolute_claims(rel, lines)
+    check_cross_table_agreement(rel, lines)
     check_section_refs(rel, text)
     check_ordered_lists(rel, lines)
     check_links(rel, path, text)
