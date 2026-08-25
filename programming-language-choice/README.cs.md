@@ -7,7 +7,7 @@
 - **Sycené rozhodnutí:** na čem stavět **nové** projekty (vlastní, firemní i cizí) v horizontu let — a čím tu volbu argumentovat u někoho, kdo u úvahy nebyl.
 - **Fakta ověřena:** 🟡 2026-08-22 až 2026-08-23, osm kol, reference [R1]–[R77]. Bez otevřených `[OVĚŘIT]`. Přiznaně neúplné: §4.1 (úrovně PHPStan a Psalm), §4.2 (C# a Rust), §7.4 (kritérium P2 měří jen vlastnictví formátovače, ne množství magie).
 - **Předpovědi:** dvě, obě zapsané před svou rešerší. §2.3 **nevyšla** — Go mělo stoupnout a skončilo poslední. §7.3 **vyšla** ve všech bodech; rozdíl byl v tom, že uvažovala o rozptylu uvnitř kritérií, ne o silných stránkách kandidátů.
-- **Dodatek:** §9 (2026-08-26) — proč PHP zaostává za Pythonem: rozdíl drží, ale čtvrtina z něj stojí na formalistickém kritériu P2, a silná statická analýza PHP (PHPStan, jedenáct úrovní) se do žádné buňky nedostala.
+- **Dodatky:** §9 (2026-08-26) — proč PHP zaostává za Pythonem; rozdíl drží, ale čtvrtina z něj stojí na formalistickém kritériu P2. §10 (2026-08-26) — **jaké verze byly doopravdy analyzovány**: PHP 8.5 dodatečně ověřeno (nic nemění), TypeScript 7 je nativní přepis do Go, který analýza nezohlednila, a M1 byla uplatňována nerovnoměrně.
 - **Oprava:** ⚠️ §8 (2026-08-23) — tvrzení, že TypeScript nemá závazek podpory, bylo nepravdivé; brána B2 vypálila na chybném faktu a vypálit neměla. Verdikty se nemění, jedna položka účtu je levnější.
 - **Adversariální průchod:** 🟡 2026-08-23 (§6.1) — ze čtyř prověřovaných buněk jedna neobstála a byla opravena (PHP v prohlížeči); pořadí na prvních dvou místech se nezměnilo. **Omezení: průchod běžel ve stejném kontextu, který závěr vytvořil, ne v odděleném.**
 - **Jazyk:** 🇨🇿 čeština (originál) · 🇬🇧 [English version](README.md) (kanonická)
@@ -29,6 +29,7 @@
 - [x] rešerše profesionality (§7.4) a druhý verdikt (§7.5) — 2026-08-23: **dělené první místo Kotlin a Rust**
 - [x] **oprava §8 (2026-08-23): brána B2 vypálila na chybném faktu a vypálit neměla**
 - [x] dodatek §9 (2026-08-26): rozbor rozdílu PHP vs. Python, doplněny úrovně PHPStan a dvě pod-doložená tvrzení
+- [x] dodatek §10 (2026-08-26): audit analyzovaných verzí, PHP 8.5 ověřeno, TypeScript 7 zaznamenán
 - [x] anglická verze (`README.md`) jako kanonická — 2026-08-26
 
 ## 1. Kontext: jaké rozhodnutí se tu doopravdy dělá
@@ -678,6 +679,41 @@ P2 se u obou jazyků rozhoduje na jediné věci: **pod čí organizací žije fo
 
 Rozdíl 12 : 5 **drží**, ale rozpadá se nerovnoměrně: P1 nepřispívá ničím, P4 je plně doložený, P3 je doložený až po tomhle dodatku a P2 stojí na měřidle, které si samo přiznává hrubost. **Pořadí se nemění** — PHP zůstává osmé i při nejpříznivějším čtení, protože sedmý TypeScript má 6.
 
+## 10. Dodatek (2026-08-26): jaké verze byly doopravdy analyzovány
+
+Zadavatel se zeptal, zda bylo PHP hodnoceno v nejnovější verzi, a navrhl doplnit k jazykům konkrétní analyzované verze, aby bylo i za rok jasné, co se posuzovalo. Obojí míří na pravidlo **M1** (§2.4) — a obojí odhalilo, že jsem ho uplatňoval nerovnoměrně.
+
+### 10.1 Kontrola PHP 8.5
+
+**Verzi jsem znal, poznámky k vydání jsem nečetl.** PHP 8.5 je v §4.5 i §5.2 s termíny podpory, ale co konkrétně přineslo, jsem nikdy neověřil — hodnotil jsem z vlastností, které znám. Doplněno [R82]: PHP 8.5 přidalo pipe operátor `|>`, `clone` s přepisem readonly vlastností, atribut `#[\NoDiscard]`, atributy na konstantách, `final` u promovaných vlastností, asymetrickou viditelnost u statických vlastností a `#[\Override]` na vlastnostech.
+
+**Žádná buňka se nehýbe.** Generika 8.5 nepřineslo, enumy zůstávají skalární (§7.4, [R70]) a pattern matching nad součtovými typy nemá. P1 i P4 tedy zůstávají ❌ ze stejných důvodů jako předtím a součet 12 platí.
+
+**Jednu věc to ale ukázalo v můj neprospěch.** Kritérium P4 mělo podle §7.2 měřit „součtové typy s daty, vyčerpávající větvení nad nimi, **neměnnost**“ — a tu třetí složku jsem fakticky nehodnotil u nikoho. PHP má přitom `readonly` (8.1), asymetrickou viditelnost (8.4) a nově `clone with` i `final` u promovaných vlastností (8.5), což je slušný příběh neměnnosti. Buňku to nezvedá, protože chybějící součtové typy v P4 dominují, ale **P4 je změřena neúplně u všech osmi** a dokument to má říct stejně jako u P2 (§9.3).
+
+### 10.2 Analyzované verze
+
+| Jazyk | Aktuální stabilní verze k 2026-08-26 | K čemu byla hodnocení ukotvena |
+|---|---|---|
+| **C#** | .NET 10.0.11 (2026-08-11) [R81] | .NET 10 LTS; rysy citovány z C# 14 (`field`), .NET 5 (anotované knihovny), .NET 8 a 9 |
+| **Go** | 1.27.0 (2026-08-19) [R6] | specifikace včetně generik od 1.18; Go 1 compatibility promise; wiki k WebAssembly |
+| **Java** | JDK 25 jako aktuální LTS [R11] | rysy citovány z JDK 17 (sealed) a JDK 21 (virtuální vlákna, pattern matching pro `switch`) |
+| **Kotlin** | 2.4.10 (2026-07-14) [R81] | dokumentace **bez připnuté verze**, čtena 2026-08-23 |
+| **PHP** | 8.5.9 (2026-07-30) [R81] | 8.5 ověřeno až 2026-08-26 (§10.1); rysy citovány z 8.1 (enumy, fibers) a 8.4 (property hooks) |
+| **Python** | 3.14 (první vydání 2025-10-07), 3.13 rovněž v režimu oprav [R4] | volnovláknový build popsán pro 3.13; **stav v 3.14 samostatně neověřen** |
+| **Rust** | 1.98.0 (2026-08-20) [R81] | kniha a dokumentace **bez připnuté verze**, čteny 2026-08-22 a 23 |
+| **TypeScript** | 7.0.2 (2026-08-20) [R81][R83] | dokumentace **bez připnuté verze**; TypeScript 7 nebyl v analýze zohledněn — viz §10.3 |
+
+### 10.3 Co audit verzí odhalil
+
+**TypeScript 7 je jiný kompilátor, než jaký dokument analyzoval.** Vydání `v7.0.2` odkazuje na repozitář `microsoft/typescript-go` [R83], tedy na nativní přepis kompilátoru do Go. Dokument o tom nikde nemluví, protože jsem verzi nepřipnul a četl jsem prostě „aktuální dokumentaci“.
+
+**Žádnou buňku to nemění:** typy se pořád mažou a výstupem je prostý JavaScript (P1), oficiální formátovač pořád neexistuje (P2), nástroje jsou pořád od Microsoftu (P3) a diskriminované unie fungují dál (P4). Ale je to materiální kontext, který v dokumentu chybí, a čtenář za rok má vědět, že analýza vznikla, aniž by s TypeScriptem 7 počítala.
+
+**M1 jsem uplatňoval nerovnoměrně, a teď je to vidět černé na bílém.** U Go, Javy, .NET a Pythonu jsem ukotvil k verzím a u jednotlivých rysů uváděl, kdy přišly. U Kotlinu, Rustu a TypeScriptu jsem četl dokumentaci bez připnuté verze. U PHP jsem verzi znal a poznámky k vydání nečetl. Pravidlo přitom žádá obojí u všech — verzi i to, zda ji ekosystém dohnal.
+
+**Praktický důsledek pro čtenáře:** tabulka v §10.2 je od teď to, podle čeho se pozná, co dokument doopravdy posuzoval. Kde je uvedeno „bez připnuté verze“, platí datum ověření u příslušné reference, ne číslo verze — a to je slabší, než by M1 chtělo.
+
 ## Reference
 
 Ověřeno k 2026-08-22 (kolo 1 — brána B2, §4.4 a §4.5).
@@ -779,6 +815,12 @@ Ověřeno k 2026-08-22 (kolo 1 — brána B2, §4.4 a §4.5).
 - [R75] Vlastnictví nástrojů podle organizace na GitHubu, ověřeno přes API 2026-08-23 (pozitivní kontrola: všechny dotazy vrátily metadata repozitáře): `rust-lang/rustfmt`, `rust-lang/rust-analyzer`, `golang/tools` (gopls), `Kotlin/ktfmt`, `Kotlin/kotlin-lsp`, `psf/black`, `dotnet/format`, `microsoft/pyright` — proti `prettier/prettier`, `PHP-CS-Fixer/PHP-CS-Fixer` a `google/google-java-format`, které pod organizací svého jazyka **nejsou**.
 - [R76] dotnet/csharplang — `proposals/standard-unions.md`; součtové typy jsou v C# stále **návrh**, ne jazykový rys. Ověřeno 2026-08-23: <https://github.com/dotnet/csharplang/blob/main/proposals/standard-unions.md>
 - [R77] Python — `typing.assert_never` (kontrola vyčerpání, ale jen ve statické kontrole). Ověřeno 2026-08-23: <https://docs.python.org/3/library/typing.html>
+
+**Audit verzí (§10)**
+
+- [R81] Aktuální stabilní verze zjištěné přes GitHub API 2026-08-26 (pozitivní kontrola: všechny dotazy vrátily data vydání): `JetBrains/kotlin` v2.4.10 (2026-07-14), `rust-lang/rust` 1.98.0 (2026-08-20), `microsoft/TypeScript` v7.0.2 (2026-08-20), `dotnet/core` v10.0.11 (2026-08-11), `php/php-src` php-8.5.9 (2026-07-30).
+- [R82] PHP 8.5 — nové vlastnosti (pipe operátor, `clone with`, `#[\NoDiscard]`, `final` u promovaných vlastností). Ověřeno 2026-08-26: <https://www.php.net/releases/8.5/en.php>
+- [R83] microsoft/TypeScript — vydání `v7.0.2` odkazuje na `microsoft/typescript-go`, tedy na nativní přepis kompilátoru. Ověřeno 2026-08-26: <https://github.com/microsoft/typescript-go>
 
 **Dodatek (§9)**
 

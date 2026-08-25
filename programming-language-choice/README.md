@@ -7,7 +7,7 @@
 - **Decision it feeds:** what to build **new** projects on over a horizon of years — mine, a company's, or someone else's — and how to argue that choice to somebody who was not part of the reasoning.
 - **Facts verified:** 🟡 2026-08-22 to 2026-08-23, eight rounds, references [R1]–[R77]. No open `[VERIFY]` tags. Admittedly incomplete: §4.1 (PHPStan and Psalm levels), §4.2 (C# and Rust), §7.4 (criterion P2 measures only formatter ownership, not how much magic you must hold in your head).
 - **Predictions:** two, both written before their own research. §2.3 **failed** — Go was predicted to rise and finished last. §7.3 **held** on every point; the difference was that it reasoned about variance within criteria rather than about candidates' strengths.
-- **Addendum:** §9 (2026-08-26) — why PHP trails Python: the gap holds, but a quarter of it rests on the formalistic criterion P2, and PHP's strong static analysis (PHPStan, eleven levels) lands in no cell at all.
+- **Addenda:** §9 (2026-08-26) — why PHP trails Python; the gap holds, but a quarter of it rests on the formalistic criterion P2. §10 (2026-08-26) — **which versions were actually analysed**: PHP 8.5 verified after the fact (nothing changes), TypeScript 7 is a native rewrite in Go the analysis did not account for, and M1 was applied unevenly.
 - **Correction:** ⚠️ §8 (2026-08-23) — the claim that TypeScript has no support commitment was false; gate B2 fired on a wrong fact and should not have fired. The verdicts do not change; one line of the bill is cheaper.
 - **Adversarial pass:** 🟡 2026-08-23 (§6.1) — of four cells examined, one did not survive and was corrected (PHP in the browser); the top two placings did not move. **Limitation: the pass ran in the same context that produced the conclusion, not a fresh one.**
 - **Language:** 🇬🇧 English (canonical) · 🇨🇿 [Čeština](README.cs.md) (original)
@@ -29,6 +29,7 @@
 - [x] professionalism research (§7.4) and second verdict (§7.5) — 2026-08-23: **Kotlin and Rust joint first**
 - [x] **correction §8 (2026-08-23): gate B2 fired on a wrong fact and should not have fired**
 - [x] addendum §9 (2026-08-26): why PHP trails Python, PHPStan levels added and two under-evidenced claims repaired
+- [x] addendum §10 (2026-08-26): audit of the analysed versions, PHP 8.5 verified, TypeScript 7 recorded
 - [x] English version (`README.md`) as the canonical one — 2026-08-26
 
 ## 1. Context: what decision is actually being made
@@ -678,6 +679,41 @@ For this pair, P2 turns on a single thing: **whose organisation the formatter li
 
 The 12 : 5 gap **holds**, but it breaks down unevenly: P1 contributes nothing, P4 is fully sourced, P3 is sourced only after this addendum, and P2 rests on an instrument that admits its own crudeness. **The ordering does not change** — PHP stays eighth even on the most favourable reading, because seventh-placed TypeScript sits at 6.
 
+## 10. Addendum (2026-08-26): which versions were actually analysed
+
+The decider asked whether PHP had been rated at its newest version, and suggested recording the specific analysed versions per language so that a year from now it is clear what was assessed. Both point at rule **M1** (§2.4) — and both revealed that I applied it unevenly.
+
+### 10.1 The PHP 8.5 check
+
+**I knew the version and had not read its release notes.** PHP 8.5 appears in §4.5 and §5.2 with its support dates, but what it actually introduced I never verified — I rated from properties I already knew. Now filled in [R82]: PHP 8.5 added the pipe operator `|>`, `clone` with reassignment of readonly properties, the `#[\NoDiscard]` attribute, attributes on constants, `final` on promoted properties, asymmetric visibility for static properties and `#[\Override]` on properties.
+
+**No cell moves.** 8.5 brought no generics, enums remain scalar-backed (§7.4, [R70]) and there is no pattern matching over sum types. P1 and P4 therefore stay ❌ for the same reasons as before, and the sum of 12 holds.
+
+**One thing it did show, and not in my favour.** Criterion P4 was supposed under §7.2 to measure "sum types with data, exhaustive branching over them, **immutability**" — and that third component I effectively rated for nobody. PHP meanwhile has `readonly` (8.1), asymmetric visibility (8.4) and now `clone with` and `final` on promoted properties (8.5), which is a decent immutability story. It does not lift the cell, because the missing sum types dominate P4, but **P4 is incompletely measured for all eight** and the document should say so exactly as it does for P2 (§9.3).
+
+### 10.2 Analysed versions
+
+| Language | Current stable as of 2026-08-26 | What the ratings were anchored to |
+|---|---|---|
+| **C#** | .NET 10.0.11 (2026-08-11) [R81] | .NET 10 LTS; features cited from C# 14 (`field`), .NET 5 (annotated libraries), .NET 8 and 9 |
+| **Go** | 1.27.0 (2026-08-19) [R6] | the specification including generics since 1.18; the Go 1 compatibility promise; the WebAssembly wiki |
+| **Java** | JDK 25 as the current LTS [R11] | features cited from JDK 17 (sealed) and JDK 21 (virtual threads, pattern matching for `switch`) |
+| **Kotlin** | 2.4.10 (2026-07-14) [R81] | documentation **with no version pinned**, read 2026-08-23 |
+| **PHP** | 8.5.9 (2026-07-30) [R81] | 8.5 verified only on 2026-08-26 (§10.1); features cited from 8.1 (enums, fibers) and 8.4 (property hooks) |
+| **Python** | 3.14 (first release 2025-10-07), 3.13 also in bugfix [R4] | the free-threaded build is described for 3.13; **its status in 3.14 was not separately verified** |
+| **Rust** | 1.98.0 (2026-08-20) [R81] | the book and the docs **with no version pinned**, read 2026-08-22 and 23 |
+| **TypeScript** | 7.0.2 (2026-08-20) [R81][R83] | documentation **with no version pinned**; TypeScript 7 was not accounted for in the analysis — see §10.3 |
+
+### 10.3 What the version audit revealed
+
+**TypeScript 7 is a different compiler from the one this document analysed.** The `v7.0.2` release points at the `microsoft/typescript-go` repository [R83], that is, at the native rewrite of the compiler in Go. The document nowhere mentions this, because I never pinned a version and simply read "the current documentation".
+
+**It moves no cell:** types are still erased and the output is still plain JavaScript (P1), no official formatter still exists (P2), the tooling is still Microsoft's (P3) and discriminated unions still work (P4). But it is material context missing from the document, and a reader a year from now should know the analysis was written without accounting for TypeScript 7.
+
+**I applied M1 unevenly, and it is now visible in black and white.** For Go, Java, .NET and Python I anchored to versions and named when individual features arrived. For Kotlin, Rust and TypeScript I read documentation with no version pinned. For PHP I knew the version and did not read the release notes. The rule asks for both, for everyone — the version and whether the ecosystem has caught up with it.
+
+**The practical consequence for the reader:** the table in §10.2 is from now on what tells you what this document actually assessed. Where it says "with no version pinned", what holds is the verification date on the relevant reference rather than a version number — and that is weaker than M1 would want.
+
 ## References
 
 Verified as of 2026-08-22 (round 1 — gate B2, §4.4 and §4.5).
@@ -779,6 +815,12 @@ Verified as of 2026-08-22 (round 1 — gate B2, §4.4 and §4.5).
 - [R75] Tool ownership by GitHub organisation, verified through the API on 2026-08-23 (positive control: every query returned repository metadata): `rust-lang/rustfmt`, `rust-lang/rust-analyzer`, `golang/tools` (gopls), `Kotlin/ktfmt`, `Kotlin/kotlin-lsp`, `psf/black`, `dotnet/format`, `microsoft/pyright` — against `prettier/prettier`, `PHP-CS-Fixer/PHP-CS-Fixer` and `google/google-java-format`, which are **not** under their language's organisation.
 - [R76] dotnet/csharplang — `proposals/standard-unions.md`; sum types in C# are still a **proposal**, not a language feature. Verified 2026-08-23: <https://github.com/dotnet/csharplang/blob/main/proposals/standard-unions.md>
 - [R77] Python — `typing.assert_never` (exhaustiveness checking, but only in static checking). Verified 2026-08-23: <https://docs.python.org/3/library/typing.html>
+
+**Version audit (§10)**
+
+- [R81] Current stable versions looked up through the GitHub API on 2026-08-26 (positive control: every query returned release data): `JetBrains/kotlin` v2.4.10 (2026-07-14), `rust-lang/rust` 1.98.0 (2026-08-20), `microsoft/TypeScript` v7.0.2 (2026-08-20), `dotnet/core` v10.0.11 (2026-08-11), `php/php-src` php-8.5.9 (2026-07-30).
+- [R82] PHP 8.5 — new features (pipe operator, `clone with`, `#[\NoDiscard]`, `final` on promoted properties). Verified 2026-08-26: <https://www.php.net/releases/8.5/en.php>
+- [R83] microsoft/TypeScript — the `v7.0.2` release points at `microsoft/typescript-go`, the native rewrite of the compiler. Verified 2026-08-26: <https://github.com/microsoft/typescript-go>
 
 **Addendum (§9)**
 
