@@ -7,7 +7,7 @@ Usage:
 
 Exits 1 if any ERROR is reported. WARNs never fail the run — they flag things
 that are legal but usually worth a look (open [OVĚŘIT]/[VERIFY] tags, a
-comparison with no Czech original).
+comparison with no English version — English is canonical).
 
 These are the checks that actually caught mistakes while writing
 storage-replication: a table column inserted at the wrong index, a TL;DR item
@@ -31,6 +31,25 @@ def err(where: str, msg: str) -> None:
 
 def warn(where: str, msg: str) -> None:
     warns.append(f"WARN  {where}: {msg}")
+
+
+def comparison_dirs() -> list[str]:
+    """Every comparison directory in the repository, by name.
+
+    One source of truth for both the run's default target list and the
+    sibling-name warning in check_section_refs. A hand-written list of these
+    names silently stops covering every comparison added after it was written.
+    """
+    out = []
+    for d in sorted(os.listdir(ROOT)):
+        full = os.path.join(ROOT, d)
+        if d.startswith(".") or not os.path.isdir(full):
+            continue
+        if os.path.exists(os.path.join(full, "README.md")) or os.path.exists(
+            os.path.join(full, "README.cs.md")
+        ):
+            out.append(d)
+    return out
 
 
 def table_blocks(lines: list[str]):
@@ -122,7 +141,11 @@ def check_section_refs(rel: str, text: str) -> None:
     # before the §, or a "§N of <sibling>" construction. A local §N that merely
     # shares a sentence with a document name is not one, and flagging it trained
     # us to ignore the warning.
-    SIBLINGS = r"zfs-vs-ceph|storage-replication|smartwatch-platforms"
+    # Derived from the directory listing, not hard-coded: a list written out
+    # by hand silently stops covering every comparison added after it.
+    own = os.path.dirname(rel)
+    others = sorted((d for d in comparison_dirs() if d != own), key=len, reverse=True)
+    SIBLINGS = "|".join(re.escape(d) for d in others) or r"(?!)"
     for pat in (rf"({SIBLINGS})[\s`*]{{0,3}}§(\d+)",              # "storage-replication §12"
                 rf"§(\d+)\s+(?:of|in|v|ve)\b[^§\n]{{0,25}}({SIBLINGS})"):  # "§12 of the sibling storage-replication"
         for m in re.finditer(pat, local):
@@ -245,15 +268,7 @@ def check_document(path: str) -> None:
 def main() -> int:
     names = sys.argv[1:]
     if not names:
-        names = sorted(
-            d for d in os.listdir(ROOT)
-            if os.path.isdir(os.path.join(ROOT, d))
-            and not d.startswith(".")
-            and os.path.exists(os.path.join(ROOT, d, "README.md"))
-            or (os.path.isdir(os.path.join(ROOT, d))
-                and not d.startswith(".")
-                and os.path.exists(os.path.join(ROOT, d, "README.cs.md")))
-        )
+        names = comparison_dirs()
     if not names:
         print("no comparison directories found")
         return 1

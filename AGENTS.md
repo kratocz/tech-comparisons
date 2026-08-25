@@ -14,8 +14,12 @@ apply them in practice.
 
 One directory per comparison, named after the **topic** rather than the vendors
 (`storage-replication`, `smartwatch-platforms`) — vendor names date faster than
-the question does. `zfs-vs-ceph` predates the rule and breaks it: leave it be,
-but do not copy it. Inside:
+the question does. The name is a **plain noun phrase for the subject, not the
+activity**: `smartwatch-platforms`, not `smartwatch-platform-choice`. Every
+document here is a decision, so a `-choice` or `-comparison` suffix restates the
+repository instead of the topic — `programming-language-choice` was renamed to
+`programming-languages` for exactly that reason. `zfs-vs-ceph` predates the rule
+and breaks it: leave it be, but do not copy it. Inside:
 
 - `README.md` — English, canonical.
 - `README.cs.md` — the Czech original, kept alongside when the analysis
@@ -68,6 +72,22 @@ piece of English with `"` — is the mistake that actually happens, repeatedly;
 (`` `recordsize` / `volblocksize` ``): without them the cell has no break
 opportunity and holds the whole column wider than its content needs.
 
+Write for a reader outside the bubble. English-derived scene slang — *indie*,
+*boilerplate*, *vendor lock-in* — costs comprehension without buying precision,
+and in Czech it can be actively misread (`indie aplikace` was taken for
+Indian). Prefer the plain multi-word phrasing, or gloss the term on first use.
+Established technical vocabulary is fine; slang is not.
+
+When a table's ratings are aggregated with weights, remember what a weight can
+and cannot do: **influence comes from variance within a criterion, not from the
+weight on it**. A column where every option scores alike contributes alike to
+everyone and cannot order the field however heavily it is weighted, which is
+counter-intuitive to whoever set the weights and worth saying out loud in the
+document. The same applies to any prediction written before the research —
+predict from where the spread is, not from a candidate's strengths.
+`programming-languages` has one prediction of each kind, and only the one
+reasoning about variance survived contact with the results.
+
 ## Durable layer vs dated layer
 
 Structure a comparison so the **verdict rests on properties that do not
@@ -78,6 +98,15 @@ section** that is not load-bearing for the verdict.
 
 The point is graceful ageing: when the snapshot is stale a year later, the
 analysis still holds and the reader can see exactly which part expired.
+
+For that to work the snapshot has to say **which version of each option the
+ratings were anchored to** — the release actually assessed, not merely the one
+current at the time. Without it a reader a year on cannot tell what expired
+from what was never checked. `programming-languages` ran nine rounds before
+noticing it had never recorded this; writing the table out was what exposed
+that three of eight languages had been read as "the current documentation" with
+no version pinned at all, and that one of them had since been rewritten in
+another language.
 
 Use the same ratio to judge whether a topic is worth writing up at all. A
 subject that is mostly perishable detail (a shopping shortlist, a current price
@@ -126,6 +155,20 @@ conclusion.
   across the whole tree *plus* `copy_file_range` returning five, which is what
   proves the search worked at all. And keep "the source is silent" distinct from
   "the source says no" — silence goes into the document as silence.
+
+  Two ways this rule gets broken that are worth naming, because both happened in
+  one document. The first is asserting absence with **no search at all** — "no
+  official language server exists for PHP" was written without a single query
+  behind it, which is worse than an empty result because there is not even a
+  broken search to distrust. The second is subtler: **a convincing source stops
+  you searching**. A quote from the TypeScript team saying no support policy
+  existed felt conclusive, so the repository root was never listed — and
+  `SUPPORT.md` was sitting in it, which made a decision rule fire against the
+  eventual winner on a false fact. So: before writing that something does not
+  exist, check the **standard locations** for that kind of fact — for a
+  repository, the root, `.github`, `SUPPORT.md`, `SECURITY.md` — and check them
+  even when you already hold a source that sounds final. A verified quote about
+  absence is only a claim about what its author knew when they wrote it.
 - **A verified statement does not extend to cases the source never named.** This
   one is harder to catch than the two above, because a source *was* fetched — it
   simply answered a neighbouring question. In one day `zfs rewrite` was verified
@@ -187,6 +230,15 @@ instead of letting the rules read as pre-registered. A rule presented as
 pre-written when it was not is a false claim in a document whose whole value is
 that its claims can be trusted.
 
+**When the brief itself changes mid-analysis, record it as a new dated brief —
+never as a rewrite of the old one.** Give it its own section, its own rules
+written before its own research, and leave the first verdict standing as the
+answer to the first question. Editing the original criteria after seeing results
+destroys the one property that made writing them in advance worth anything, and
+the disagreement between two honest verdicts is usually more informative than
+either alone: in `programming-languages` the winner of the first brief placed
+seventh in the second, which is the document's most useful single finding.
+
 There are **two bars**, and collapsing them into one is what makes an index
 full of ⏳ rows look like a mess rather than a work log.
 
@@ -223,14 +275,17 @@ scripts/check-comparison.py storage-replication
 
 **Errors** (these fail the run): a table whose rows disagree on cell count; a
 `§N` or `§N.M` that resolves to no section or sub-section in that file; numbered
-sections that are not consecutive; sub-sections that do not count up from `N.1`
+sections that do not start at 0 or 1 (a `## 0.` status section is allowed) or
+that are not consecutive; sub-sections that do not count up from `N.1`
 within their parent in document order (a block pasted into the wrong place
 renders fine, so nothing else catches it); or an ordered list whose numbers are
 out of order or repeated (a gap such as 1, 2, 4 passes); a relative link that does not
 resolve; a URL mangled by a bulk edit; the two language versions disagreeing on
 section count, table-row count, section numbers or sub-section numbers;
-unbalanced Czech quotes; a comparison directory with no row in the root README
-index; header metadata that is not a bullet list.
+unbalanced Czech quotes (checked in `README.cs.md` only — a mixed quote in the
+English file is not caught); a comparison directory with no row in the root
+README index; a comparison directory holding neither `README.md` nor
+`README.cs.md`; header metadata that is not a bullet list.
 
 **Warnings** (reported, never fatal): open `[OVĚŘIT]` / `[VERIFY]` tags, with or
 without text inside the brackets; a comparison directory with no English version;
@@ -250,13 +305,17 @@ A document is a dated snapshot and is not retro-updated as its facts age — but
 an **error is not ageing**. When one surfaces, fix the wrong cell or sentence in
 place *and* record the correction as a dated addendum section at the end
 (`## 13. Correction (2026-08-13): …`), saying what was wrong and what it changed.
+The project skill `add-dated-section` mechanises the whole append — both
+languages, the header bullet, the footer and the References block — so reach for
+it instead of doing this by hand.
 Always append, never renumber: `§N` cross-references — including ones in sibling
 documents — point at the existing numbers.
 
 **New content lands the same way.** A published document grows by appending
 dated sections (`## 20. … (added 2026-08-14)`), never by rewriting earlier ones,
-for the same reason. Two places must then name the new section: the header's
-**Facts verified** bullet and the closing footer. They are the document's index
+for the same reason. The new section must then be named in the places listed
+under "Three places index an addendum" below — the header's **Facts verified**
+bullet, the closing footer, and the References block. They are the document's index
 of what was added when, and a section missing from either is invisible to a
 reader who starts at the top.
 

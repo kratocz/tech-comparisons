@@ -1,6 +1,6 @@
 ---
 name: add-dated-section
-description: Append a dated section to a published comparison document in this repo — writes it in both EN and CS, inserts before References, updates the header "Facts verified" bullet, the footer and the References block, normalises Czech quotes, runs the validator, then commits and pushes. Use when adding a new §N, recording a correction, or when the user says "sepiš to do dokumentu", "přidej sekci", "add a section", "write this up as §N".
+description: Append a dated section to a published comparison document in this repo — writes it in both EN and CS, inserts before References, updates all five indexes (header "Facts verified" bullet, footer, References block, References intro date, root README row), normalises Czech quotes, runs the validator, then commits and pushes. Use when adding a new §N, recording a correction, or when the user says "sepiš to do dokumentu", "přidej sekci", "add a section", "write this up as §N".
 ---
 
 # Add a dated section to a comparison document
@@ -22,6 +22,9 @@ skill mechanises.
    - New content → `## N. Title (added YYYY-MM-DD)`.
    - An error in an already-published section → fix it **in place** *and* append
      `## N. Correction (YYYY-MM-DD): …` saying what was wrong.
+   - An error belonging to an addendum you are writing anyway → record it as a
+     **sub-section of that addendum** (`### 26.4 Correction to §21.1`) rather
+     than a standalone `## N. Correction`, which would only repeat its context.
    - An error in a section published **the same day** → an inline dated
      parenthetical inside that section is enough; do not append a section.
 
@@ -41,7 +44,10 @@ skill mechanises.
    end of the file, which would put the section after the references.
 
 6. **Update the five indexes**, every one of which an audit has caught out of date:
-   - header **Facts verified** bullet — name the new section
+   - header **Facts verified** bullet — **extend the matching date group**; the
+     bullet stays short, "date groups with a phrase and a section range, never a
+     title per section" (AGENTS.md). Enumerating every section bloated it to 1 474
+     characters once
    - closing footer paragraph — same list, matching punctuation. **Re-read this
      sentence end to end afterwards**: it is a single long sentence that
      accumulates clauses, and dropped commas have survived two rounds of edits
