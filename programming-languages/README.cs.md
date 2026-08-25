@@ -17,22 +17,23 @@
 
 *Shrnutí doplněné 2026-08-26. Nepřidává žádné tvrzení — jen sbírá dohromady výsledky §3, §6 a §7, aby se nemusely hledat.*
 
-Dokument odpovídá na **dvě otázky** a **každá má jiného vítěze**. Tabulka je seřazená podle profesionality jazyka; nižší číslo je vždy lepší.
+Dokument odpovídá na **dvě otázky** a **každá má jiného vítěze**. Tabulka je seřazená podle profesionality jazyka; nižší číslo je vždy lepší. Čtyři kritéria profesionality jsou z §7.2, ceny buněk ✅ = 0 · 🟡 = 1 · ❌ = 3, takže součet jde přepočítat okem. Plné znění buněk i se zdroji je v §7.4.
 
-| # | Jazyk | Profesionalita (§7.5) | Pokrytí čtyř domén (§6.2) |
-|---|---|---|---|
-| 1.–2. | **Kotlin** | **0** | 6 — 5. místo |
-| 1.–2. | **Rust** | **0** | 7 — 6. místo |
-| 3. | C# | 2 | 6 — 3. místo |
-| 4. | Go | 4 | 9 — 8. místo |
-| 5.–6. | Java | 5 | 6 — 4. místo |
-| 5.–6. | Python | 5 | 5 — 2. místo |
-| 7. | TypeScript | 6 | **4 — 1. místo** |
-| 8. | PHP | 12 | 8 — 7. místo |
+| # | Jazyk | P1 kompilátor chytí | P2 čitelnost | P3 refaktoring | P4 doménový model | Součet | Domény (§6.2) |
+|---|---|---|---|---|---|---|---|
+| 1.–2. | **Kotlin** | ✅ | ✅ | ✅ | ✅ | **0** | 6 — 5. místo |
+| 1.–2. | **Rust** | ✅ | ✅ | ✅ | ✅ | **0** | 7 — 6. místo |
+| 3. | C# | 🟡 | ✅ | ✅ | 🟡 | 2 | 6 — 3. místo |
+| 4. | Go | 🟡 | ✅ | ✅ | ❌ | 4 | 9 — 8. místo |
+| 5.–6. | Java | 🟡 | ❌ | 🟡 | ✅ | 5 | 6 — 4. místo |
+| 5.–6. | Python | ❌ | ✅ | 🟡 | 🟡 | 5 | 5 — 2. místo |
+| 7. | TypeScript | ❌ | ❌ | ✅ | ✅ | 6 | **4 — 1. místo** |
+| 8. | PHP | ❌ | ❌ | ❌ | ❌ | 12 | 8 — 7. místo |
 
 - **Nejprofesionálnější jazyk (§7):** **Kotlin a Rust, dělené první místo** — jediné dva bez jediné výhrady ve všech čtyřech kritériích. Shodu pravidlo nerozhoduje a tie-breaker se po zhlédnutí výsledku nedopisuje, takže volba mezi nimi patří zadavateli.
 - **Nejlepší pokrytí čtyř domén (§6.2):** **TypeScript** s váženou cenou 4 před Pythonem s 5 — ale platí za to tím, že se typy za běhu nevynucují.
 - **Hlavní nález:** vítěz druhého sloupce je v prvním sedmý. **Žádný jazyk není zároveň nejlepším pokrytím domén a nejprofesionálnějším nástrojem** — a ten obchod je vlastní obsah dokumentu, ne kterýkoli z verdiktů zvlášť.
+- **Dvě kritéria jsou měřena neúplně a dokument to přiznává:** P2 hodnotí jen to, pod čí organizací žije formátovač, ne kolik magie musíš držet v hlavě (§9.3), a P4 nehodnotí neměnnost, ačkoli ji §7.2 uvádí (§10.1). U dvojice PHP–Python stojí zhruba třetina rozdílu právě na P2.
 - **Pozor na rozsah:** obě čísla platí pro profil ze §1 (nové projekty na zelené louce) a pro pravidla ze §2.3 a §7.2. Jiné váhy dávají jiného vítěze — citlivost je v §6.3 a §7.4.
 
 ## 0. Stav a otevřené úkoly
