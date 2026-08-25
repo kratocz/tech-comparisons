@@ -21,14 +21,14 @@ Dokument odpovídá na **dvě otázky** a **každá má jiného vítěze**. Tabu
 
 | # | Jazyk | P1 kompilátor chytí chybu | P2 čitelnost pro lidi | P3 velký refaktoring bezpečný | P4 typy unesou doménový model | Součet | Domény (§6.2) |
 |---|---|---|---|---|---|---|---|
-| 1.–2. | **Kotlin** | ✅ | ✅ | ✅ | ✅ | **0** | 6 — 5. místo |
-| 1.–2. | **Rust** | ✅ | ✅ | ✅ | ✅ | **0** | 7 — 6. místo |
-| 3. | C# | 🟡 | ✅ | ✅ | 🟡 | 2 | 6 — 3. místo |
-| 4. | Go | 🟡 | ✅ | ✅ | ❌ | 4 | 9 — 8. místo |
-| 5.–6. | Java | 🟡 | ❌ | 🟡 | ✅ | 5 | 6 — 4. místo |
-| 5.–6. | Python | ❌ | ✅ | 🟡 | 🟡 | 5 | 5 — 2. místo |
-| 7. | TypeScript | ❌ | ❌ | ✅ | ✅ | 6 | **4 — 1. místo** |
-| 8. | PHP | ❌ | ❌ | ❌ | ❌ | 12 | 8 — 7. místo |
+| 1.–2. | **Kotlin** | ✅ nullabilita v typech | ✅ `ktfmt` pod `Kotlin` | ✅ `kotlin-lsp` pod `Kotlin` | ✅ sealed třídy, `when` bez `else` | **0** | 6 — 5. místo |
+| 1.–2. | **Rust** | ✅ null neexistuje, `match` vyčerpávající | ✅ `rustfmt` pod `rust-lang` | ✅ `rust-analyzer` pod `rust-lang` | ✅ enumy nesou data | **0** | 7 — 6. místo |
+| 3. | C# | 🟡 nullabilita jen při překladu | ✅ `dotnet format` pod `dotnet` | ✅ statické typy + Roslyn | 🟡 součtové typy zatím jen návrh | 2 | 6 — 3. místo |
+| 4. | Go | 🟡 `nil` je nulová hodnota všeho | ✅ `gofmt` v distribuci | ✅ `gopls` pod `golang` | ❌ součtové typy vynechány záměrně | 4 | 9 — 8. místo |
+| 5.–6. | Java | 🟡 generika se mažou, nullabilita chybí | ❌ oficiální formátovač není | 🟡 jazykový server je Eclipse | ✅ sealed + vyčerpávající `switch` | 5 | 6 — 4. místo |
+| 5.–6. | Python | ❌ runtime typy nevynucuje | ✅ `black` pod `psf` | 🟡 dynamický; `mypy` first-party | 🟡 jen ve statické kontrole | 5 | 5 — 2. místo |
+| 7. | TypeScript | ❌ typy se při překladu mažou | ❌ oficiální formátovač není | ✅ statické typy + nástroje MS | ✅ diskriminované unie a `never` | 6 | **4 — 1. místo** |
+| 8. | PHP | ❌ přísnost po souborech, bez generik | ❌ oficiální formátovač není | ❌ oficiální jazykový server není | ❌ enumy nesou jen skalár | 12 | 8 — 7. místo |
 
 Co ta čtyři kritéria znamenají (plné znění a co se u každého měří je v §7.2):
 
@@ -626,7 +626,7 @@ Ceny: ✅ = 0 · 🟡 = 1 · ❌ = 3, součet přes čtyři kritéria, vyhrává
 | **Java** | 🟡 typy vynucuje běh, ale generika se mažou a nullabilita v jazyce chybí [R55] | ❌ oficiální formátovač neexistuje; `google-java-format` je Googlu [R75] | 🟡 statické typy, ale jazykový server je Eclipse, ne správce jazyka [R75] | ✅ sealed rozhraní (JDK 17) + vyčerpávající `switch` bez `default` (JDK 21) [R68][R69] | **5** |
 | **Kotlin** | ✅ nullabilita v typovém systému, vynucená kompilátorem; díra jsou platform types z Javy [R52] | ✅ `ktfmt` pod organizací `Kotlin` [R75] | ✅ statické typy, `kotlin-lsp` pod organizací `Kotlin` [R75] | ✅ sealed třídy, *"you don't need to add an `else` clause"* [R67] | **0** |
 | **PHP** | ❌ přísnost je direktiva po souborech, generika nemá [R49] | ❌ oficiální formátovač neexistuje; PHP-CS-Fixer je vlastní organizace [R75] | ❌ oficiální jazykový server nenalezen [R75] | ❌ enumy od 8.1 jsou *"backed by types of `int` or `string`"* — data nesou jen skalár [R70] | **12** |
-| **Python** | ❌ *"The Python runtime does not enforce… type annotations"* [R47] | ✅ `black` pod organizací `psf` [R75] | 🟡 dynamický; `pyright` je Microsoftu, ne PSF [R75] | 🟡 `match` a `assert_never` fungují, ale **jen ve statické kontrole** [R77] | **5** |
+| **Python** | ❌ *"The Python runtime does not enforce… type annotations"* [R47] | ✅ `black` pod organizací `psf` [R75] | 🟡 dynamický; `mypy` a `typeshed` jsou pod organizací `python` [R75][R80] *(upřesněno v §9.1 — původní znění uvádělo `pyright`, což Pythonu křivdilo)* | 🟡 `match` a `assert_never` fungují, ale **jen ve statické kontrole** [R77] | **5** |
 | **Rust** | ✅ null neexistuje, `Option<T>`, *"Matches in Rust are exhaustive"* [R53][R72] | ✅ `rustfmt` pod organizací `rust-lang` [R75] | ✅ statické typy, `rust-analyzer` pod organizací `rust-lang` [R75] | ✅ enumy s daty + vyčerpávající `match` vynucený kompilátorem [R72] | **0** |
 | **TypeScript** | ❌ typy se mažou, výstupem je prostý JavaScript [R39] | ❌ oficiální formátovač neexistuje; Prettier je samostatná organizace [R75] | ✅ statické typy a nástroje od Microsoftu [R75] | ✅ diskriminované unie + kontrola vyčerpání přes `never` [R71] | **6** |
 

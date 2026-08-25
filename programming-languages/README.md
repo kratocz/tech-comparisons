@@ -21,14 +21,14 @@ The document answers **two questions** and **each has a different winner**. The 
 
 | # | Language | P1 compiler catches the mistake | P2 legible to people | P3 large refactors safe | P4 types carry the domain model | Sum | Domains (§6.2) |
 |---|---|---|---|---|---|---|---|
-| 1.–2. | **Kotlin** | ✅ | ✅ | ✅ | ✅ | **0** | 6 — 5th |
-| 1.–2. | **Rust** | ✅ | ✅ | ✅ | ✅ | **0** | 7 — 6th |
-| 3. | C# | 🟡 | ✅ | ✅ | 🟡 | 2 | 6 — 3rd |
-| 4. | Go | 🟡 | ✅ | ✅ | ❌ | 4 | 9 — 8th |
-| 5.–6. | Java | 🟡 | ❌ | 🟡 | ✅ | 5 | 6 — 4th |
-| 5.–6. | Python | ❌ | ✅ | 🟡 | 🟡 | 5 | 5 — 2nd |
-| 7. | TypeScript | ❌ | ❌ | ✅ | ✅ | 6 | **4 — 1st** |
-| 8. | PHP | ❌ | ❌ | ❌ | ❌ | 12 | 8 — 7th |
+| 1.–2. | **Kotlin** | ✅ nullability in the types | ✅ `ktfmt` under `Kotlin` | ✅ `kotlin-lsp` under `Kotlin` | ✅ sealed classes, `when` without `else` | **0** | 6 — 5th |
+| 1.–2. | **Rust** | ✅ no null, `match` exhaustive | ✅ `rustfmt` under `rust-lang` | ✅ `rust-analyzer` under `rust-lang` | ✅ enums carry data | **0** | 7 — 6th |
+| 3. | C# | 🟡 nullability compile-time only | ✅ `dotnet format` under `dotnet` | ✅ static types + Roslyn | 🟡 sum types still only a proposal | 2 | 6 — 3rd |
+| 4. | Go | 🟡 `nil` is the zero value of everything | ✅ `gofmt` in the distribution | ✅ `gopls` under `golang` | ❌ variant types left out deliberately | 4 | 9 — 8th |
+| 5.–6. | Java | 🟡 generics erased, no nullability | ❌ no official formatter | 🟡 language server is Eclipse's | ✅ sealed + exhaustive `switch` | 5 | 6 — 4th |
+| 5.–6. | Python | ❌ runtime does not enforce types | ✅ `black` under `psf` | 🟡 dynamic; `mypy` is first-party | 🟡 static checking only | 5 | 5 — 2nd |
+| 7. | TypeScript | ❌ types erased at compile time | ❌ no official formatter | ✅ static types + Microsoft tooling | ✅ discriminated unions and `never` | 6 | **4 — 1st** |
+| 8. | PHP | ❌ strictness per file, no generics | ❌ no official formatter | ❌ no official language server | ❌ enums carry only a scalar | 12 | 8 — 7th |
 
 What those four criteria mean (the full wording and what each measures is in §7.2):
 
@@ -626,7 +626,7 @@ Costs: ✅ = 0 · 🟡 = 1 · ❌ = 3, summed across four criteria, lowest wins 
 | **Java** | 🟡 the runtime enforces types, but generics are erased and nullability is absent from the language [R55] | ❌ no official formatter exists; `google-java-format` is Google's [R75] | 🟡 static types, but the language server is Eclipse's, not the language steward's [R75] | ✅ sealed interfaces (JDK 17) + exhaustive `switch` without `default` (JDK 21) [R68][R69] | **5** |
 | **Kotlin** | ✅ nullability in the type system, compiler-enforced; the hole is platform types from Java [R52] | ✅ `ktfmt` under the `Kotlin` organisation [R75] | ✅ static types, `kotlin-lsp` under the `Kotlin` organisation [R75] | ✅ sealed classes, *"you don't need to add an `else` clause"* [R67] | **0** |
 | **PHP** | ❌ strictness is a per-file directive and there are no generics [R49] | ❌ no official formatter exists; PHP-CS-Fixer is its own organisation [R75] | ❌ no official language server found [R75] | ❌ enums since 8.1 are *"backed by types of `int` or `string`"* — cases carry only a scalar [R70] | **12** |
-| **Python** | ❌ *"The Python runtime does not enforce… type annotations"* [R47] | ✅ `black` under the `psf` organisation [R75] | 🟡 dynamic; `pyright` is Microsoft's, not the PSF's [R75] | 🟡 `match` and `assert_never` work, but **only in static checking** [R77] | **5** |
+| **Python** | ❌ *"The Python runtime does not enforce… type annotations"* [R47] | ✅ `black` under the `psf` organisation [R75] | 🟡 dynamic; `mypy` and `typeshed` are under the `python` organisation [R75][R80] *(refined in §9.1 — the original wording cited `pyright`, which did Python an injustice)* | 🟡 `match` and `assert_never` work, but **only in static checking** [R77] | **5** |
 | **Rust** | ✅ null does not exist, `Option<T>`, *"Matches in Rust are exhaustive"* [R53][R72] | ✅ `rustfmt` under the `rust-lang` organisation [R75] | ✅ static types, `rust-analyzer` under the `rust-lang` organisation [R75] | ✅ enums with data + exhaustive `match` enforced by the compiler [R72] | **0** |
 | **TypeScript** | ❌ types are erased and the output is plain JavaScript [R39] | ❌ no official formatter exists; Prettier is a separate organisation [R75] | ✅ static types and tooling from Microsoft [R75] | ✅ discriminated unions + exhaustiveness checking through `never` [R71] | **6** |
 
