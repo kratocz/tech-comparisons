@@ -7,6 +7,7 @@
 - **Sycené rozhodnutí:** na čem stavět **nové** projekty (vlastní, firemní i cizí) v horizontu let — a čím tu volbu argumentovat u někoho, kdo u úvahy nebyl.
 - **Fakta ověřena:** 🟡 2026-08-22 až 2026-08-23, osm kol, reference [R1]–[R77]. Bez otevřených `[OVĚŘIT]`. Přiznaně neúplné: §4.1 (úrovně PHPStan a Psalm), §4.2 (C# a Rust), §7.4 (kritérium P2 měří jen vlastnictví formátovače, ne množství magie).
 - **Předpovědi:** dvě, obě zapsané před svou rešerší. §2.3 **nevyšla** — Go mělo stoupnout a skončilo poslední. §7.3 **vyšla** ve všech bodech; rozdíl byl v tom, že uvažovala o rozptylu uvnitř kritérií, ne o silných stránkách kandidátů.
+- **Dodatek:** §9 (2026-08-26) — proč PHP zaostává za Pythonem: rozdíl drží, ale čtvrtina z něj stojí na formalistickém kritériu P2, a silná statická analýza PHP (PHPStan, jedenáct úrovní) se do žádné buňky nedostala.
 - **Oprava:** ⚠️ §8 (2026-08-23) — tvrzení, že TypeScript nemá závazek podpory, bylo nepravdivé; brána B2 vypálila na chybném faktu a vypálit neměla. Verdikty se nemění, jedna položka účtu je levnější.
 - **Adversariální průchod:** 🟡 2026-08-23 (§6.1) — ze čtyř prověřovaných buněk jedna neobstála a byla opravena (PHP v prohlížeči); pořadí na prvních dvou místech se nezměnilo. **Omezení: průchod běžel ve stejném kontextu, který závěr vytvořil, ne v odděleném.**
 - **Jazyk:** 🇨🇿 čeština (originál); 🇬🇧 kanonická anglická verze zatím nevznikla
@@ -27,6 +28,7 @@
 - [x] **druhé zadání: pravidla profesionality (§7.1–§7.3) sepsána 2026-08-23 PŘED rešerší** — commitnuta zvlášť, aby to šlo ověřit z historie
 - [x] rešerše profesionality (§7.4) a druhý verdikt (§7.5) — 2026-08-23: **dělené první místo Kotlin a Rust**
 - [x] **oprava §8 (2026-08-23): brána B2 vypálila na chybném faktu a vypálit neměla**
+- [x] dodatek §9 (2026-08-26): rozbor rozdílu PHP vs. Python, doplněny úrovně PHPStan a dvě pod-doložená tvrzení
 - [ ] EN překlad (`README.md`) jako kanonická verze
 
 ## 1. Kontext: jaké rozhodnutí se tu doopravdy dělá
@@ -648,6 +650,34 @@ Ceny: ✅ = 0 · 🟡 = 1 · ❌ = 3, součet přes čtyři kritéria, vyhrává
 
 **Co si z toho odnést do dalších kol.** Než prohlásím něco za neexistující, prohlédnu **standardní místa** pro ten typ údaje — u repozitáře kořen, `.github`, `SUPPORT.md`, `SECURITY.md` — a udělám to i tehdy, když už mám zdroj, který zní přesvědčivě. Ověřený citát o nepřítomnosti je pořád jen tvrzení o tom, co jeho autor v tu chvíli věděl.
 
+## 9. Dodatek (2026-08-26): proč PHP tolik zaostává za Pythonem, a co v tom nesedí
+
+Zadavatel se zeptal, proč PHP dostalo v §7.4 skóre 12 a Python 5. Otázka si vynutila přeověření a to přineslo tři věci: doplnění mezery, kterou §4.1 sama přiznávala, potvrzení dvou tvrzení, která byla v době zápisu **pod-doložená**, a jednu přiznanou hrubost měřidla.
+
+### 9.1 Kde rozdíl je a kde není
+
+**P1 je u obou totožné — obě ❌.** Rozdíl mezi PHP a Pythonem tedy **není** v tom, že by jeden vynucoval typy za běhu a druhý ne. PHP je vynucuje po souborech a nemá generika, Python je nevynucuje vůbec; obojí padá na stejnou hodnotu. Kdo hledá důvod rozdílu tady, hledá ho na špatném místě.
+
+**P4 je rozdíl skutečný a doložený.** PHP enumy nesou jen skalár — *"may be backed by types of `int` or `string`"* [R70] — a generika jazyk nemá vůbec [R49]. Python má unie, generika v anotacích, `match` i `assert_never` [R77]. Že to všechno platí jen při kontrole, sráží Python na 🟡; PHP ale ty konstrukce nemá **ani při kontrole**. Rozdíl 🟡 proti ❌ tu drží.
+
+**P3: původní zdůvodnění bylo neúplné a nová evidence hraje pro Python.** Napsal jsem, že *„`pyright` je Microsoftu, ne PSF“* — což Pythonu křivdilo. **`mypy` i `typeshed` jsou pod organizací `python`**, tedy pod samotným správcem jazyka (pozitivní kontrola: pod toutéž organizací jsou `peps`, `typing` i `pythondotorg`) [R80]. Python tedy **first-party typovou kontrolu má**. U PHP jsem naopak tvrdil „oficiální jazykový server nenalezen“, aniž bych po něm skutečně hledal — to bylo tvrzení o neexistenci bez hledání, tedy horší než prázdný výsledek. **Doplněno:** pod organizací `php` není ani jazykový server, ani formátovač; jsou tam `php-src` a webové vlastnosti projektu (pozitivní kontrola: `php-src` přítomen) [R78]. Buňky se nemění, ale teď stojí na tom, na čem stát měly.
+
+### 9.2 Co PHP v žádné buňce nedostalo, a mělo by to zaznít
+
+§4.1 přiznávala, že úrovně PHPStan a Psalm zjišťovány nebyly. Doplněno: **PHPStan má jedenáct úrovní (0 až 10)**, úroveň 6 *„report missing typehints“*, úroveň 9 je striktní na explicitní `mixed` a úroveň 10 *„reports errors even for implicit mixed (missing type), not just explicit mixed“* [R79].
+
+To je ambicióznější, než jak PHP v tabulce vypadá — a **do žádné buňky §7.4 se to nepromítlo**, protože kritéria měřila jazyk a jeho oficiální nástroje, ne sílu komunitní statické analýzy. Je to reálná přednost PHP, kterou tenhle dokument nezachytil, a čtenář by o ní měl vědět.
+
+### 9.3 Přiznaná hrubost kritéria P2
+
+P2 se u obou jazyků rozhoduje na jediné věci: **pod čí organizací žije formátovač.** `black` je pod `psf`, tedy pod nadací jazyka → ✅. `PHP-CS-Fixer` je pod vlastní organizací, ne pod `php` → ❌. **Rozdíl mezi nimi je tři body z dvanácti, tedy čtvrtina celého skóre**, a přitom ani jeden z těch formátovačů se s jazykem nedodává a v praxi se oba pouštějí stejně — jako krok v CI.
+
+**Kritérium tedy měří vlastnictví, ne zážitek uživatele, a u dvojice PHP–Python je to nejslabší místo celého §7.4.** Hodnotu buňky nepřepisuji: pravidlo bylo sepsáno před rešerší (§7.2) a měnit ho po zhlédnutí výsledku je přesně to, co dokument odmítá. Zapisuji ale, že **zhruba třetina rozdílu 12 : 5 stojí na formalistickém testu**, a kdo si ho necení, má škálovat rozdíl podle toho.
+
+### 9.4 Shrnutí
+
+Rozdíl 12 : 5 **drží**, ale rozpadá se nerovnoměrně: P1 nepřispívá ničím, P4 je plně doložený, P3 je doložený až po tomhle dodatku a P2 stojí na měřidle, které si samo přiznává hrubost. **Pořadí se nemění** — PHP zůstává osmé i při nejpříznivějším čtení, protože sedmý TypeScript má 6.
+
 ## Reference
 
 Ověřeno k 2026-08-22 (kolo 1 — brána B2, §4.4 a §4.5).
@@ -749,6 +779,12 @@ Ověřeno k 2026-08-22 (kolo 1 — brána B2, §4.4 a §4.5).
 - [R75] Vlastnictví nástrojů podle organizace na GitHubu, ověřeno přes API 2026-08-23 (pozitivní kontrola: všechny dotazy vrátily metadata repozitáře): `rust-lang/rustfmt`, `rust-lang/rust-analyzer`, `golang/tools` (gopls), `Kotlin/ktfmt`, `Kotlin/kotlin-lsp`, `psf/black`, `dotnet/format`, `microsoft/pyright` — proti `prettier/prettier`, `PHP-CS-Fixer/PHP-CS-Fixer` a `google/google-java-format`, které pod organizací svého jazyka **nejsou**.
 - [R76] dotnet/csharplang — `proposals/standard-unions.md`; součtové typy jsou v C# stále **návrh**, ne jazykový rys. Ověřeno 2026-08-23: <https://github.com/dotnet/csharplang/blob/main/proposals/standard-unions.md>
 - [R77] Python — `typing.assert_never` (kontrola vyčerpání, ale jen ve statické kontrole). Ověřeno 2026-08-23: <https://docs.python.org/3/library/typing.html>
+
+**Dodatek (§9)**
+
+- [R78] Organizace `php` na GitHubu — výpis repozitářů; formátovač ani jazykový server pod ní nejsou. Pozitivní kontrola prošla (`php-src` a webové vlastnosti projektu přítomny). Ověřeno 2026-08-26: <https://github.com/orgs/php/repositories>
+- [R79] PHPStan — Rule Levels (0 až 10; úroveň 6 „report missing typehints“, úroveň 10 implicitní `mixed`). Ověřeno 2026-08-26: <https://phpstan.org/user-guide/rule-levels>
+- [R80] Organizace `python` na GitHubu — `mypy` a `typeshed` jsou pod ní. Pozitivní kontrola prošla (`peps`, `typing`, `pythondotorg` přítomny). Ověřeno 2026-08-26: <https://github.com/orgs/python/repositories>
 
 **Oprava (§8)**
 
