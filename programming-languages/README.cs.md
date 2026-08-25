@@ -30,6 +30,13 @@ Dokument odpovídá na **dvě otázky** a **každá má jiného vítěze**. Tabu
 | 7. | TypeScript | ❌ | ❌ | ✅ | ✅ | 6 | **4 — 1. místo** |
 | 8. | PHP | ❌ | ❌ | ❌ | ❌ | 12 | 8 — 7. místo |
 
+Co ta čtyři kritéria znamenají (plné znění a co se u každého měří je v §7.2):
+
+- **P1 — kompilátor chytí chybu dřív než uživatel:** hranice vynucení typů (za běhu, nebo jen při kontrole), nullabilita v typovém systému, vyčerpávající větvení.
+- **P2 — kód přečte cizí člověk bez kontextu:** existuje oficiální formátovač pod organizací samotného jazyka? *(Jen to — viz výhrada níže.)*
+- **P3 — velký refaktoring je bezpečný:** statické typy plus oficiální jazykový server; najde nástroj všechna volání?
+- **P4 — typový systém unese doménový model:** součtové typy nesoucí data a vyčerpávající větvení nad nimi.
+
 - **Nejprofesionálnější jazyk (§7):** **Kotlin a Rust, dělené první místo** — jediné dva bez jediné výhrady ve všech čtyřech kritériích. Shodu pravidlo nerozhoduje a tie-breaker se po zhlédnutí výsledku nedopisuje, takže volba mezi nimi patří zadavateli.
 - **Nejlepší pokrytí čtyř domén (§6.2):** **TypeScript** s váženou cenou 4 před Pythonem s 5 — ale platí za to tím, že se typy za běhu nevynucují.
 - **Hlavní nález:** vítěz druhého sloupce je v prvním sedmý. **Žádný jazyk není zároveň nejlepším pokrytím domén a nejprofesionálnějším nástrojem** — a ten obchod je vlastní obsah dokumentu, ne kterýkoli z verdiktů zvlášť.

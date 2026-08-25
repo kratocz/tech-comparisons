@@ -30,6 +30,13 @@ The document answers **two questions** and **each has a different winner**. The 
 | 7. | TypeScript | ❌ | ❌ | ✅ | ✅ | 6 | **4 — 1st** |
 | 8. | PHP | ❌ | ❌ | ❌ | ❌ | 12 | 8 — 7th |
 
+What those four criteria mean (the full wording and what each measures is in §7.2):
+
+- **P1 — the compiler catches the mistake before the user does:** the type-enforcement boundary (at runtime, or only at check time), nullability in the type system, exhaustive branching.
+- **P2 — a stranger can read the code without context:** is there an official formatter under the language's own organisation? *(Only that — see the caveat below.)*
+- **P3 — large refactors are safe:** static types plus an official language server; will the tooling find every call site?
+- **P4 — the type system carries the domain model:** sum types carrying data, and exhaustive branching over them.
+
 - **Most professional language (§7):** **Kotlin and Rust, joint first** — the only two clean on all four criteria. The rule does not settle the tie and a tie-breaker is not written after seeing the result, so the choice between them belongs to the decider.
 - **Best coverage of the four domains (§6.2):** **TypeScript**, weighted cost 4 ahead of Python's 5 — but it pays for that by not enforcing types at runtime.
 - **Headline finding:** the winner of the second column places seventh in the first. **No language is simultaneously the best fit for the domains and the most professional tool** — and that trade is the document's actual content, not either verdict on its own.
