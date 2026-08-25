@@ -13,6 +13,28 @@
 - **Jazyk:** 🇨🇿 čeština (originál) · 🇬🇧 [English version](README.md) (kanonická)
 - **Autor:** Petr Kratochvíl — [krato.cz](https://krato.cz)
 
+## TL;DR
+
+*Shrnutí doplněné 2026-08-26. Nepřidává žádné tvrzení — jen sbírá dohromady výsledky §3, §6 a §7, aby se nemusely hledat.*
+
+Dokument odpovídá na **dvě otázky** a **každá má jiného vítěze**. Tabulka je seřazená podle profesionality jazyka; nižší číslo je vždy lepší.
+
+| # | Jazyk | Profesionalita (§7.5) | Pokrytí čtyř domén (§6.2) |
+|---|---|---|---|
+| 1.–2. | **Kotlin** | **0** | 6 — 5. místo |
+| 1.–2. | **Rust** | **0** | 7 — 6. místo |
+| 3. | C# | 2 | 6 — 3. místo |
+| 4. | Go | 4 | 9 — 8. místo |
+| 5.–6. | Java | 5 | 6 — 4. místo |
+| 5.–6. | Python | 5 | 5 — 2. místo |
+| 7. | TypeScript | 6 | **4 — 1. místo** |
+| 8. | PHP | 12 | 8 — 7. místo |
+
+- **Nejprofesionálnější jazyk (§7):** **Kotlin a Rust, dělené první místo** — jediné dva bez jediné výhrady ve všech čtyřech kritériích. Shodu pravidlo nerozhoduje a tie-breaker se po zhlédnutí výsledku nedopisuje, takže volba mezi nimi patří zadavateli.
+- **Nejlepší pokrytí čtyř domén (§6.2):** **TypeScript** s váženou cenou 4 před Pythonem s 5 — ale platí za to tím, že se typy za běhu nevynucují.
+- **Hlavní nález:** vítěz druhého sloupce je v prvním sedmý. **Žádný jazyk není zároveň nejlepším pokrytím domén a nejprofesionálnějším nástrojem** — a ten obchod je vlastní obsah dokumentu, ne kterýkoli z verdiktů zvlášť.
+- **Pozor na rozsah:** obě čísla platí pro profil ze §1 (nové projekty na zelené louce) a pro pravidla ze §2.3 a §7.2. Jiné váhy dávají jiného vítěze — citlivost je v §6.3 a §7.4.
+
 ## 0. Stav a otevřené úkoly
 
 - [x] kontext (§1) — 2026-08-22

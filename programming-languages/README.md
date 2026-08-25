@@ -13,6 +13,28 @@
 - **Language:** 🇬🇧 English (canonical) · 🇨🇿 [Čeština](README.cs.md) (original)
 - **Author:** Petr Kratochvíl — [krato.cz](https://krato.cz)
 
+## TL;DR
+
+*Summary added 2026-08-26. It adds no claim — it only gathers the results of §3, §6 and §7 so they need not be hunted for.*
+
+The document answers **two questions** and **each has a different winner**. The table is ordered by language professionalism; a lower number is always better.
+
+| # | Language | Professionalism (§7.5) | Coverage of the four domains (§6.2) |
+|---|---|---|---|
+| 1.–2. | **Kotlin** | **0** | 6 — 5th |
+| 1.–2. | **Rust** | **0** | 7 — 6th |
+| 3. | C# | 2 | 6 — 3rd |
+| 4. | Go | 4 | 9 — 8th |
+| 5.–6. | Java | 5 | 6 — 4th |
+| 5.–6. | Python | 5 | 5 — 2nd |
+| 7. | TypeScript | 6 | **4 — 1st** |
+| 8. | PHP | 12 | 8 — 7th |
+
+- **Most professional language (§7):** **Kotlin and Rust, joint first** — the only two clean on all four criteria. The rule does not settle the tie and a tie-breaker is not written after seeing the result, so the choice between them belongs to the decider.
+- **Best coverage of the four domains (§6.2):** **TypeScript**, weighted cost 4 ahead of Python's 5 — but it pays for that by not enforcing types at runtime.
+- **Headline finding:** the winner of the second column places seventh in the first. **No language is simultaneously the best fit for the domains and the most professional tool** — and that trade is the document's actual content, not either verdict on its own.
+- **Mind the scope:** both numbers hold for the profile in §1 (new greenfield projects) and for the rules in §2.3 and §7.2. Different weights give a different winner — the sensitivity analyses are in §6.3 and §7.4.
+
 ## 0. Status and open tasks
 
 - [x] context (§1) — 2026-08-22
