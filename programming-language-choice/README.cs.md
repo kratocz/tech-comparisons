@@ -10,7 +10,7 @@
 - **Dodatek:** §9 (2026-08-26) — proč PHP zaostává za Pythonem: rozdíl drží, ale čtvrtina z něj stojí na formalistickém kritériu P2, a silná statická analýza PHP (PHPStan, jedenáct úrovní) se do žádné buňky nedostala.
 - **Oprava:** ⚠️ §8 (2026-08-23) — tvrzení, že TypeScript nemá závazek podpory, bylo nepravdivé; brána B2 vypálila na chybném faktu a vypálit neměla. Verdikty se nemění, jedna položka účtu je levnější.
 - **Adversariální průchod:** 🟡 2026-08-23 (§6.1) — ze čtyř prověřovaných buněk jedna neobstála a byla opravena (PHP v prohlížeči); pořadí na prvních dvou místech se nezměnilo. **Omezení: průchod běžel ve stejném kontextu, který závěr vytvořil, ne v odděleném.**
-- **Jazyk:** 🇨🇿 čeština (originál); 🇬🇧 kanonická anglická verze zatím nevznikla
+- **Jazyk:** 🇨🇿 čeština (originál) · 🇬🇧 [English version](README.md) (kanonická)
 - **Autor:** Petr Kratochvíl — [krato.cz](https://krato.cz)
 
 ## 0. Stav a otevřené úkoly
@@ -29,7 +29,7 @@
 - [x] rešerše profesionality (§7.4) a druhý verdikt (§7.5) — 2026-08-23: **dělené první místo Kotlin a Rust**
 - [x] **oprava §8 (2026-08-23): brána B2 vypálila na chybném faktu a vypálit neměla**
 - [x] dodatek §9 (2026-08-26): rozbor rozdílu PHP vs. Python, doplněny úrovně PHPStan a dvě pod-doložená tvrzení
-- [ ] EN překlad (`README.md`) jako kanonická verze
+- [x] anglická verze (`README.md`) jako kanonická — 2026-08-26
 
 ## 1. Kontext: jaké rozhodnutí se tu doopravdy dělá
 
