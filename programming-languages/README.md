@@ -17,18 +17,18 @@
 
 *Summary added 2026-08-26. It adds no claim — it only gathers the results of §3, §6 and §7 so they need not be hunted for.*
 
-The document answers **two questions** and **each has a different winner**. The table is ordered by language professionalism; a lower number is always better. The four professionalism criteria come from §7.2, cell costs are ✅ = 0 · 🟡 = 1 · ❌ = 3, so the sum can be recomputed by eye. The full cells with their sources are in §7.4.
+The document answers **two questions** and **each has a different winner**. The table is ordered by language professionalism; a lower number is always better. The four professionalism criteria come from §7.2, cell costs are ✅ = 0 · 🟡 = 1 · ❌ = 3, so the sum can be recomputed by eye. The full cells with their sources are in §7.4. The last column is the **placing** in the first brief (§6.2); where the weighted cost ties, candidates share a place — the spread in the domain score is small, running only 4 to 9.
 
 | # | Language | P1 compiler catches the mistake | P2 legible to people | P3 large refactors safe | P4 types carry the domain model | Sum | Domains (§6.2) |
 |---|---|---|---|---|---|---|---|
-| 1.–2. | **Kotlin** | ✅ nullability in the types | ✅ `ktfmt` under `Kotlin` | ✅ `kotlin-lsp` under `Kotlin` | ✅ sealed classes, `when` without `else` | **0** | 6 — 5th |
-| 1.–2. | **Rust** | ✅ no null, `match` exhaustive | ✅ `rustfmt` under `rust-lang` | ✅ `rust-analyzer` under `rust-lang` | ✅ enums carry data | **0** | 7 — 6th |
-| 3. | C# | 🟡 nullability compile-time only | ✅ `dotnet format` under `dotnet` | ✅ static types + Roslyn | 🟡 sum types still only a proposal | 2 | 6 — 3rd |
-| 4. | Go | 🟡 `nil` is the zero value of everything | ✅ `gofmt` in the distribution | ✅ `gopls` under `golang` | ❌ variant types left out deliberately | 4 | 9 — 8th |
-| 5.–6. | Java | 🟡 generics erased, no nullability | ❌ no official formatter | 🟡 language server is Eclipse's | ✅ sealed + exhaustive `switch` | 5 | 6 — 4th |
-| 5.–6. | Python | ❌ runtime does not enforce types | ✅ `black` under `psf` | 🟡 dynamic; `mypy` is first-party | 🟡 static checking only | 5 | 5 — 2nd |
-| 7. | TypeScript | ❌ types erased at compile time | ❌ no official formatter | ✅ static types + Microsoft tooling | ✅ discriminated unions and `never` | 6 | **4 — 1st** |
-| 8. | PHP | ❌ strictness per file, no generics | ❌ no official formatter | ❌ no official language server | ❌ enums carry only a scalar | 12 | 8 — 7th |
+| 1.–2. | **Kotlin** | ✅ nullability in the types | ✅ `ktfmt` under `Kotlin` | ✅ `kotlin-lsp` under `Kotlin` | ✅ sealed classes, `when` without `else` | **0** | 3rd–5th |
+| 1.–2. | **Rust** | ✅ no null, `match` exhaustive | ✅ `rustfmt` under `rust-lang` | ✅ `rust-analyzer` under `rust-lang` | ✅ enums carry data | **0** | 6th |
+| 3. | C# | 🟡 nullability compile-time only | ✅ `dotnet format` under `dotnet` | ✅ static types + Roslyn | 🟡 sum types still only a proposal | 2 | 3rd–5th |
+| 4. | Go | 🟡 `nil` is the zero value of everything | ✅ `gofmt` in the distribution | ✅ `gopls` under `golang` | ❌ variant types left out deliberately | 4 | 8th |
+| 5.–6. | Java | 🟡 generics erased, no nullability | ❌ no official formatter | 🟡 language server is Eclipse's | ✅ sealed + exhaustive `switch` | 5 | 3rd–5th |
+| 5.–6. | Python | ❌ runtime does not enforce types | ✅ `black` under `psf` | 🟡 dynamic; `mypy` is first-party | 🟡 static checking only | 5 | 2nd |
+| 7. | TypeScript | ❌ types erased at compile time | ❌ no official formatter | ✅ static types + Microsoft tooling | ✅ discriminated unions and `never` | 6 | **1st** |
+| 8. | PHP | ❌ strictness per file, no generics | ❌ no official formatter | ❌ no official language server | ❌ enums carry only a scalar | 12 | 7th |
 
 What those four criteria mean (the full wording and what each measures is in §7.2):
 

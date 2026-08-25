@@ -17,18 +17,18 @@
 
 *Shrnutí doplněné 2026-08-26. Nepřidává žádné tvrzení — jen sbírá dohromady výsledky §3, §6 a §7, aby se nemusely hledat.*
 
-Dokument odpovídá na **dvě otázky** a **každá má jiného vítěze**. Tabulka je seřazená podle profesionality jazyka; nižší číslo je vždy lepší. Čtyři kritéria profesionality jsou z §7.2, ceny buněk ✅ = 0 · 🟡 = 1 · ❌ = 3, takže součet jde přepočítat okem. Plné znění buněk i se zdroji je v §7.4.
+Dokument odpovídá na **dvě otázky** a **každá má jiného vítěze**. Tabulka je seřazená podle profesionality jazyka; nižší číslo je vždy lepší. Čtyři kritéria profesionality jsou z §7.2, ceny buněk ✅ = 0 · 🟡 = 1 · ❌ = 3, takže součet jde přepočítat okem. Plné znění buněk i se zdroji je v §7.4. Poslední sloupec je **pořadí** v prvním zadání (§6.2); tam, kde je vážená cena shodná, sdílejí kandidáti jedno místo — rozdíly v doménovém skóre jsou malé a rozsah je jen 4 až 9.
 
 | # | Jazyk | P1 kompilátor chytí chybu | P2 čitelnost pro lidi | P3 velký refaktoring bezpečný | P4 typy unesou doménový model | Součet | Domény (§6.2) |
 |---|---|---|---|---|---|---|---|
-| 1.–2. | **Kotlin** | ✅ nullabilita v typech | ✅ `ktfmt` pod `Kotlin` | ✅ `kotlin-lsp` pod `Kotlin` | ✅ sealed třídy, `when` bez `else` | **0** | 6 — 5. místo |
-| 1.–2. | **Rust** | ✅ null neexistuje, `match` vyčerpávající | ✅ `rustfmt` pod `rust-lang` | ✅ `rust-analyzer` pod `rust-lang` | ✅ enumy nesou data | **0** | 7 — 6. místo |
-| 3. | C# | 🟡 nullabilita jen při překladu | ✅ `dotnet format` pod `dotnet` | ✅ statické typy + Roslyn | 🟡 součtové typy zatím jen návrh | 2 | 6 — 3. místo |
-| 4. | Go | 🟡 `nil` je nulová hodnota všeho | ✅ `gofmt` v distribuci | ✅ `gopls` pod `golang` | ❌ součtové typy vynechány záměrně | 4 | 9 — 8. místo |
-| 5.–6. | Java | 🟡 generika se mažou, nullabilita chybí | ❌ oficiální formátovač není | 🟡 jazykový server je Eclipse | ✅ sealed + vyčerpávající `switch` | 5 | 6 — 4. místo |
-| 5.–6. | Python | ❌ runtime typy nevynucuje | ✅ `black` pod `psf` | 🟡 dynamický; `mypy` first-party | 🟡 jen ve statické kontrole | 5 | 5 — 2. místo |
-| 7. | TypeScript | ❌ typy se při překladu mažou | ❌ oficiální formátovač není | ✅ statické typy + nástroje MS | ✅ diskriminované unie a `never` | 6 | **4 — 1. místo** |
-| 8. | PHP | ❌ přísnost po souborech, bez generik | ❌ oficiální formátovač není | ❌ oficiální jazykový server není | ❌ enumy nesou jen skalár | 12 | 8 — 7. místo |
+| 1.–2. | **Kotlin** | ✅ nullabilita v typech | ✅ `ktfmt` pod `Kotlin` | ✅ `kotlin-lsp` pod `Kotlin` | ✅ sealed třídy, `when` bez `else` | **0** | 3.–5. místo |
+| 1.–2. | **Rust** | ✅ null neexistuje, `match` vyčerpávající | ✅ `rustfmt` pod `rust-lang` | ✅ `rust-analyzer` pod `rust-lang` | ✅ enumy nesou data | **0** | 6. místo |
+| 3. | C# | 🟡 nullabilita jen při překladu | ✅ `dotnet format` pod `dotnet` | ✅ statické typy + Roslyn | 🟡 součtové typy zatím jen návrh | 2 | 3.–5. místo |
+| 4. | Go | 🟡 `nil` je nulová hodnota všeho | ✅ `gofmt` v distribuci | ✅ `gopls` pod `golang` | ❌ součtové typy vynechány záměrně | 4 | 8. místo |
+| 5.–6. | Java | 🟡 generika se mažou, nullabilita chybí | ❌ oficiální formátovač není | 🟡 jazykový server je Eclipse | ✅ sealed + vyčerpávající `switch` | 5 | 3.–5. místo |
+| 5.–6. | Python | ❌ runtime typy nevynucuje | ✅ `black` pod `psf` | 🟡 dynamický; `mypy` first-party | 🟡 jen ve statické kontrole | 5 | 2. místo |
+| 7. | TypeScript | ❌ typy se při překladu mažou | ❌ oficiální formátovač není | ✅ statické typy + nástroje MS | ✅ diskriminované unie a `never` | 6 | **1. místo** |
+| 8. | PHP | ❌ přísnost po souborech, bez generik | ❌ oficiální formátovač není | ❌ oficiální jazykový server není | ❌ enumy nesou jen skalár | 12 | 7. místo |
 
 Co ta čtyři kritéria znamenají (plné znění a co se u každého měří je v §7.2):
 
