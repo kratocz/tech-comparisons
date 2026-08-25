@@ -19,7 +19,7 @@
 
 Dokument odpovídá na **dvě otázky** a **každá má jiného vítěze**. Tabulka je seřazená podle profesionality jazyka; nižší číslo je vždy lepší. Čtyři kritéria profesionality jsou z §7.2, ceny buněk ✅ = 0 · 🟡 = 1 · ❌ = 3, takže součet jde přepočítat okem. Plné znění buněk i se zdroji je v §7.4.
 
-| # | Jazyk | P1 kompilátor chytí | P2 čitelnost | P3 refaktoring | P4 doménový model | Součet | Domény (§6.2) |
+| # | Jazyk | P1 kompilátor chytí chybu | P2 čitelnost pro lidi | P3 velký refaktoring bezpečný | P4 typy unesou doménový model | Součet | Domény (§6.2) |
 |---|---|---|---|---|---|---|---|
 | 1.–2. | **Kotlin** | ✅ | ✅ | ✅ | ✅ | **0** | 6 — 5. místo |
 | 1.–2. | **Rust** | ✅ | ✅ | ✅ | ✅ | **0** | 7 — 6. místo |
@@ -619,7 +619,7 @@ Pokud rešerše tuhle předpověď vyvrátí, zapíše se to jako výsledek, ne 
 
 Ceny: ✅ = 0 · 🟡 = 1 · ❌ = 3, součet přes čtyři kritéria, vyhrává nejnižší (§7.2).
 
-| Jazyk | P1 kompilátor chytí | P2 čitelnost pro cizího | P3 bezpečný refaktoring | P4 doménový model | Součet |
+| Jazyk | P1 kompilátor chytí chybu | P2 čitelnost pro lidi | P3 velký refaktoring bezpečný | P4 typy unesou doménový model | Součet |
 |---|---|---|---|---|---|
 | **C#** | 🟡 typy vynucuje běh, ale nullabilita jen překlad a `!` [R50] | ✅ `dotnet format` pod organizací `dotnet` [R75] | ✅ statické typy, Roslyn od Microsoftu [R75] | 🟡 součtové typy jsou zatím **návrh** `standard-unions.md` v `dotnet/csharplang` [R76] | **2** |
 | **Go** | 🟡 typy vynucuje běh, ale `nil` je nulová hodnota všeho referenčního [R54] | ✅ `gofmt` je součástí distribuce, *"uncontroversial"*, a FAQ dokládá záměrné vynechávání rysů [R73][R74] | ✅ statické typy, `gopls` pod organizací `golang` [R75] | ❌ FAQ: *"We considered adding variant types to Go, but after discussion decided to leave them out"* [R73] | **4** |

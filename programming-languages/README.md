@@ -19,7 +19,7 @@
 
 The document answers **two questions** and **each has a different winner**. The table is ordered by language professionalism; a lower number is always better. The four professionalism criteria come from §7.2, cell costs are ✅ = 0 · 🟡 = 1 · ❌ = 3, so the sum can be recomputed by eye. The full cells with their sources are in §7.4.
 
-| # | Language | P1 compiler catches | P2 legibility | P3 refactoring | P4 domain model | Sum | Domains (§6.2) |
+| # | Language | P1 compiler catches the mistake | P2 legible to people | P3 large refactors safe | P4 types carry the domain model | Sum | Domains (§6.2) |
 |---|---|---|---|---|---|---|---|
 | 1.–2. | **Kotlin** | ✅ | ✅ | ✅ | ✅ | **0** | 6 — 5th |
 | 1.–2. | **Rust** | ✅ | ✅ | ✅ | ✅ | **0** | 7 — 6th |
@@ -619,7 +619,7 @@ If the research refutes this prediction, that is recorded as a result, not as a 
 
 Costs: ✅ = 0 · 🟡 = 1 · ❌ = 3, summed across four criteria, lowest wins (§7.2).
 
-| Language | P1 compiler catches | P2 legible to a stranger | P3 safe refactoring | P4 domain model | Sum |
+| Language | P1 compiler catches the mistake | P2 legible to people | P3 large refactors safe | P4 types carry the domain model | Sum |
 |---|---|---|---|---|---|
 | **C#** | 🟡 the runtime enforces types, but nullability is compile-time only and `!` exists [R50] | ✅ `dotnet format` under the `dotnet` organisation [R75] | ✅ static types, Roslyn from Microsoft [R75] | 🟡 sum types are still a **proposal**, `standard-unions.md` in `dotnet/csharplang` [R76] | **2** |
 | **Go** | 🟡 the runtime enforces types, but `nil` is the zero value of everything by reference [R54] | ✅ `gofmt` ships with the distribution, *"uncontroversial"*, and the FAQ documents deliberate omission of features [R73][R74] | ✅ static types, `gopls` under the `golang` organisation [R75] | ❌ the FAQ: *"We considered adding variant types to Go, but after discussion decided to leave them out"* [R73] | **4** |
