@@ -281,7 +281,11 @@ within their parent in document order (a block pasted into the wrong place
 renders fine, so nothing else catches it); or an ordered list whose numbers are
 out of order or repeated (a gap such as 1, 2, 4 passes); a relative link that does not
 resolve; a URL mangled by a bulk edit; the two language versions disagreeing on
-section count, table-row count, section numbers or sub-section numbers;
+section count, table-row count, section numbers, sub-section numbers, the
+sequence of ✅/🟡/❌ across their tables, or the set of `[R…]` references — the
+last two because counts alone stay intact when a rating is edited in one
+language and not the other, and the document then quietly asserts two different
+things;
 unbalanced Czech quotes (checked in `README.cs.md` only — a mixed quote in the
 English file is not caught); a comparison directory with no row in the root
 README index; a comparison directory holding neither `README.md` nor

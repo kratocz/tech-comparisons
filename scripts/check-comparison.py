@@ -292,16 +292,26 @@ def check_czech_quotes(rel: str, text: str) -> None:
 
 
 def check_parity(directory: str, en: str, cs: str) -> None:
+    """The two language versions must stay structurally identical.
+
+    Counts alone are not enough. A rating edited in one language and not the
+    other keeps every count intact while the document quietly asserts two
+    different things, so the **sequence** of ✅/🟡/❌ across all tables is
+    compared position by position, as is the set of [R…] references — a source
+    added to one version only is the same class of drift.
+    """
     def shape(path: str):
         text = open(path, encoding="utf-8").read()
         lines = text.split("\n")
         rows = sum(len(b) for _, b in table_blocks(lines))
         secs = re.findall(r"^## (\d+)\.", text, re.M)
         subs = re.findall(r"^### (\d+\.\d+)", text, re.M)
-        return len(re.findall(r"^## ", text, re.M)), rows, secs, subs
+        syms = re.findall(r"\|\s*(✅|🟡|❌)", text)
+        refs = sorted(set(re.findall(r"\[(R\d+)\]", text)), key=lambda r: int(r[1:]))
+        return len(re.findall(r"^## ", text, re.M)), rows, secs, subs, syms, refs
 
-    en_sec, en_rows, en_n, en_s = shape(en)
-    cs_sec, cs_rows, cs_n, cs_s = shape(cs)
+    en_sec, en_rows, en_n, en_s, en_y, en_r = shape(en)
+    cs_sec, cs_rows, cs_n, cs_s, cs_y, cs_r = shape(cs)
     if en_sec != cs_sec:
         err(directory, f"language versions disagree on section count: EN {en_sec}, CS {cs_sec}")
     if en_rows != cs_rows:
@@ -310,6 +320,20 @@ def check_parity(directory: str, en: str, cs: str) -> None:
         err(directory, f"numbered sections differ: EN {en_n} vs CS {cs_n}")
     if en_s != cs_s:
         err(directory, f"sub-section numbering differs: EN {en_s} vs CS {cs_s}")
+    if en_y != cs_y:
+        if len(en_y) != len(cs_y):
+            err(directory, f"language versions hold a different number of rating "
+                           f"symbols: EN {len(en_y)}, CS {len(cs_y)}")
+        else:
+            at = next(i for i, (a, b) in enumerate(zip(en_y, cs_y)) if a != b)
+            err(directory, f"language versions disagree on rating symbol #{at + 1} "
+                           f"of {len(en_y)}: EN {en_y[at]}, CS {cs_y[at]} — a cell "
+                           f"was edited in one version only")
+    if en_r != cs_r:
+        only_en = [r for r in en_r if r not in cs_r]
+        only_cs = [r for r in cs_r if r not in en_r]
+        err(directory, f"references differ between language versions: "
+                       f"only in EN {only_en or '—'}, only in CS {only_cs or '—'}")
 
 
 def check_index_row(directory: str) -> None:
