@@ -7,7 +7,7 @@
 - **Decision it feeds:** what to build **new** projects on over a horizon of years — mine, a company's, or someone else's — and how to argue that choice to somebody who was not part of the reasoning.
 - **Facts verified:** 🟡 2026-08-22 to 2026-08-23, eight rounds, references [R1]–[R77]. No open `[VERIFY]` tags. Admittedly incomplete: §4.1 (PHPStan and Psalm levels), §4.2 (C# and Rust), §7.4 (criterion P2 measures only formatter ownership, not how much magic you must hold in your head).
 - **Predictions:** two, both written before their own research. §2.3 **failed** — Go was predicted to rise and finished last. §7.3 **held** on every point; the difference was that it reasoned about variance within criteria rather than about candidates' strengths.
-- **Addenda:** §9 (2026-08-26) — why PHP trails Python; the gap holds, but a quarter of it rests on the formalistic criterion P2. §10 (2026-08-26) — **which versions were actually analysed**: PHP 8.5 verified after the fact (nothing changes), TypeScript 7 is a native rewrite in Go the analysis did not account for, and M1 was applied unevenly.
+- **Addenda:** §9 (2026-08-26) — why PHP trails Python; the gap holds, but a quarter of it rests on the formalistic criterion P2. §10 (2026-08-26) — **which versions were actually analysed**: PHP 8.5 verified after the fact (nothing changes), TypeScript 7 is a native rewrite in Go the analysis did not account for, and M1 was applied unevenly. §11 (2026-08-26) — **the concurrency the criteria never measured**: P1 did not rate compile-time prevention of data races, which is a documented argument for Rust in the open tie of §7.5; the criterion is not being added after the fact.
 - **Correction:** ⚠️ §8 (2026-08-23) — the claim that TypeScript has no support commitment was false; gate B2 fired on a wrong fact and should not have fired. The verdicts do not change; one line of the bill is cheaper.
 - **Adversarial pass:** 🟡 2026-08-23 (§6.1) — of four cells examined, one did not survive and was corrected (PHP in the browser); the top two placings did not move. **Limitation: the pass ran in the same context that produced the conclusion, not a fresh one.**
 - **Language:** 🇬🇧 English (canonical) · 🇨🇿 [Čeština](README.cs.md) (original)
@@ -60,6 +60,7 @@ What those four criteria mean (the full wording and what each measures is in §7
 - [x] **correction §8 (2026-08-23): gate B2 fired on a wrong fact and should not have fired**
 - [x] addendum §9 (2026-08-26): why PHP trails Python, PHPStan levels added and two under-evidenced claims repaired
 - [x] addendum §10 (2026-08-26): audit of the analysed versions, PHP 8.5 verified, TypeScript 7 recorded
+- [x] addendum §11 (2026-08-26): concurrency outside the criteria; the argument for Rust recorded, P1 unchanged
 - [x] English version (`README.md`) as the canonical one — 2026-08-26
 
 ## 1. Context: what decision is actually being made
@@ -744,6 +745,36 @@ The decider asked whether PHP had been rated at its newest version, and suggeste
 
 **The practical consequence for the reader:** the table in §10.2 is from now on what tells you what this document actually assessed. Where it says "with no version pinned", what holds is the verification date on the relevant reference rather than a version number — and that is weaker than M1 would want.
 
+## 11. Addendum (2026-08-26): the concurrency the criteria never measured
+
+The decider asked whether the comparison covers thread support, and whether Go's professionalism suffers from `goto` or from memory management being "somewhat up to the programmer". One premise in that question does not hold, but it leads to a gap that is real and bears on the open tie in §7.5.
+
+### 11.1 What holds in that question and what does not
+
+**Threads are covered, but outside the score.** §4.2 describes the concurrency model of six of the eight candidates; for C# and Rust it admits researching nothing. Above all, **concurrency does not enter the professionalism score at all** — criteria P1 to P4 (§7.2) measure it in none of their points.
+
+**`goto` is a dead end.** Go has it, but no criterion in §7.2 measures control-flow constructs, so it would move no placing. The details of its restrictions in Go did not appear in the fetched excerpt of the specification, so nothing is claimed about them.
+
+**Memory management is the other way round.** The Go specification says in its introduction: *"It is strongly typed and garbage-collected."* [R54] Allocation and release are therefore **not** the programmer's job.
+
+**But the worry about memory consistency is justified — by a different mechanism.** What is on the programmer in Go is **freedom from data races**. The Go memory model defines a race as *"a write to a memory location happening concurrently with another read or write to that same location"* and warns that for multiword structures races *"can in turn lead to arbitrary memory corruption"*. Go does not catch them at compile time; they surface at run time through `go build -race`. The document also records that Go is here **deliberately less undefined than C and C++**, where *"the meaning of any program with a race is entirely undefined"* [R84].
+
+### 11.2 The gap in criterion P1
+
+Criterion P1 asks whether the compiler catches the mistake before the user does — and it measured the type-enforcement boundary, nullability and exhaustive branching. **It did not measure concurrency safety.**
+
+That is a gap rather than a detail, because this is precisely the flagship claim of one of the candidates: *"By leveraging ownership and type checking, many concurrency errors are compile-time errors in Rust rather than runtime errors"* [R85]. Rust therefore catches at compile time a class of error the others leave to run time, to tests or to the programmer — and P1 recorded none of it.
+
+### 11.3 What it would do to the verdict, and why I am still not doing it
+
+**It would most likely settle the tie in §7.5.** Kotlin and Rust sit there on a shared zero, and the document says the choice between them belongs to the decider. Had P1 included compile-time prevention of data races, Rust would be the **only ✅** on that point — Kotlin runs on the JVM, whose compiler polices data races no more than Go's does. The tie would very probably break in Rust's favour.
+
+**And that is exactly why I am not doing it.** The criteria were fixed in §7.2 before the research. Adding a fifth criterion now, when it is already visible that it favours one of the two tied candidates, is the worst possible moment — the same error as rewriting weights after seeing the result, only less excusable, because here you can also see who benefits.
+
+**A legitimate route exists and it is the one from §7.1:** the decider may declare a **third brief** with its own criteria, written and dated in advance, in which concurrency appears — and let it run again. The verdicts in §6.2 and §7.5 would stand as the answers to their own questions.
+
+**Until then §7.5 holds as written: a shared first place, and the decision belongs to the decider.** This addendum adds one documented argument in Rust's favour to that decision — not a change of score.
+
 ## References
 
 Verified as of 2026-08-22 (round 1 — gate B2, §4.4 and §4.5).
@@ -845,6 +876,11 @@ Verified as of 2026-08-22 (round 1 — gate B2, §4.4 and §4.5).
 - [R75] Tool ownership by GitHub organisation, verified through the API on 2026-08-23 (positive control: every query returned repository metadata): `rust-lang/rustfmt`, `rust-lang/rust-analyzer`, `golang/tools` (gopls), `Kotlin/ktfmt`, `Kotlin/kotlin-lsp`, `psf/black`, `dotnet/format`, `microsoft/pyright` — against `prettier/prettier`, `PHP-CS-Fixer/PHP-CS-Fixer` and `google/google-java-format`, which are **not** under their language's organisation.
 - [R76] dotnet/csharplang — `proposals/standard-unions.md`; sum types in C# are still a **proposal**, not a language feature. Verified 2026-08-23: <https://github.com/dotnet/csharplang/blob/main/proposals/standard-unions.md>
 - [R77] Python — `typing.assert_never` (exhaustiveness checking, but only in static checking). Verified 2026-08-23: <https://docs.python.org/3/library/typing.html>
+
+**Concurrency and the memory model (§11)**
+
+- [R84] The Go Memory Model — the definition of a data race, what an implementation may do, the warning about memory corruption on multiword structures, and the comparison with C and C++. Verified 2026-08-26: <https://go.dev/ref/mem>
+- [R85] The Rust Programming Language — Fearless Concurrency (*"many concurrency errors are compile-time errors in Rust rather than runtime errors"*). Verified 2026-08-26: <https://doc.rust-lang.org/book/ch16-00-concurrency.html>
 
 **Version audit (§10)**
 

@@ -7,7 +7,7 @@
 - **Sycené rozhodnutí:** na čem stavět **nové** projekty (vlastní, firemní i cizí) v horizontu let — a čím tu volbu argumentovat u někoho, kdo u úvahy nebyl.
 - **Fakta ověřena:** 🟡 2026-08-22 až 2026-08-23, osm kol, reference [R1]–[R77]. Bez otevřených `[OVĚŘIT]`. Přiznaně neúplné: §4.1 (úrovně PHPStan a Psalm), §4.2 (C# a Rust), §7.4 (kritérium P2 měří jen vlastnictví formátovače, ne množství magie).
 - **Předpovědi:** dvě, obě zapsané před svou rešerší. §2.3 **nevyšla** — Go mělo stoupnout a skončilo poslední. §7.3 **vyšla** ve všech bodech; rozdíl byl v tom, že uvažovala o rozptylu uvnitř kritérií, ne o silných stránkách kandidátů.
-- **Dodatky:** §9 (2026-08-26) — proč PHP zaostává za Pythonem; rozdíl drží, ale čtvrtina z něj stojí na formalistickém kritériu P2. §10 (2026-08-26) — **jaké verze byly doopravdy analyzovány**: PHP 8.5 dodatečně ověřeno (nic nemění), TypeScript 7 je nativní přepis do Go, který analýza nezohlednila, a M1 byla uplatňována nerovnoměrně.
+- **Dodatky:** §9 (2026-08-26) — proč PHP zaostává za Pythonem; rozdíl drží, ale čtvrtina z něj stojí na formalistickém kritériu P2. §10 (2026-08-26) — **jaké verze byly doopravdy analyzovány**: PHP 8.5 dodatečně ověřeno (nic nemění), TypeScript 7 je nativní přepis do Go, který analýza nezohlednila, a M1 byla uplatňována nerovnoměrně. §11 (2026-08-26) — **souběžnost, kterou kritéria neměřila**: P1 nehodnotilo prevenci datových závodů při překladu, což je doložený argument pro Rust v otevřené shodě §7.5; kritérium se ale zpětně nedopisuje.
 - **Oprava:** ⚠️ §8 (2026-08-23) — tvrzení, že TypeScript nemá závazek podpory, bylo nepravdivé; brána B2 vypálila na chybném faktu a vypálit neměla. Verdikty se nemění, jedna položka účtu je levnější.
 - **Adversariální průchod:** 🟡 2026-08-23 (§6.1) — ze čtyř prověřovaných buněk jedna neobstála a byla opravena (PHP v prohlížeči); pořadí na prvních dvou místech se nezměnilo. **Omezení: průchod běžel ve stejném kontextu, který závěr vytvořil, ne v odděleném.**
 - **Jazyk:** 🇨🇿 čeština (originál) · 🇬🇧 [English version](README.md) (kanonická)
@@ -60,6 +60,7 @@ Co ta čtyři kritéria znamenají (plné znění a co se u každého měří je
 - [x] **oprava §8 (2026-08-23): brána B2 vypálila na chybném faktu a vypálit neměla**
 - [x] dodatek §9 (2026-08-26): rozbor rozdílu PHP vs. Python, doplněny úrovně PHPStan a dvě pod-doložená tvrzení
 - [x] dodatek §10 (2026-08-26): audit analyzovaných verzí, PHP 8.5 ověřeno, TypeScript 7 zaznamenán
+- [x] dodatek §11 (2026-08-26): souběžnost mimo kritéria; argument pro Rust zapsán, P1 nezměněno
 - [x] anglická verze (`README.md`) jako kanonická — 2026-08-26
 
 ## 1. Kontext: jaké rozhodnutí se tu doopravdy dělá
@@ -744,6 +745,36 @@ Zadavatel se zeptal, zda bylo PHP hodnoceno v nejnovější verzi, a navrhl dopl
 
 **Praktický důsledek pro čtenáře:** tabulka v §10.2 je od teď to, podle čeho se pozná, co dokument doopravdy posuzoval. Kde je uvedeno „bez připnuté verze“, platí datum ověření u příslušné reference, ne číslo verze — a to je slabší, než by M1 chtělo.
 
+## 11. Dodatek (2026-08-26): souběžnost, kterou kritéria neměřila
+
+Zadavatel se zeptal, zda srovnání pokrývá podporu vláken, a zda profesionalitě Go neubírá `goto` nebo to, že je „správa paměti tak trochu na programátorovi“. Jedna premisa v té otázce neplatí, ale vede k mezeře, která je reálná a týká se otevřené shody v §7.5.
+
+### 11.1 Co z té otázky platí a co ne
+
+**Vlákna dokument pokrývá, ale mimo skóre.** §4.2 popisuje modely souběžnosti u šesti z osmi kandidátů; u C# a Rustu přiznaně nezjišťovala nic. Především ale **souběžnost nevstupuje do skóre profesionality vůbec** — kritéria P1 až P4 (§7.2) ji neměří ani jedním svým bodem.
+
+**`goto` je slepá ulička.** V Go je, ale žádné kritérium §7.2 neměří konstrukce řízení toku, takže by pořadím nepohnulo. Podrobnosti o jeho omezeních v Go se v načteném úryvku specifikace nezobrazily, takže se o nich nic netvrdí.
+
+**Se správou paměti je to naopak.** Specifikace Go říká v úvodu: *"It is strongly typed and garbage-collected."* [R54] Alokace a uvolňování paměti tedy na programátorovi **nejsou**.
+
+**Ale obava o konzistenci paměti je oprávněná — jen jiným mechanismem.** Na programátorovi je v Go **absence datových závodů**. Go memory model definuje závod jako *"a write to a memory location happening concurrently with another read or write to that same location"* a u víceslovních struktur varuje, že závody *"can in turn lead to arbitrary memory corruption"*. Go je nechytá při překladu; detekují se až za běhu přes `go build -race`. Dokument zároveň zaznamenává, že Go je v tomhle **záměrně méně nedefinované než C a C++**, kde je *"the meaning of any program with a race is entirely undefined"* [R84].
+
+### 11.2 Mezera v kritériu P1
+
+Kritérium P1 se ptá, zda kompilátor chytí chybu dřív než uživatel — a měřilo hranici vynucení typů, nullabilitu a vyčerpávající větvení. **Bezpečnost souběžnosti neměřilo.**
+
+To je mezera, ne detail, protože právě tohle je vlajkové tvrzení jednoho z kandidátů: *"By leveraging ownership and type checking, many concurrency errors are compile-time errors in Rust rather than runtime errors"* [R85]. Rust tedy chytá při překladu třídu chyb, kterou ostatní kandidáti nechávají na běh, na testy nebo na programátora — a P1 z toho nezaznamenalo nic.
+
+### 11.3 Co by to udělalo s verdiktem, a proč to přesto nedělám
+
+**Nejspíš by to rozseklo shodu v §7.5.** Kotlin a Rust jsou tam na dělené nule a dokument říká, že volba mezi nimi patří zadavateli. Kdyby P1 zahrnovalo prevenci datových závodů při překladu, byl by Rust v tomto bodě **jediný ✅** — Kotlin běží na JVM a datové závody mu kompilátor nehlídá stejně jako Go. Shoda by se s velkou pravděpodobností rozpadla ve prospěch Rustu.
+
+**A přesně proto to neudělám.** Kritéria byla zafixovaná v §7.2 před rešerší. Dopsat páté kritérium teď, když už je vidět, že nadržuje jednomu ze dvou remízujících, je ten nejhorší možný okamžik — je to táž chyba jako přepsat váhy po zhlédnutí výsledku, jen hůř omluvitelná, protože tady je vidět i to, komu prospěje.
+
+**Legitimní cesta existuje a je stejná jako u §7.1:** zadavatel může vyhlásit **třetí zadání** s vlastní, dopředu sepsanou a datovanou sadou kritérií, ve které souběžnost bude — a nechat ho proběhnout znovu. Verdikty §6.2 a §7.5 by zůstaly platit jako odpovědi na své otázky.
+
+**Do té doby platí §7.5 tak, jak je: dělené první místo, a rozhodnutí na zadavateli.** Tenhle dodatek k tomu rozhodnutí přidává jeden doložený argument ve prospěch Rustu — nikoli změnu skóre.
+
 ## Reference
 
 Ověřeno k 2026-08-22 (kolo 1 — brána B2, §4.4 a §4.5).
@@ -845,6 +876,11 @@ Ověřeno k 2026-08-22 (kolo 1 — brána B2, §4.4 a §4.5).
 - [R75] Vlastnictví nástrojů podle organizace na GitHubu, ověřeno přes API 2026-08-23 (pozitivní kontrola: všechny dotazy vrátily metadata repozitáře): `rust-lang/rustfmt`, `rust-lang/rust-analyzer`, `golang/tools` (gopls), `Kotlin/ktfmt`, `Kotlin/kotlin-lsp`, `psf/black`, `dotnet/format`, `microsoft/pyright` — proti `prettier/prettier`, `PHP-CS-Fixer/PHP-CS-Fixer` a `google/google-java-format`, které pod organizací svého jazyka **nejsou**.
 - [R76] dotnet/csharplang — `proposals/standard-unions.md`; součtové typy jsou v C# stále **návrh**, ne jazykový rys. Ověřeno 2026-08-23: <https://github.com/dotnet/csharplang/blob/main/proposals/standard-unions.md>
 - [R77] Python — `typing.assert_never` (kontrola vyčerpání, ale jen ve statické kontrole). Ověřeno 2026-08-23: <https://docs.python.org/3/library/typing.html>
+
+**Souběžnost a paměťový model (§11)**
+
+- [R84] The Go Memory Model — definice datového závodu, chování implementace, varování před poškozením paměti u víceslovních struktur, srovnání s C a C++. Ověřeno 2026-08-26: <https://go.dev/ref/mem>
+- [R85] The Rust Programming Language — Fearless Concurrency (*"many concurrency errors are compile-time errors in Rust rather than runtime errors"*). Ověřeno 2026-08-26: <https://doc.rust-lang.org/book/ch16-00-concurrency.html>
 
 **Audit verzí (§10)**
 
