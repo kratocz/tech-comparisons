@@ -5,9 +5,9 @@
 - **Otázka 2 — který jazyk nejlíp pokryje čtyři konkrétní domény najednou? → §3 a §6.** Verdikt (§6.2): **TypeScript**, vážená cena 4 před Pythonem s 5, s vyjmenovanými kompromisy — nejdražší z nich je, že se typy za běhu nevynucují.
 - **Hlavní nález — rozpor mezi oběma verdikty (§7.5):** vítěz otázky 2 je v otázce 1 sedmý. **Žádný jazyk není zároveň nejlepším pokrytím těch čtyř domén a nejprofesionálnějším nástrojem.** Ten obchod je vlastní obsah dokumentu, ne kterýkoli z verdiktů zvlášť.
 - **Sycené rozhodnutí:** na čem stavět **nové** projekty (vlastní, firemní i cizí) v horizontu let — a čím tu volbu argumentovat u někoho, kdo u úvahy nebyl.
-- **Fakta ověřena:** 🟡 2026-08-22 až 2026-08-23, osm kol, reference [R1]–[R77]. Bez otevřených `[OVĚŘIT]`. Přiznaně neúplné: §4.1 (úrovně PHPStan a Psalm), §4.2 (C# a Rust), §7.4 (kritérium P2 měří jen vlastnictví formátovače, ne množství magie).
+- **Fakta ověřena:** 🟡 2026-08-22 až 2026-08-23, osm kol, reference [R1]–[R85]. Otevřené `[OVĚŘIT]`: §12.4 a §12.5 — třetí zadání má sepsaná pravidla, ale rešerše zatím neproběhla. Přiznaně neúplné: §4.1 (úrovně PHPStan a Psalm), §4.2 (C# a Rust), §7.4 (kritérium P2 měří jen vlastnictví formátovače, ne množství magie).
 - **Předpovědi:** dvě, obě zapsané před svou rešerší. §2.3 **nevyšla** — Go mělo stoupnout a skončilo poslední. §7.3 **vyšla** ve všech bodech; rozdíl byl v tom, že uvažovala o rozptylu uvnitř kritérií, ne o silných stránkách kandidátů.
-- **Dodatky:** §9 (2026-08-26) — proč PHP zaostává za Pythonem; rozdíl drží, ale čtvrtina z něj stojí na formalistickém kritériu P2. §10 (2026-08-26) — **jaké verze byly doopravdy analyzovány**: PHP 8.5 dodatečně ověřeno (nic nemění), TypeScript 7 je nativní přepis do Go, který analýza nezohlednila, a M1 byla uplatňována nerovnoměrně. §11 (2026-08-26) — **souběžnost, kterou kritéria neměřila**: P1 nehodnotilo prevenci datových závodů při překladu, což je doložený argument pro Rust v otevřené shodě §7.5; kritérium se ale zpětně nedopisuje.
+- **Dodatky:** §9 (2026-08-26) — proč PHP zaostává za Pythonem; rozdíl drží, ale čtvrtina z něj stojí na formalistickém kritériu P2. §10 (2026-08-26) — **jaké verze byly doopravdy analyzovány**: PHP 8.5 dodatečně ověřeno (nic nemění), TypeScript 7 je nativní přepis do Go, který analýza nezohlednila, a M1 byla uplatňována nerovnoměrně. §11 (2026-08-26) — **souběžnost, kterou kritéria neměřila**: P1 nehodnotilo prevenci datových závodů při překladu, což je doložený argument pro Rust v otevřené shodě §7.5; kritérium se ale zpětně nedopisuje. §12 (2026-08-26) — **třetí zadání**: profesionalita včetně souběžnosti, pravidla sepsána před rešerší.
 - **Oprava:** ⚠️ §8 (2026-08-23) — tvrzení, že TypeScript nemá závazek podpory, bylo nepravdivé; brána B2 vypálila na chybném faktu a vypálit neměla. Verdikty se nemění, jedna položka účtu je levnější.
 - **Adversariální průchod:** 🟡 2026-08-23 (§6.1) — ze čtyř prověřovaných buněk jedna neobstála a byla opravena (PHP v prohlížeči); pořadí na prvních dvou místech se nezměnilo. **Omezení: průchod běžel ve stejném kontextu, který závěr vytvořil, ne v odděleném.**
 - **Jazyk:** 🇨🇿 čeština (originál) · 🇬🇧 [English version](README.md) (kanonická)
@@ -61,6 +61,8 @@ Co ta čtyři kritéria znamenají (plné znění a co se u každého měří je
 - [x] dodatek §9 (2026-08-26): rozbor rozdílu PHP vs. Python, doplněny úrovně PHPStan a dvě pod-doložená tvrzení
 - [x] dodatek §10 (2026-08-26): audit analyzovaných verzí, PHP 8.5 ověřeno, TypeScript 7 zaznamenán
 - [x] dodatek §11 (2026-08-26): souběžnost mimo kritéria; argument pro Rust zapsán, P1 nezměněno
+- [x] **třetí zadání: pravidla (§12.1–§12.3) sepsána 2026-08-26 PŘED rešerší** — commitnuta zvlášť
+- [ ] rešerše třetího zadání (§12.4) a jeho verdikt (§12.5)
 - [x] anglická verze (`README.md`) jako kanonická — 2026-08-26
 
 ## 1. Kontext: jaké rozhodnutí se tu doopravdy dělá
@@ -774,6 +776,53 @@ To je mezera, ne detail, protože právě tohle je vlajkové tvrzení jednoho z 
 **Legitimní cesta existuje a je stejná jako u §7.1:** zadavatel může vyhlásit **třetí zadání** s vlastní, dopředu sepsanou a datovanou sadou kritérií, ve které souběžnost bude — a nechat ho proběhnout znovu. Verdikty §6.2 a §7.5 by zůstaly platit jako odpovědi na své otázky.
 
 **Do té doby platí §7.5 tak, jak je: dělené první místo, a rozhodnutí na zadavateli.** Tenhle dodatek k tomu rozhodnutí přidává jeden doložený argument ve prospěch Rustu — nikoli změnu skóre.
+
+## 12. Třetí zadání: profesionalita včetně souběžnosti (pravidla sepsána 2026-08-26 — PŘED rešerší)
+
+### 12.1 Proč třetí zadání
+
+§11.2 doložila, že kritérium P1 neměřilo bezpečnost souběžnosti, a §11.3 řekla, proč se to nedopisuje zpětně: v tu chvíli už bylo vidět, komu by to prospělo. Zadavatel proto 2026-08-26 vyhlásil **třetí zadání** s vlastní sadou kritérií, do níž souběžnost patří od začátku.
+
+**Verdikty §6.2 a §7.5 zůstávají v platnosti** jako odpovědi na své vlastní otázky. Tohle je třetí otázka, ne oprava druhé.
+
+### 12.2 Rozhodovací pravidla třetího zadání
+
+**Kandidáti:** týchž osm v abecedním pořadí (§2.1). **Metodická pravidla M1 až M5 (§2.4) platí beze změny**, včetně povinného adversariálního průchodu a pravidla, že tvrzení o neexistenci potřebuje primární zdroj a pozitivní kontrolu.
+
+**Kritéria:** čtyři převzatá z §7.2 **beze změny znění i beze změny už zjištěných hodnot** — přehodnocovat je teď by znamenalo měnit výsledek, který už znám — plus tři nová, vybraná zadavatelem 2026-08-26:
+
+| # | Kritérium | Co se měří |
+|---|---|---|
+| **P1** | Kompilátor chytí chybu dřív než uživatel | Převzato z §7.2 beze změny |
+| **P2** | Kód přečte cizí člověk bez kontextu | Převzato z §7.2 beze změny |
+| **P3** | Velký refaktoring je bezpečný | Převzato z §7.2 beze změny |
+| **P4** | Typový systém unese doménový model | Převzato z §7.2 beze změny |
+| **P5** | Jazyk umí vytížit víc jader | Skutečný paralelismus nad sdílenou pamětí ve **výchozím** běhovém prostředí, ne přes rozšíření třetí strany |
+| **P6** | Kompilátor chytá chyby souběžnosti | Prevence datových závodů **při překladu**; doloženo tvrzením vlastní dokumentace jazyka, ne odvozením |
+| **P7** | Jedna jednotka souběžnosti je levná | Kolik souběžných úloh unese jeden proces a co stojí jejich vytvoření |
+
+**Váhy: všech sedm stejně (1 × 7).** Zadavatel vybral všechna tři nová kritéria bez určení pořadí, takže rovné váhy jsou nejmenší domýšlení. **Je to volba, ne fakt, a má viditelný důsledek:** souběžnost tím dostává tři sedminy skóre, tedy 43 %. Poučen §6.3 a §7.4 se proto zavazuji doplnit citlivostní přehled, a v něm výslovně i variantu, kde si P5 až P7 **dělí jedno místo** (každé váhu ⅓), takže souběžnost váží jednu pětinu.
+
+**Cena a agregace** jsou totožné se §2.3 a §7.2: ✅ = 0 · 🟡 = 1 · ❌ = 3, součet přes sedm kritérií, **vyhrává nejnižší** (rozsah 0 až 21).
+
+**Tie-breaker, tentokrát sepsaný předem** — poučeno tím, že §7.2 ho neměla a shodu proto nešlo rozhodnout: při rovnosti součtu rozhoduje **P6**, pak **P1**, pak **P5**. Souběžnost je důvod, proč tohle zadání existuje, takže její bezpečnostní osa má při shodě přednost.
+
+### 12.3 Předpověď zapsaná před rešerší
+
+Uvažuji o rozptylu uvnitř kritérií, protože právě to odlišilo úspěšnou předpověď §7.3 od selhavší §2.3. **Jde o inferenci, ne o fakta.**
+
+- **Největší rozptyl čekám u P6** — podle §11 je Rust pravděpodobně jediný, kdo prevenci datových závodů při překladu tvrdí o sobě sám. Pokud to tak dopadne, je to nejsilnější jednotlivá osa celého dokumentu.
+- **P5 by mělo srazit Python, PHP a TypeScript** a nechat zbylých pět nahoře.
+- **P7 by mělo nadržet Go a JVM** (goroutiny, virtuální vlákna od JDK 21) a Rust nechat uprostřed, protože bez runtime třetí strany nabízí vlákna OS.
+- **Čekám, že Rust získá první místo sám** a shoda z §7.5 se rozpadne. Pokud ne, zapíše se to jako výsledek, ne jako oprava předpovědi.
+
+### 12.4 Tabulka třetího zadání
+
+[OVĚŘIT] — rešerše zatím neproběhla.
+
+### 12.5 Verdikt třetího zadání
+
+[OVĚŘIT] — po §12.4 a po adversariálním průchodu.
 
 ## Reference
 

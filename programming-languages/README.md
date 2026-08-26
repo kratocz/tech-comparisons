@@ -5,9 +5,9 @@
 - **Question 2 — which language best covers four specific domains at once? → §3 and §6.** Verdict (§6.2): **TypeScript**, weighted cost 4 ahead of Python's 5, with its trade-offs itemised — the most expensive being that types are not enforced at runtime.
 - **Headline finding — the two verdicts disagree (§7.5):** the winner of question 2 places seventh in question 1. **No language is simultaneously the best fit for those four domains and the most professional tool.** That trade is the document's actual content, not either verdict on its own.
 - **Decision it feeds:** what to build **new** projects on over a horizon of years — mine, a company's, or someone else's — and how to argue that choice to somebody who was not part of the reasoning.
-- **Facts verified:** 🟡 2026-08-22 to 2026-08-23, eight rounds, references [R1]–[R77]. No open `[VERIFY]` tags. Admittedly incomplete: §4.1 (PHPStan and Psalm levels), §4.2 (C# and Rust), §7.4 (criterion P2 measures only formatter ownership, not how much magic you must hold in your head).
+- **Facts verified:** 🟡 2026-08-22 to 2026-08-23, eight rounds, references [R1]–[R85]. Open `[VERIFY]` tags: §12.4 and §12.5 — the third brief has its rules written but its research has not run. Admittedly incomplete: §4.1 (PHPStan and Psalm levels), §4.2 (C# and Rust), §7.4 (criterion P2 measures only formatter ownership, not how much magic you must hold in your head).
 - **Predictions:** two, both written before their own research. §2.3 **failed** — Go was predicted to rise and finished last. §7.3 **held** on every point; the difference was that it reasoned about variance within criteria rather than about candidates' strengths.
-- **Addenda:** §9 (2026-08-26) — why PHP trails Python; the gap holds, but a quarter of it rests on the formalistic criterion P2. §10 (2026-08-26) — **which versions were actually analysed**: PHP 8.5 verified after the fact (nothing changes), TypeScript 7 is a native rewrite in Go the analysis did not account for, and M1 was applied unevenly. §11 (2026-08-26) — **the concurrency the criteria never measured**: P1 did not rate compile-time prevention of data races, which is a documented argument for Rust in the open tie of §7.5; the criterion is not being added after the fact.
+- **Addenda:** §9 (2026-08-26) — why PHP trails Python; the gap holds, but a quarter of it rests on the formalistic criterion P2. §10 (2026-08-26) — **which versions were actually analysed**: PHP 8.5 verified after the fact (nothing changes), TypeScript 7 is a native rewrite in Go the analysis did not account for, and M1 was applied unevenly. §11 (2026-08-26) — **the concurrency the criteria never measured**: P1 did not rate compile-time prevention of data races, which is a documented argument for Rust in the open tie of §7.5; the criterion is not being added after the fact. §12 (2026-08-26) — **third brief**: professionalism including concurrency, rules written before the research.
 - **Correction:** ⚠️ §8 (2026-08-23) — the claim that TypeScript has no support commitment was false; gate B2 fired on a wrong fact and should not have fired. The verdicts do not change; one line of the bill is cheaper.
 - **Adversarial pass:** 🟡 2026-08-23 (§6.1) — of four cells examined, one did not survive and was corrected (PHP in the browser); the top two placings did not move. **Limitation: the pass ran in the same context that produced the conclusion, not a fresh one.**
 - **Language:** 🇬🇧 English (canonical) · 🇨🇿 [Čeština](README.cs.md) (original)
@@ -61,6 +61,8 @@ What those four criteria mean (the full wording and what each measures is in §7
 - [x] addendum §9 (2026-08-26): why PHP trails Python, PHPStan levels added and two under-evidenced claims repaired
 - [x] addendum §10 (2026-08-26): audit of the analysed versions, PHP 8.5 verified, TypeScript 7 recorded
 - [x] addendum §11 (2026-08-26): concurrency outside the criteria; the argument for Rust recorded, P1 unchanged
+- [x] **third brief: rules (§12.1–§12.3) written 2026-08-26 BEFORE the research** — committed separately
+- [ ] research for the third brief (§12.4) and its verdict (§12.5)
 - [x] English version (`README.md`) as the canonical one — 2026-08-26
 
 ## 1. Context: what decision is actually being made
@@ -774,6 +776,53 @@ That is a gap rather than a detail, because this is precisely the flagship claim
 **A legitimate route exists and it is the one from §7.1:** the decider may declare a **third brief** with its own criteria, written and dated in advance, in which concurrency appears — and let it run again. The verdicts in §6.2 and §7.5 would stand as the answers to their own questions.
 
 **Until then §7.5 holds as written: a shared first place, and the decision belongs to the decider.** This addendum adds one documented argument in Rust's favour to that decision — not a change of score.
+
+## 12. Third brief: professionalism including concurrency (rules written 2026-08-26 — BEFORE the research)
+
+### 12.1 Why a third brief
+
+§11.2 documented that criterion P1 never measured concurrency safety, and §11.3 said why it is not added retroactively: by then it was visible whom it would favour. On 2026-08-26 the decider therefore declared a **third brief** with its own set of criteria, in which concurrency belongs from the start.
+
+**The verdicts in §6.2 and §7.5 remain valid** as the answers to their own questions. This is a third question, not a correction of the second.
+
+### 12.2 Decision rules of the third brief
+
+**Candidates:** the same eight in alphabetical order (§2.1). **Methodological rules M1 to M5 (§2.4) apply unchanged**, including the mandatory adversarial pass and the rule that a claim of non-existence needs a primary source and a positive control.
+
+**Criteria:** four carried over from §7.2 **with their wording and their already-established values unchanged** — re-rating them now would mean altering a result I already know — plus three new ones, chosen by the decider on 2026-08-26:
+
+| # | Criterion | What is measured |
+|---|---|---|
+| **P1** | The compiler catches the mistake before the user does | Carried over from §7.2 unchanged |
+| **P2** | A stranger can read the code without context | Carried over from §7.2 unchanged |
+| **P3** | Large refactors are safe | Carried over from §7.2 unchanged |
+| **P4** | The type system carries the domain model | Carried over from §7.2 unchanged |
+| **P5** | The language can use several cores | Real shared-memory parallelism in the **default** runtime, not through a third-party extension |
+| **P6** | The compiler catches concurrency errors | Prevention of data races **at compile time**; evidenced by the language's own documentation claiming it, not by inference |
+| **P7** | A unit of concurrency is cheap | How many concurrent tasks one process carries, and what creating them costs |
+
+**Weights: all seven equal (1 × 7).** The decider chose all three new criteria without ranking them, so equal weights are the least amount of guessing. **It is a choice rather than a fact, and it has a visible consequence:** concurrency thereby takes three sevenths of the score, that is 43 %. Taught by §6.3 and §7.4, I commit to adding a sensitivity table, and in it explicitly the variant where P5 to P7 **share one slot** (a weight of ⅓ each), putting concurrency at one fifth.
+
+**Cost and aggregation** are identical to §2.3 and §7.2: ✅ = 0 · 🟡 = 1 · ❌ = 3, summed across seven criteria, **lowest wins** (range 0 to 21).
+
+**A tie-breaker, this time written in advance** — taught by §7.2 not having one, which left its tie unresolvable: on an equal sum the order is **P6**, then **P1**, then **P5**. Concurrency is the reason this brief exists, so its safety axis takes precedence on a tie.
+
+### 12.3 Prediction recorded before the research
+
+I reason about variance within the criteria, because that is what separated the successful §7.3 prediction from the failed §2.3 one. **This is inference, not fact.**
+
+- **I expect the largest variance in P6** — per §11, Rust is probably the only candidate whose own documentation claims compile-time prevention of data races. If that holds, it is the single strongest axis in the document.
+- **P5 should drag down Python, PHP and TypeScript** and leave the other five at the top.
+- **P7 should favour Go and the JVM** (goroutines, virtual threads since JDK 21) and leave Rust in the middle, since without a third-party runtime it offers OS threads.
+- **I expect Rust to take first place outright** and the §7.5 tie to break. If it does not, that is recorded as a result, not as a correction of the prediction.
+
+### 12.4 Third brief table
+
+[VERIFY] — the research has not run yet.
+
+### 12.5 Verdict of the third brief
+
+[VERIFY] — after §12.4 and after the adversarial pass.
 
 ## References
 
