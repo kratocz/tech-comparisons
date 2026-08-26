@@ -1,11 +1,12 @@
 # Volba programovacího jazyka: jeden jazyk na dlouhá léta pro nové projekty
 
-- **Na co dokument odpovídá:** na **dvě různé otázky**. Zadání se během práce upřesnilo a nová verze se zapsala jako nové datované zadání, ne jako přepis staré (§7.1) — dokument tedy nese dva verdikty vedle sebe. Koho zajímá jen jedna z otázek, nemusí číst zbytek.
+- **Na co dokument odpovídá:** na **tři různé otázky**. Zadání se během práce dvakrát upřesnilo a každá nová verze se zapsala jako nové datované zadání, ne jako přepis staré (§7.1, §12.1) — dokument tedy nese tři verdikty vedle sebe. Koho zajímá jen jedna z otázek, nemusí číst zbytek.
 - **Otázka 1 — který jazyk je nejprofesionálnější, tedy přehledný v malém i velmi rozsáhlém kódu? → §7.** Verdikt (§7.5): **Kotlin a Rust, dělené první místo** — jediné dva z osmi bez jediné výhrady ve všech čtyřech kritériích. Shodu pravidlo nerozhoduje a tie-breaker se po zhlédnutí výsledku nedopisuje, takže volba mezi nimi patří zadavateli.
 - **Otázka 2 — který jazyk nejlíp pokryje čtyři konkrétní domény najednou? → §3 a §6.** Verdikt (§6.2): **TypeScript**, vážená cena 4 před Pythonem s 5, s vyjmenovanými kompromisy — nejdražší z nich je, že se typy za běhu nevynucují.
-- **Hlavní nález — rozpor mezi oběma verdikty (§7.5):** vítěz otázky 2 je v otázce 1 sedmý. **Žádný jazyk není zároveň nejlepším pokrytím těch čtyř domén a nejprofesionálnějším nástrojem.** Ten obchod je vlastní obsah dokumentu, ne kterýkoli z verdiktů zvlášť.
+- **Otázka 3 — a co když se do profesionality započítá i souběžnost? → §12.** Verdikt (§12.5): **Rust** se součtem 1 před Kotlinem se 3. Tenhle verdikt **rozsekl shodu z otázky 1**, a to jedinou osou: prevencí datových závodů při překladu, kterou z osmi kandidátů tvrdí o sobě jen Rust.
+- **Hlavní nález — rozpor mezi verdikty (§7.5, §12.5):** vítěz otázky 2 je v otázce 1 sedmý a v otázce 3 šestý. **Žádný jazyk není zároveň nejlepším pokrytím těch čtyř domén a nejprofesionálnějším nástrojem.** Ten obchod je vlastní obsah dokumentu, ne kterýkoli z verdiktů zvlášť.
 - **Sycené rozhodnutí:** na čem stavět **nové** projekty (vlastní, firemní i cizí) v horizontu let — a čím tu volbu argumentovat u někoho, kdo u úvahy nebyl.
-- **Fakta ověřena:** 🟡 2026-08-22 až 2026-08-23, osm kol, reference [R1]–[R85]. Otevřené `[OVĚŘIT]`: §12.4 a §12.5 — třetí zadání má sepsaná pravidla, ale rešerše zatím neproběhla. Přiznaně neúplné: §4.1 (úrovně PHPStan a Psalm), §4.2 (C# a Rust), §7.4 (kritérium P2 měří jen vlastnictví formátovače, ne množství magie).
+- **Fakta ověřena:** 🟡 2026-08-22 až 2026-08-23, osm kol, reference [R1]–[R91]. Bez otevřených `[OVĚŘIT]`. Přiznaně neúplné: §4.1 (úrovně PHPStan a Psalm), §4.2 (C# a Rust), §7.4 (kritérium P2 měří jen vlastnictví formátovače, ne množství magie).
 - **Předpovědi:** dvě, obě zapsané před svou rešerší. §2.3 **nevyšla** — Go mělo stoupnout a skončilo poslední. §7.3 **vyšla** ve všech bodech; rozdíl byl v tom, že uvažovala o rozptylu uvnitř kritérií, ne o silných stránkách kandidátů.
 - **Dodatky:** §9 (2026-08-26) — proč PHP zaostává za Pythonem; rozdíl drží, ale čtvrtina z něj stojí na formalistickém kritériu P2. §10 (2026-08-26) — **jaké verze byly doopravdy analyzovány**: PHP 8.5 dodatečně ověřeno (nic nemění), TypeScript 7 je nativní přepis do Go, který analýza nezohlednila, a M1 byla uplatňována nerovnoměrně. §11 (2026-08-26) — **souběžnost, kterou kritéria neměřila**: P1 nehodnotilo prevenci datových závodů při překladu, což je doložený argument pro Rust v otevřené shodě §7.5; kritérium se ale zpětně nedopisuje. §12 (2026-08-26) — **třetí zadání**: profesionalita včetně souběžnosti, pravidla sepsána před rešerší.
 - **Oprava:** ⚠️ §8 (2026-08-23) — tvrzení, že TypeScript nemá závazek podpory, bylo nepravdivé; brána B2 vypálila na chybném faktu a vypálit neměla. Verdikty se nemění, jedna položka účtu je levnější.
@@ -17,18 +18,18 @@
 
 *Shrnutí doplněné 2026-08-26. Nepřidává žádné tvrzení — jen sbírá dohromady výsledky §3, §6 a §7, aby se nemusely hledat.*
 
-Dokument odpovídá na **dvě otázky** a **každá má jiného vítěze**. Tabulka je seřazená podle profesionality jazyka; nižší číslo je vždy lepší. Čtyři kritéria profesionality jsou z §7.2, ceny buněk ✅ = 0 · 🟡 = 1 · ❌ = 3, takže součet jde přepočítat okem. Plné znění buněk i se zdroji je v §7.4. Poslední sloupec je **pořadí** v prvním zadání (§6.2); tam, kde je vážená cena shodná, sdílejí kandidáti jedno místo — rozdíly v doménovém skóre jsou malé a rozsah je jen 4 až 9.
+Dokument odpovídá na **tři otázky** a **každá má jiného vítěze**. Tabulka je seřazená podle profesionality jazyka; nižší číslo je vždy lepší. Čtyři kritéria profesionality jsou z §7.2, ceny buněk ✅ = 0 · 🟡 = 1 · ❌ = 3, takže součet jde přepočítat okem. Plné znění buněk i se zdroji je v §7.4. Poslední sloupec je **pořadí** v prvním zadání (§6.2); tam, kde je vážená cena shodná, sdílejí kandidáti jedno místo — rozdíly v doménovém skóre jsou malé a rozsah je jen 4 až 9.
 
-| # | Jazyk | P1: kompilátor chytí chybu | P2: čitelnost pro lidi | P3: velký refaktoring bezpečný | P4: typy unesou doménový model | Součet | Domény (§6.2) |
-|---|---|---|---|---|---|---|---|
-| 1.–2. | **Kotlin** | ✅ nullabilita v typech | ✅ `ktfmt` pod `Kotlin` | ✅ `kotlin-lsp` pod `Kotlin` | ✅ sealed třídy, `when` bez `else` | **0** | 3.–5. místo |
-| 1.–2. | **Rust** | ✅ null neexistuje, `match` vyčerpávající | ✅ `rustfmt` pod `rust-lang` | ✅ `rust-analyzer` pod `rust-lang` | ✅ enumy nesou data | **0** | 6. místo |
-| 3. | C# | 🟡 nullabilita jen při překladu | ✅ `dotnet format` pod `dotnet` | ✅ statické typy + Roslyn | 🟡 součtové typy zatím jen návrh | 2 | 3.–5. místo |
-| 4. | Go | 🟡 `nil` je nulová hodnota všeho | ✅ `gofmt` v distribuci | ✅ `gopls` pod `golang` | ❌ součtové typy vynechány záměrně | 4 | 8. místo |
-| 5.–6. | Java | 🟡 generika se mažou, nullabilita chybí | ❌ oficiální formátovač není | 🟡 jazykový server je Eclipse | ✅ sealed + vyčerpávající `switch` | 5 | 3.–5. místo |
-| 5.–6. | Python | ❌ runtime typy nevynucuje | ✅ `black` pod `psf` | 🟡 dynamický; `mypy` first-party | 🟡 jen ve statické kontrole | 5 | 2. místo |
-| 7. | TypeScript | ❌ typy se při překladu mažou | ❌ oficiální formátovač není | ✅ statické typy + nástroje MS | ✅ diskriminované unie a `never` | 6 | **1. místo** |
-| 8. | PHP | ❌ přísnost po souborech, bez generik | ❌ oficiální formátovač není | ❌ oficiální jazykový server není | ❌ enumy nesou jen skalár | 12 | 7. místo |
+| # | Jazyk | P1: kompilátor chytí chybu | P2: čitelnost pro lidi | P3: velký refaktoring bezpečný | P4: typy unesou doménový model | Součet | Se souběžností (§12.5) | Domény (§6.2) |
+|---|---|---|---|---|---|---|---|---|
+| 1.–2. | **Rust** | ✅ null neexistuje, `match` vyčerpávající | ✅ `rustfmt` pod `rust-lang` | ✅ `rust-analyzer` pod `rust-lang` | ✅ enumy nesou data | **0** | **1 — 1. místo** | 6. místo |
+| 1.–2. | **Kotlin** | ✅ nullabilita v typech | ✅ `ktfmt` pod `Kotlin` | ✅ `kotlin-lsp` pod `Kotlin` | ✅ sealed třídy, `when` bez `else` | **0** | 3 — 2. místo | 3.–5. místo |
+| 3. | C# | 🟡 nullabilita jen při překladu | ✅ `dotnet format` pod `dotnet` | ✅ statické typy + Roslyn | 🟡 součtové typy zatím jen návrh | 2 | 6 — 3. místo | 3.–5. místo |
+| 4. | Go | 🟡 `nil` je nulová hodnota všeho | ✅ `gofmt` v distribuci | ✅ `gopls` pod `golang` | ❌ součtové typy vynechány záměrně | 4 | 7 — 4. místo | 8. místo |
+| 5.–6. | Java | 🟡 generika se mažou, nullabilita chybí | ❌ oficiální formátovač není | 🟡 jazykový server je Eclipse | ✅ sealed + vyčerpávající `switch` | 5 | 8 — 5. místo | 3.–5. místo |
+| 5.–6. | Python | ❌ runtime typy nevynucuje | ✅ `black` pod `psf` | 🟡 dynamický; `mypy` first-party | 🟡 jen ve statické kontrole | 5 | 12 — 7. místo | 2. místo |
+| 7. | TypeScript | ❌ typy se při překladu mažou | ❌ oficiální formátovač není | ✅ statické typy + nástroje MS | ✅ diskriminované unie a `never` | 6 | 10 — 6. místo | **1. místo** |
+| 8. | PHP | ❌ přísnost po souborech, bez generik | ❌ oficiální formátovač není | ❌ oficiální jazykový server není | ❌ enumy nesou jen skalár | 12 | 19 — 8. místo | 7. místo |
 
 Co ta čtyři kritéria znamenají (plné znění a co se u každého měří je v §7.2):
 
@@ -37,7 +38,8 @@ Co ta čtyři kritéria znamenají (plné znění a co se u každého měří je
 - **P3 — velký refaktoring je bezpečný:** statické typy plus oficiální jazykový server; najde nástroj všechna volání?
 - **P4 — typový systém unese doménový model:** součtové typy nesoucí data a vyčerpávající větvení nad nimi.
 
-- **Nejprofesionálnější jazyk (§7):** **Kotlin a Rust, dělené první místo** — jediné dva bez jediné výhrady ve všech čtyřech kritériích. Shodu pravidlo nerozhoduje a tie-breaker se po zhlédnutí výsledku nedopisuje, takže volba mezi nimi patří zadavateli.
+- **Nejprofesionálnější jazyk (§7):** **Kotlin a Rust, dělené první místo** — jediné dva bez jediné výhrady ve všech čtyřech kritériích.
+- **Se započtenou souběžností (§12.5):** **Rust sám**, se součtem 1 před Kotlinem se 3. Rozhodla prevence datových závodů při překladu, kterou z osmi tvrdí o sobě jedině Rust — a která ve čtyřech kritériích §7.2 nebyla vůbec měřena (§11.2).
 - **Nejlepší pokrytí čtyř domén (§6.2):** **TypeScript** s váženou cenou 4 před Pythonem s 5 — ale platí za to tím, že se typy za běhu nevynucují.
 - **Hlavní nález:** vítěz druhého sloupce je v prvním sedmý. **Žádný jazyk není zároveň nejlepším pokrytím domén a nejprofesionálnějším nástrojem** — a ten obchod je vlastní obsah dokumentu, ne kterýkoli z verdiktů zvlášť.
 - **Dvě kritéria jsou měřena neúplně a dokument to přiznává:** P2 hodnotí jen to, pod čí organizací žije formátovač, ne kolik magie musíš držet v hlavě (§9.3), a P4 nehodnotí neměnnost, ačkoli ji §7.2 uvádí (§10.1). U dvojice PHP–Python stojí zhruba třetina rozdílu právě na P2.
@@ -62,7 +64,7 @@ Co ta čtyři kritéria znamenají (plné znění a co se u každého měří je
 - [x] dodatek §10 (2026-08-26): audit analyzovaných verzí, PHP 8.5 ověřeno, TypeScript 7 zaznamenán
 - [x] dodatek §11 (2026-08-26): souběžnost mimo kritéria; argument pro Rust zapsán, P1 nezměněno
 - [x] **třetí zadání: pravidla (§12.1–§12.3) sepsána 2026-08-26 PŘED rešerší** — commitnuta zvlášť
-- [ ] rešerše třetího zadání (§12.4) a jeho verdikt (§12.5)
+- [x] rešerše třetího zadání (§12.4) a jeho verdikt (§12.5) — 2026-08-26: **Rust vyhrál sám, shoda ze §7.5 rozseknuta**
 - [x] anglická verze (`README.md`) jako kanonická — 2026-08-26
 
 ## 1. Kontext: jaké rozhodnutí se tu doopravdy dělá
@@ -816,13 +818,63 @@ Uvažuji o rozptylu uvnitř kritérií, protože právě to odlišilo úspěšno
 - **P7 by mělo nadržet Go a JVM** (goroutiny, virtuální vlákna od JDK 21) a Rust nechat uprostřed, protože bez runtime třetí strany nabízí vlákna OS.
 - **Čekám, že Rust získá první místo sám** a shoda z §7.5 se rozpadne. Pokud ne, zapíše se to jako výsledek, ne jako oprava předpovědi.
 
-### 12.4 Tabulka třetího zadání
+### 12.4 Tabulka třetího zadání (ověřeno 2026-08-26)
 
-[OVĚŘIT] — rešerše zatím neproběhla.
+P1 až P4 jsou převzaty ze §7.4 **beze změny**; sloupec „P1–P4“ je jejich součet. Nové jsou P5 až P7. Ceny: ✅ = 0 · 🟡 = 1 · ❌ = 3.
 
-### 12.5 Verdikt třetího zadání
+| Jazyk | P1–P4 (§7.4) | P5: vytíží víc jader | P6: kompilátor chytá závody | P7: jednotka souběžnosti je levná | Součet |
+|---|---|---|---|---|---|
+| **C#** | 2 | ✅ vlákna i `Task.Run` na pozadí [R86] | ❌ závody jsou na programátorovi; *"the .NET class libraries are not thread safe by default"* [R86] | 🟡 `Task` na fondu vláken, ale bez zelených vláken [R91] | **6** |
+| **Go** | 4 | ✅ goroutiny multiplexované na vlákna OS [R59] | ❌ memory model je běhový; závody hlásí až `-race` [R84] | ✅ goroutina stojí *"little more than the allocation of stack space"* [R59] | **7** |
+| **Java** | 5 | ✅ platformní i virtuální vlákna [R57] | ❌ *"memory consistency errors"* — programátor musí zavést happens-before [R90] | ✅ virtuálních vláken *"even millions"* v jednom procesu [R57] | **8** |
+| **Kotlin** | 0 | ✅ přes JVM [R57] | ❌ dokumentace korutin nic takového netvrdí [R87] | ✅ *"running millions of them in one process"*; 50 000 korutin ≈ 500 MB proti ≈ 100 GB u vláken [R87] | **3** |
+| **PHP** | 12 | ❌ Fibers jsou jen kooperativní, ne paralelní [R60] | ❌ nemá co chytat — bez paralelismu ve výchozím běhu [R60] | 🟡 Fibers jsou levné, ale nevytíží jádra [R60] | **19** |
+| **Python** | 5 | ❌ *"only one thread can execute Python code at once"*; dokumentace radí `multiprocessing` [R88]. Build bez GIL od 3.13 **není výchozí** [R56] | ❌ zámky a synchronizace až za běhu [R88] | 🟡 asyncio pro I/O; vlákna jsou OS vlákna pod GIL [R88] | **12** |
+| **Rust** | 0 | ✅ *"a collection of native OS threads"* [R89] | ✅ jediný z osmi: *"many concurrency errors are compile-time errors in Rust rather than runtime errors"* [R85] | 🟡 `std::thread` je 1:1 na OS, výchozí zásobník 2 MiB; `async`/`await` je v jazyce, ale exekutor je knihovna [R89] | **1** |
+| **TypeScript** | 6 | 🟡 workeři jsou skutečná vlákna, ale oddělené kontexty; sdílení jen přes `SharedArrayBuffer` [R58] | ❌ nic takového netvrdí [R58] | ✅ smyčka událostí zvládne desítky tisíc souběžných I/O operací [R58] | **10** |
 
-[OVĚŘIT] — po §12.4 a po adversariálním průchodu.
+**Vyhodnocení předpovědi ze §12.3 — vyšla ve všech čtyřech bodech.** Největší rozptyl je opravdu u P6 (jedno ✅ proti sedmi ❌, tedy nejostřejší osa dokumentu). P5 srazilo Python, PHP i TypeScript. P7 nadrželo Go a JVM a Rust nechalo uprostřed. A **Rust získal první místo sám**, čímž se shoda ze §7.5 rozpadla.
+
+*Že předpověď vyšla, je důvod k větší podezřívavosti, ne k menší — proto adversariální průchod v §12.5 míří přednostně právě na buňky, které o výsledku rozhodly.*
+
+**Citlivost na váhy, jak §12.2 slíbila.** Ve variantě, kde si P5 až P7 dělí jedno místo (každé ⅓, souběžnost tedy váží pětinu místo 43 %):
+
+| Jazyk | Rovné váhy (1×7) | P5–P7 dělí jedno místo |
+|---|---|---|
+| **Rust** | **1** | **0,33** |
+| **Kotlin** | 3 | 1,00 |
+| **C#** | 6 | 3,33 |
+| **Go** | 7 | 5,00 |
+| **Java** | 8 | 6,00 |
+| **TypeScript** | 10 | 7,33 |
+| **Python** | 12 | 7,33 |
+| **PHP** | 19 | 14,33 |
+
+**Pořadí na prvních dvou místech se nemění.** Obava ze §12.2, že tři sedminy udělají z dokumentu o profesionalitě dokument o souběžnosti, se tedy na verdiktu neprojevila — Rust vede i tehdy, když souběžnost váží pětinu.
+
+### 12.5 Verdikt třetího zadání (2026-08-26)
+
+**Vyhrává Rust se součtem 1**, před Kotlinem se 3. **Shoda ze §7.5 je rozseknutá**, a rozhodla ji jediná osa: P6.
+
+**Adversariální průchod (M5), mířený na buňky, které o výsledku rozhodly:**
+
+| Námitka | Výsledek |
+|---|---|
+| **Chytá Rust závody opravdu při překladu?** | **Obstálo s upřesněním.** Zdroj říká *"many concurrency errors"*, ne „všechny“, a záruka platí pro **bezpečný** Rust — `unsafe` z ní vystupuje. ✅ tedy znamená „jediný, kdo to při překladu vůbec dělá“, ne „nelze napsat závod“. |
+| **Není ❌ u ostatních sedmi příliš tvrdé?** | **Obstálo.** Java má `@GuardedBy` v nástrojích třetích stran, C# analyzátory, Go `-race` — ale ani jeden z jazyků to netvrdí o sobě ve vlastní dokumentaci, což bylo znění kritéria P6 (§12.2). |
+| **Rust 🟡 v P7 stojí na mém vlastním rozlišení** — knihovna versus jiný build runtime | **Přiznaná slabina.** Kdyby buňka padla na ❌, Rust má 3 a **je na shodě s Kotlinem**. Pak ale vypálí tie-breaker sepsaný v §12.2 předem: rozhoduje P6, kde má Rust ✅ a Kotlin ❌. **Verdikt drží i tak** — a je to první případ v celém dokumentu, kdy se předem sepsaný tie-breaker vyplatil. |
+
+*Omezení stejné jako v §6.1: průchod běžel ve stejném kontextu, který závěr vytvořil.*
+
+**Co za Rust platíš — přijaté kompromisy:**
+
+1. **Nejmenší náborová základna z osmi po Kotlinu** — 14,5 % (§5.1).
+2. **Bez datované tabulky podpory** (§4.5); nahrazuje ji slib kompatibility, který je věcně silný, ale nedá se ukázat prstem na řádek s datem.
+3. **Jediný, kdo není ✅ v backendu** — nejvýš vážené doméně prvního zadání (§3).
+4. **Levná souběžnost potřebuje knihovnu** — `std::thread` je 1:1 na vlákna OS s 2 MiB zásobníkem.
+5. **A co dokument nikdy neměřil:** dobu překladu ani strmost učení. To jsou dvě nejčastější námitky proti Rustu a **výsledek zčásti odráží, co se měřit rozhodlo.**
+
+**Vztah k ostatním verdiktům.** §6.2 (TypeScript, pokrytí domén) a §7.5 (dělené první místo) **platí dál** jako odpovědi na své otázky. Tenhle verdikt neruší ani jeden; přidává třetí odpověď na třetí otázku. **Rozpor mezi nimi zůstává hlavním nálezem dokumentu** — a nově je vidět ještě ostřeji: vítěz prvního zadání je tady šestý.
 
 ## Reference
 
@@ -925,6 +977,15 @@ Ověřeno k 2026-08-22 (kolo 1 — brána B2, §4.4 a §4.5).
 - [R75] Vlastnictví nástrojů podle organizace na GitHubu, ověřeno přes API 2026-08-23 (pozitivní kontrola: všechny dotazy vrátily metadata repozitáře): `rust-lang/rustfmt`, `rust-lang/rust-analyzer`, `golang/tools` (gopls), `Kotlin/ktfmt`, `Kotlin/kotlin-lsp`, `psf/black`, `dotnet/format`, `microsoft/pyright` — proti `prettier/prettier`, `PHP-CS-Fixer/PHP-CS-Fixer` a `google/google-java-format`, které pod organizací svého jazyka **nejsou**.
 - [R76] dotnet/csharplang — `proposals/standard-unions.md`; součtové typy jsou v C# stále **návrh**, ne jazykový rys. Ověřeno 2026-08-23: <https://github.com/dotnet/csharplang/blob/main/proposals/standard-unions.md>
 - [R77] Python — `typing.assert_never` (kontrola vyčerpání, ale jen ve statické kontrole). Ověřeno 2026-08-23: <https://docs.python.org/3/library/typing.html>
+
+**Souběžnost v třetím zadání (§12.4)**
+
+- [R86] .NET — Managed Threading Best Practices (souběhy jsou na programátorovi; knihovny .NET nejsou thread-safe implicitně). Ověřeno 2026-08-26: <https://learn.microsoft.com/en-us/dotnet/standard/threading/managed-threading-best-practices>
+- [R87] Kotlin — Coroutines basics (miliony korutin v procesu; 50 000 korutin ≈ 500 MB proti ≈ 100 GB u vláken). Ověřeno 2026-08-26: <https://kotlinlang.org/docs/coroutines-basics.html>
+- [R88] Python — `threading` (GIL, doporučení `multiprocessing` pro víc jader, zámky až za běhu). Ověřeno 2026-08-26: <https://docs.python.org/3/library/threading.html>
+- [R89] Rust — `std::thread` (nativní vlákna OS, výchozí zásobník 2 MiB na platformách Tier 1). Ověřeno 2026-08-26: <https://doc.rust-lang.org/std/thread/>
+- [R90] The Java Tutorials — Memory Consistency Errors (happens-before je na programátorovi). Ověřeno 2026-08-26: <https://docs.oracle.com/javase/tutorial/essential/concurrency/memconsist.html>
+- [R91] C# — Asynchronous programming scenarios (`Task`, fond vláken, `Task.Run` pro výpočetní úlohy). Ověřeno 2026-08-26: <https://learn.microsoft.com/en-us/dotnet/csharp/asynchronous-programming/async-scenarios>
 
 **Souběžnost a paměťový model (§11)**
 

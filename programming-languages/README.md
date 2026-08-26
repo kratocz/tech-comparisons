@@ -1,11 +1,12 @@
 # Choosing a programming language: one language for years, for new projects
 
-- **What this document answers:** **two different questions**. The brief was refined during the work, and the new version was recorded as a new dated brief rather than a rewrite of the old one (§7.1) — so the document carries two verdicts side by side. If only one question interests you, the rest can be skipped.
+- **What this document answers:** **three different questions**. The brief was refined twice during the work, and each new version was recorded as a new dated brief rather than a rewrite of the old one (§7.1, §12.1) — so the document carries three verdicts side by side. If only one question interests you, the rest can be skipped.
 - **Question 1 — which language is the most professional, meaning legible in small and in very large codebases? → §7.** Verdict (§7.5): **Kotlin and Rust, joint first** — the only two of eight clean on all four criteria. The rule does not settle the tie, and a tie-breaker is not written after seeing the result, so the choice between them belongs to the decider.
 - **Question 2 — which language best covers four specific domains at once? → §3 and §6.** Verdict (§6.2): **TypeScript**, weighted cost 4 ahead of Python's 5, with its trade-offs itemised — the most expensive being that types are not enforced at runtime.
-- **Headline finding — the two verdicts disagree (§7.5):** the winner of question 2 places seventh in question 1. **No language is simultaneously the best fit for those four domains and the most professional tool.** That trade is the document's actual content, not either verdict on its own.
+- **Question 3 — and what if concurrency counts towards professionalism too? → §12.** Verdict (§12.5): **Rust** with a sum of 1, ahead of Kotlin at 3. This verdict **broke the tie from question 1**, on a single axis: compile-time prevention of data races, which only Rust claims of itself among the eight.
+- **Headline finding — the verdicts disagree (§7.5, §12.5):** the winner of question 2 places seventh in question 1 and sixth in question 3. **No language is simultaneously the best fit for those four domains and the most professional tool.** That trade is the document's actual content, not either verdict on its own.
 - **Decision it feeds:** what to build **new** projects on over a horizon of years — mine, a company's, or someone else's — and how to argue that choice to somebody who was not part of the reasoning.
-- **Facts verified:** 🟡 2026-08-22 to 2026-08-23, eight rounds, references [R1]–[R85]. Open `[VERIFY]` tags: §12.4 and §12.5 — the third brief has its rules written but its research has not run. Admittedly incomplete: §4.1 (PHPStan and Psalm levels), §4.2 (C# and Rust), §7.4 (criterion P2 measures only formatter ownership, not how much magic you must hold in your head).
+- **Facts verified:** 🟡 2026-08-22 to 2026-08-23, eight rounds, references [R1]–[R91]. No open `[VERIFY]` tags. Admittedly incomplete: §4.1 (PHPStan and Psalm levels), §4.2 (C# and Rust), §7.4 (criterion P2 measures only formatter ownership, not how much magic you must hold in your head).
 - **Predictions:** two, both written before their own research. §2.3 **failed** — Go was predicted to rise and finished last. §7.3 **held** on every point; the difference was that it reasoned about variance within criteria rather than about candidates' strengths.
 - **Addenda:** §9 (2026-08-26) — why PHP trails Python; the gap holds, but a quarter of it rests on the formalistic criterion P2. §10 (2026-08-26) — **which versions were actually analysed**: PHP 8.5 verified after the fact (nothing changes), TypeScript 7 is a native rewrite in Go the analysis did not account for, and M1 was applied unevenly. §11 (2026-08-26) — **the concurrency the criteria never measured**: P1 did not rate compile-time prevention of data races, which is a documented argument for Rust in the open tie of §7.5; the criterion is not being added after the fact. §12 (2026-08-26) — **third brief**: professionalism including concurrency, rules written before the research.
 - **Correction:** ⚠️ §8 (2026-08-23) — the claim that TypeScript has no support commitment was false; gate B2 fired on a wrong fact and should not have fired. The verdicts do not change; one line of the bill is cheaper.
@@ -17,18 +18,18 @@
 
 *Summary added 2026-08-26. It adds no claim — it only gathers the results of §3, §6 and §7 so they need not be hunted for.*
 
-The document answers **two questions** and **each has a different winner**. The table is ordered by language professionalism; a lower number is always better. The four professionalism criteria come from §7.2, cell costs are ✅ = 0 · 🟡 = 1 · ❌ = 3, so the sum can be recomputed by eye. The full cells with their sources are in §7.4. The last column is the **placing** in the first brief (§6.2); where the weighted cost ties, candidates share a place — the spread in the domain score is small, running only 4 to 9.
+The document answers **three questions** and **each has a different winner**. The table is ordered by language professionalism; a lower number is always better. The four professionalism criteria come from §7.2, cell costs are ✅ = 0 · 🟡 = 1 · ❌ = 3, so the sum can be recomputed by eye. The full cells with their sources are in §7.4. The last column is the **placing** in the first brief (§6.2); where the weighted cost ties, candidates share a place — the spread in the domain score is small, running only 4 to 9.
 
-| # | Language | P1: compiler catches the mistake | P2: legible to people | P3: large refactors safe | P4: types carry the domain model | Sum | Domains (§6.2) |
-|---|---|---|---|---|---|---|---|
-| 1.–2. | **Kotlin** | ✅ nullability in the types | ✅ `ktfmt` under `Kotlin` | ✅ `kotlin-lsp` under `Kotlin` | ✅ sealed classes, `when` without `else` | **0** | 3rd–5th |
-| 1.–2. | **Rust** | ✅ no null, `match` exhaustive | ✅ `rustfmt` under `rust-lang` | ✅ `rust-analyzer` under `rust-lang` | ✅ enums carry data | **0** | 6th |
-| 3. | C# | 🟡 nullability compile-time only | ✅ `dotnet format` under `dotnet` | ✅ static types + Roslyn | 🟡 sum types still only a proposal | 2 | 3rd–5th |
-| 4. | Go | 🟡 `nil` is the zero value of everything | ✅ `gofmt` in the distribution | ✅ `gopls` under `golang` | ❌ variant types left out deliberately | 4 | 8th |
-| 5.–6. | Java | 🟡 generics erased, no nullability | ❌ no official formatter | 🟡 language server is Eclipse's | ✅ sealed + exhaustive `switch` | 5 | 3rd–5th |
-| 5.–6. | Python | ❌ runtime does not enforce types | ✅ `black` under `psf` | 🟡 dynamic; `mypy` is first-party | 🟡 static checking only | 5 | 2nd |
-| 7. | TypeScript | ❌ types erased at compile time | ❌ no official formatter | ✅ static types + Microsoft tooling | ✅ discriminated unions and `never` | 6 | **1st** |
-| 8. | PHP | ❌ strictness per file, no generics | ❌ no official formatter | ❌ no official language server | ❌ enums carry only a scalar | 12 | 7th |
+| # | Language | P1: compiler catches the mistake | P2: legible to people | P3: large refactors safe | P4: types carry the domain model | Sum | With concurrency (§12.5) | Domains (§6.2) |
+|---|---|---|---|---|---|---|---|---|
+| 1.–2. | **Rust** | ✅ no null, `match` exhaustive | ✅ `rustfmt` under `rust-lang` | ✅ `rust-analyzer` under `rust-lang` | ✅ enums carry data | **0** | **1 — 1st** | 6th |
+| 1.–2. | **Kotlin** | ✅ nullability in the types | ✅ `ktfmt` under `Kotlin` | ✅ `kotlin-lsp` under `Kotlin` | ✅ sealed classes, `when` without `else` | **0** | 3 — 2nd | 3rd–5th |
+| 3. | C# | 🟡 nullability compile-time only | ✅ `dotnet format` under `dotnet` | ✅ static types + Roslyn | 🟡 sum types still only a proposal | 2 | 6 — 3rd | 3rd–5th |
+| 4. | Go | 🟡 `nil` is the zero value of everything | ✅ `gofmt` in the distribution | ✅ `gopls` under `golang` | ❌ variant types left out deliberately | 4 | 7 — 4th | 8th |
+| 5.–6. | Java | 🟡 generics erased, no nullability | ❌ no official formatter | 🟡 language server is Eclipse's | ✅ sealed + exhaustive `switch` | 5 | 8 — 5th | 3rd–5th |
+| 5.–6. | Python | ❌ runtime does not enforce types | ✅ `black` under `psf` | 🟡 dynamic; `mypy` is first-party | 🟡 static checking only | 5 | 12 — 7th | 2nd |
+| 7. | TypeScript | ❌ types erased at compile time | ❌ no official formatter | ✅ static types + Microsoft tooling | ✅ discriminated unions and `never` | 6 | 10 — 6th | **1st** |
+| 8. | PHP | ❌ strictness per file, no generics | ❌ no official formatter | ❌ no official language server | ❌ enums carry only a scalar | 12 | 19 — 8th | 7th |
 
 What those four criteria mean (the full wording and what each measures is in §7.2):
 
@@ -37,7 +38,8 @@ What those four criteria mean (the full wording and what each measures is in §7
 - **P3 — large refactors are safe:** static types plus an official language server; will the tooling find every call site?
 - **P4 — the type system carries the domain model:** sum types carrying data, and exhaustive branching over them.
 
-- **Most professional language (§7):** **Kotlin and Rust, joint first** — the only two clean on all four criteria. The rule does not settle the tie and a tie-breaker is not written after seeing the result, so the choice between them belongs to the decider.
+- **Most professional language (§7):** **Kotlin and Rust, joint first** — the only two clean on all four criteria.
+- **With concurrency counted in (§12.5):** **Rust alone**, with a sum of 1 ahead of Kotlin at 3. Compile-time prevention of data races decided it — only Rust claims it of itself among the eight, and the four criteria of §7.2 never measured it at all (§11.2).
 - **Best coverage of the four domains (§6.2):** **TypeScript**, weighted cost 4 ahead of Python's 5 — but it pays for that by not enforcing types at runtime.
 - **Headline finding:** the winner of the second column places seventh in the first. **No language is simultaneously the best fit for the domains and the most professional tool** — and that trade is the document's actual content, not either verdict on its own.
 - **Two criteria are incompletely measured, and the document says so:** P2 rates only whose organisation owns the formatter, not how much magic you must hold in your head (§9.3), and P4 does not rate immutability although §7.2 lists it (§10.1). For the PHP–Python pair roughly a third of the gap rests on P2 alone.
@@ -62,7 +64,7 @@ What those four criteria mean (the full wording and what each measures is in §7
 - [x] addendum §10 (2026-08-26): audit of the analysed versions, PHP 8.5 verified, TypeScript 7 recorded
 - [x] addendum §11 (2026-08-26): concurrency outside the criteria; the argument for Rust recorded, P1 unchanged
 - [x] **third brief: rules (§12.1–§12.3) written 2026-08-26 BEFORE the research** — committed separately
-- [ ] research for the third brief (§12.4) and its verdict (§12.5)
+- [x] research for the third brief (§12.4) and its verdict (§12.5) — 2026-08-26: **Rust won outright, the §7.5 tie broken**
 - [x] English version (`README.md`) as the canonical one — 2026-08-26
 
 ## 1. Context: what decision is actually being made
@@ -816,13 +818,63 @@ I reason about variance within the criteria, because that is what separated the 
 - **P7 should favour Go and the JVM** (goroutines, virtual threads since JDK 21) and leave Rust in the middle, since without a third-party runtime it offers OS threads.
 - **I expect Rust to take first place outright** and the §7.5 tie to break. If it does not, that is recorded as a result, not as a correction of the prediction.
 
-### 12.4 Third brief table
+### 12.4 Third brief table (verified 2026-08-26)
 
-[VERIFY] — the research has not run yet.
+P1 to P4 are carried over from §7.4 **unchanged**; the "P1–P4" column is their sum. P5 to P7 are new. Costs: ✅ = 0 · 🟡 = 1 · ❌ = 3.
 
-### 12.5 Verdict of the third brief
+| Language | P1–P4 (§7.4) | P5: uses several cores | P6: compiler catches races | P7: a unit of concurrency is cheap | Sum |
+|---|---|---|---|---|---|
+| **C#** | 2 | ✅ threads and `Task.Run` on the background [R86] | ❌ races are the programmer's; *"the .NET class libraries are not thread safe by default"* [R86] | 🟡 `Task` on a thread pool, but no green threads [R91] | **6** |
+| **Go** | 4 | ✅ goroutines multiplexed onto OS threads [R59] | ❌ the memory model is a runtime one; races surface only under `-race` [R84] | ✅ a goroutine costs *"little more than the allocation of stack space"* [R59] | **7** |
+| **Java** | 5 | ✅ platform and virtual threads [R57] | ❌ *"memory consistency errors"* — the programmer must establish happens-before [R90] | ✅ virtual threads *"even millions"* in one process [R57] | **8** |
+| **Kotlin** | 0 | ✅ through the JVM [R57] | ❌ the coroutine documentation claims nothing of the sort [R87] | ✅ *"running millions of them in one process"*; 50,000 coroutines ≈ 500 MB against ≈ 100 GB for threads [R87] | **3** |
+| **PHP** | 12 | ❌ Fibers are cooperative only, not parallel [R60] | ❌ nothing to catch — no parallelism in the default runtime [R60] | 🟡 Fibers are cheap but do not use cores [R60] | **19** |
+| **Python** | 5 | ❌ *"only one thread can execute Python code at once"*; the docs advise `multiprocessing` [R88]. The GIL-free build since 3.13 **is not the default** [R56] | ❌ locks and synchronisation at run time only [R88] | 🟡 asyncio for I/O; threads are OS threads under the GIL [R88] | **12** |
+| **Rust** | 0 | ✅ *"a collection of native OS threads"* [R89] | ✅ the only one of the eight: *"many concurrency errors are compile-time errors in Rust rather than runtime errors"* [R85] | 🟡 `std::thread` is 1:1 with the OS, default stack 2 MiB; `async`/`await` is in the language but the executor is a library [R89] | **1** |
+| **TypeScript** | 6 | 🟡 workers are real threads but separate contexts; sharing only through `SharedArrayBuffer` [R58] | ❌ claims nothing of the sort [R58] | ✅ the event loop carries tens of thousands of concurrent I/O operations [R58] | **10** |
 
-[VERIFY] — after §12.4 and after the adversarial pass.
+**Evaluation of the §12.3 prediction — it held on all four points.** The largest variance really is in P6 (one ✅ against seven ❌, the sharpest axis in the document). P5 dragged down Python, PHP and TypeScript. P7 favoured Go and the JVM and left Rust in the middle. And **Rust took first place outright**, breaking the §7.5 tie.
+
+*A prediction coming true is grounds for more suspicion rather than less, which is why the adversarial pass in §12.5 goes first at the cells that decided the outcome.*
+
+**Sensitivity to the weights, as §12.2 promised.** In the variant where P5 to P7 share one slot (a third each, putting concurrency at a fifth rather than 43 %):
+
+| Language | Equal weights (1×7) | P5–P7 share one slot |
+|---|---|---|
+| **Rust** | **1** | **0.33** |
+| **Kotlin** | 3 | 1.00 |
+| **C#** | 6 | 3.33 |
+| **Go** | 7 | 5.00 |
+| **Java** | 8 | 6.00 |
+| **TypeScript** | 10 | 7.33 |
+| **Python** | 12 | 7.33 |
+| **PHP** | 19 | 14.33 |
+
+**The top two placings do not change.** The worry in §12.2 that three sevenths would turn a document about professionalism into one about concurrency therefore did not reach the verdict — Rust leads even when concurrency weighs a fifth.
+
+### 12.5 Verdict of the third brief (2026-08-26)
+
+**Rust wins with a sum of 1**, ahead of Kotlin at 3. **The §7.5 tie is broken**, and a single axis did it: P6.
+
+**Adversarial pass (M5), aimed at the cells that decided the outcome:**
+
+| Objection | Outcome |
+|---|---|
+| **Does Rust really catch races at compile time?** | **Survives, with a refinement.** The source says *"many concurrency errors"*, not "all", and the guarantee holds for **safe** Rust — `unsafe` opts out of it. The ✅ therefore means "the only one that does it at compile time at all", not "a race cannot be written". |
+| **Is the ❌ on the other seven too harsh?** | **Survives.** Java has `@GuardedBy` in third-party tooling, C# has analysers, Go has `-race` — but none of the languages claims it of itself in its own documentation, which is what criterion P6 asked for (§12.2). |
+| **Rust's 🟡 on P7 rests on a distinction I drew** — a library versus a different build of the runtime | **An admitted weakness.** Were the cell to fall to ❌, Rust scores 3 and **ties with Kotlin**. But then the tie-breaker written in advance in §12.2 fires: P6 decides, where Rust has ✅ and Kotlin ❌. **The verdict holds either way** — and it is the first time in this document that a tie-breaker written in advance has paid for itself. |
+
+*The same limitation as §6.1: the pass ran in the context that produced the conclusion.*
+
+**What you pay for Rust — the accepted trade-offs:**
+
+1. **The second-smallest hiring base of the eight after Kotlin** — 14.5 % (§5.1).
+2. **No dated support table** (§4.5); a compatibility promise stands in its place, materially strong but impossible to point at as a dated row.
+3. **The only candidate not rated ✅ in backend** — the highest-weighted domain of the first brief (§3).
+4. **Cheap concurrency needs a library** — `std::thread` is 1:1 with OS threads at a 2 MiB stack.
+5. **And what the document never measured:** compile times and the learning curve. Those are the two most common objections to Rust, and **the result partly reflects what was chosen to be measured.**
+
+**Relation to the other verdicts.** §6.2 (TypeScript, domain coverage) and §7.5 (a shared first place) **still stand** as the answers to their own questions. This verdict voids neither; it adds a third answer to a third question. **The disagreement between them remains the document's headline finding** — and is now sharper still: the winner of the first brief places sixth here.
 
 ## References
 
@@ -925,6 +977,15 @@ Verified as of 2026-08-22 (round 1 — gate B2, §4.4 and §4.5).
 - [R75] Tool ownership by GitHub organisation, verified through the API on 2026-08-23 (positive control: every query returned repository metadata): `rust-lang/rustfmt`, `rust-lang/rust-analyzer`, `golang/tools` (gopls), `Kotlin/ktfmt`, `Kotlin/kotlin-lsp`, `psf/black`, `dotnet/format`, `microsoft/pyright` — against `prettier/prettier`, `PHP-CS-Fixer/PHP-CS-Fixer` and `google/google-java-format`, which are **not** under their language's organisation.
 - [R76] dotnet/csharplang — `proposals/standard-unions.md`; sum types in C# are still a **proposal**, not a language feature. Verified 2026-08-23: <https://github.com/dotnet/csharplang/blob/main/proposals/standard-unions.md>
 - [R77] Python — `typing.assert_never` (exhaustiveness checking, but only in static checking). Verified 2026-08-23: <https://docs.python.org/3/library/typing.html>
+
+**Concurrency in the third brief (§12.4)**
+
+- [R86] .NET — Managed Threading Best Practices (races are the programmer's; .NET libraries are not thread safe by default). Verified 2026-08-26: <https://learn.microsoft.com/en-us/dotnet/standard/threading/managed-threading-best-practices>
+- [R87] Kotlin — Coroutines basics (millions of coroutines in a process; 50,000 coroutines ≈ 500 MB against ≈ 100 GB for threads). Verified 2026-08-26: <https://kotlinlang.org/docs/coroutines-basics.html>
+- [R88] Python — `threading` (the GIL, the advice to use `multiprocessing` for several cores, run-time locks). Verified 2026-08-26: <https://docs.python.org/3/library/threading.html>
+- [R89] Rust — `std::thread` (native OS threads, default 2 MiB stack on Tier 1 platforms). Verified 2026-08-26: <https://doc.rust-lang.org/std/thread/>
+- [R90] The Java Tutorials — Memory Consistency Errors (happens-before is the programmer's job). Verified 2026-08-26: <https://docs.oracle.com/javase/tutorial/essential/concurrency/memconsist.html>
+- [R91] C# — Asynchronous programming scenarios (`Task`, the thread pool, `Task.Run` for compute). Verified 2026-08-26: <https://learn.microsoft.com/en-us/dotnet/csharp/asynchronous-programming/async-scenarios>
 
 **Concurrency and the memory model (§11)**
 
