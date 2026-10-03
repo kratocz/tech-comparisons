@@ -6,11 +6,11 @@
 - **Otázka 3 — a co když se do profesionality započítá i souběžnost? → §12.** Verdikt (§12.5): **Rust** se součtem 1 před Kotlinem se 3. Tenhle verdikt **rozsekl shodu z otázky 1**, a to jedinou osou: prevencí datových závodů při překladu, kterou z osmi kandidátů tvrdí o sobě jen Rust.
 - **Hlavní nález — rozpor mezi verdikty (§7.5, §12.5):** vítěz otázky 2 je v otázce 1 sedmý a v otázce 3 šestý. **Žádný jazyk není zároveň nejlepším pokrytím těch čtyř domén a nejprofesionálnějším nástrojem.** Ten obchod je vlastní obsah dokumentu, ne kterýkoli z verdiktů zvlášť.
 - **Sycené rozhodnutí:** na čem stavět **nové** projekty (vlastní, firemní i cizí) v horizontu let — a čím tu volbu argumentovat u někoho, kdo u úvahy nebyl.
-- **Fakta ověřena:** 🟡 2026-08-22 až 2026-08-23, osm kol; 2026-08-26 dodatky §9–§12; 2026-10-03 oprava §13; reference [R1]–[R95]. Bez otevřených `[OVĚŘIT]`. Přiznaně neúplné: §4.1 (úrovně PHPStan a Psalm), §4.2 (C# a Rust), §7.4 (kritérium P2 měří jen vlastnictví formátovače, ne množství magie).
+- **Fakta ověřena:** 🟡 2026-08-22 až 2026-08-23, osm kol; 2026-08-26 dodatky §9–§12; 2026-10-03 oprava §13 a dodatek §14; reference [R1]–[R126]. Bez otevřených `[OVĚŘIT]`. Přiznaně neúplné: §4.1 (úrovně PHPStan a Psalm), §4.2 (C# a Rust), §7.4 (kritérium P2 měří jen vlastnictví formátovače, ne množství magie).
 - **Předpovědi:** dvě, obě zapsané před svou rešerší. §2.3 **nevyšla** — Go mělo stoupnout a skončilo poslední. §7.3 **vyšla** ve všech bodech; rozdíl byl v tom, že uvažovala o rozptylu uvnitř kritérií, ne o silných stránkách kandidátů.
-- **Dodatky:** §9 (2026-08-26) — proč PHP zaostává za Pythonem; rozdíl drží, ale čtvrtina z něj stojí na formalistickém kritériu P2. §10 (2026-08-26) — **jaké verze byly doopravdy analyzovány**: PHP 8.5 dodatečně ověřeno (nic nemění), TypeScript 7 je nativní přepis do Go, který analýza nezohlednila, a M1 byla uplatňována nerovnoměrně. §11 (2026-08-26) — **souběžnost, kterou kritéria neměřila**: P1 nehodnotilo prevenci datových závodů při překladu, což je doložený argument pro Rust v otevřené shodě §7.5; kritérium se ale zpětně nedopisuje. §12 (2026-08-26) — **třetí zadání**: profesionalita včetně souběžnosti, pravidla sepsána před rešerší.
+- **Dodatky:** §9 (2026-08-26) — proč PHP zaostává za Pythonem; rozdíl drží, ale čtvrtina z něj stojí na formalistickém kritériu P2. §10 (2026-08-26) — **jaké verze byly doopravdy analyzovány**: PHP 8.5 dodatečně ověřeno (nic nemění), TypeScript 7 je nativní přepis do Go, který analýza nezohlednila, a M1 byla uplatňována nerovnoměrně. §11 (2026-08-26) — **souběžnost, kterou kritéria neměřila**: P1 nehodnotilo prevenci datových závodů při překladu, což je doložený argument pro Rust v otevřené shodě §7.5; kritérium se ale zpětně nedopisuje. §12 (2026-08-26) — **třetí zadání**: profesionalita včetně souběžnosti, pravidla sepsána před rešerší. §14 (2026-10-03) — **zpracování chyb, které kritéria neměřila**: jen Rust má ✅ ve všech třech bodech, Java a Kotlin sdílejí 🟡 🟡 ❌; stejně jako v §11 se kritérium nepřidává a žádný verdikt se nemění.
 - **Opravy:** ⚠️ §8 (2026-08-23) — tvrzení, že TypeScript nemá závazek podpory, bylo nepravdivé; brána B2 vypálila na chybném faktu a vypálit neměla. Verdikty se nemění, jedna položka účtu je levnější. ⚠️ §13 (2026-10-03) — TypeScript accessory `get`/`set` má, tabulka v §4.8 to popírala; žádné pořadí se nemění.
-- **Adversariální průchod:** 🟡 2026-08-23 (§6.1) — ze čtyř prověřovaných buněk jedna neobstála a byla opravena (PHP v prohlížeči); pořadí na prvních dvou místech se nezměnilo. **Omezení: průchod běžel ve stejném kontextu, který závěr vytvořil, ne v odděleném.**
+- **Adversariální průchod:** 🟡 2026-08-23 (§6.1) — ze čtyř prověřovaných buněk jedna neobstála a byla opravena (PHP v prohlížeči); pořadí na prvních dvou místech se nezměnilo. **Omezení: průchod běžel ve stejném kontextu, který závěr vytvořil, ne v odděleném.** 🟡 2026-10-03 (§13–§14), tentokrát **v odděleném kontextu**: deset nálezů — jeden kritický (§14 hodnotil Kotlin jen podle výjimek a stavěl ho za Javu, ačkoli jeho autoři opravitelné chyby popisují jako hodnoty; teď má 🟡 🟡 ❌ jako Java), pět středních, čtyři drobné. Všechny zapracované, tři nejzávažnější nejdřív ověřené proti zdrojům. Nejsilnější protiargument: ✅ Rustu stojí na konvencích jeho standardní knihovny, které typové systémy Kotlinu i Javy umějí napodobit, kde je kód přijme.
 - **Jazyk:** 🇨🇿 čeština (originál) · 🇬🇧 [English version](README.md) (kanonická)
 - **Autor:** Petr Kratochvíl — [krato.cz](https://krato.cz)
 
@@ -880,11 +880,78 @@ P1 až P4 jsou převzaty ze §7.4 **beze změny**; sloupec „P1–P4“ je jeji
 
 Řádek *Vlastnosti get/set jako jazykový rys* v §4.8 dával TypeScriptu „—“, tedy že takový rys nemá. **To je nepravda.** Příručka TypeScriptu je popisuje v kapitole o třídách: *"Classes can also have accessors"*, zapsané přes `get` a `set` [R92]. Buňka je opravená na místě na ✅.
 
-**Jak se na to přišlo: otázkou, ne ověřovacím průchodem.** Dne 2026-10-03 se odpověď na to, které jazyky mají properties, rozešla s tabulkou. Za buňkou nestál žádný zdroj — a nestál ani za „—“ u Go, Javy a Rustu, což jsou tvrzení o neexistenci, která podle pravidel tohoto repozitáře zdroj mít měla. Teď citují, co místo properties nabízí vlastní vodítka každého jazyka. U Go to zdroj říká přímo: *"Go doesn't provide automatic support for getters and setters"* [R93]. U Javy a Rustu nemám zdroj, který by absenci uváděl výslovně; jejich „—“ stojí na tom, že oficiální vodítka sahají po metodách — záznam (`record`) dostane ke každé složce *"a public accessor method"* [R94] a Rust API Guidelines pojmenovávají gettery jako metody bez předpony `get_` [R95].
+**Jak se na to přišlo: otázkou, ne ověřovacím průchodem.** Dne 2026-10-03 se odpověď na to, které jazyky mají properties, rozešla s tabulkou. Za buňkou nestál žádný zdroj — a nestál ani za „—“ u Go, Javy a Rustu, což jsou tvrzení o neexistenci, která podle pravidel tohoto repozitáře zdroj mít měla. Teď citují, co místo properties nabízí vlastní vodítka každého jazyka. U Go to zdroj říká přímo: *"Go doesn't provide automatic support for getters and setters"* [R93]. U Javy a Rustu nemám zdroj, který by absenci uváděl výslovně; jejich „—“ stojí na tom, že oficiální vodítka sahají po metodách — záznam (`record`) dostane ke každé složce *"a public accessor method"* [R94] a Rust API Guidelines pojmenovávají gettery jako metody bez předpony `get_` [R95]. „—“ v tomto řádku znamená absenci, ne „nelze použít“, jak ji definuje legenda; zůstává, protože §4.8 tvrdí, že chybějící properties nejsou slabina, což by ❌ tvrdilo. A věta pod tabulkou, podle níž je řádek „výše a je doložený“, do dneška platila jen pro jeho buňky ✅.
 
-**Co to mění: žádné pořadí ani verdikt.** Řádek patří do skupiny *Ergonomie* a pevně dané tie-breakery z §2.3 čerpají z §4.1, §4.6 a §4.7, ne z §4.8. Příručka navíc podpírá odstavec pod tabulkou, který properties řadí mezi ergonomii, ne korektnost: *"It's fine to expose public fields if you don't need to add additional logic during the get/set operations"* [R92].
+**Co to mění: žádné pořadí ani verdikt.** Řádek patří do skupiny *Ergonomie*, ne k přísnosti, ze které čerpá tie-breaker 1 v §2.3, a TypeScript je v §6.2 první sám (4 proti 5), takže se ho žádná shoda netýká. Rada samotné příručky se s odstavcem pod tabulkou, který properties řadí mezi ergonomii, dobře snese: *"It's fine to expose public fields if you don't need to add additional logic during the get/set operations"* [R92] — to je výrok o užitečnosti, ne o korektnosti.
 
 **Co řádek ukázat nemůže.** Property je getter a setter zapsaný syntaxí pole — v C# properties *"appear as public data members, but they're implemented as special methods called accessors"* [R62] — takže to, že je jazyk má, o zapouzdření nic neříká. S profesionalitou souvisí spíš neměnnost jako výchozí stav, kterou mělo měřit P4 a podle §10.1 ji neměřilo u nikoho.
+
+*(Upřesněno týž den po adversariálním průchodu zapsaném v hlavičce: důvod, proč se pořadí nemění, výklad „—“ a dosah citace z příručky.)*
+
+## 14. Dodatek (2026-10-03): zpracování chyb, které kritéria neměřila
+
+Zadavatel se zeptal, které zpracování chyb je profesionálnější, javovské, nebo rustové. Kritérium P1 se ptá, jestli kompilátor chytí chybu dřív než uživatel, a měřilo hranici vynucení typů, nullabilitu a vyčerpávající větvení (§7.2). **Neměřilo, jestli kompilátor někoho donutí vypořádat se s očekávanou chybou** — se souborem, který chybí, se vstupem, který nejde přečíst. Je to stejný druh mezery, jakou §11 našel u souběžnosti, a zachází se s ní stejně: zaznamenává se, nepromítá se do skóre.
+
+### 14.1 Jeden záměr, dva výsledky
+
+Rust rozlišuje dva druhy chyb a každému dává vlastní mechanismus: *"Rust doesn't have exceptions. Instead, it has the type Result<T, E> for recoverable errors and the panic! macro that stops execution when the program encounters an unrecoverable error"* [R96]. `Result` je obyčejná návratová hodnota. Operátor `?` ji předá volajícímu a cestou převede typ chyby přes trait `From` [R97] a `Result` nese `#[must_use]`, *"which will cause the compiler to issue a warning when a Result value is ignored"* [R98].
+
+**Původní návrh Javy vede stejnou hranici.** Vodítko z Java Tutorialu zní: *"If a client can reasonably be expected to recover from an exception, make it a checked exception. If a client cannot do anything to recover from the exception, make it an unchecked exception"* [R99]. Checked výjimka hraje roli rustového `Result`, unchecked roli `panic!` a kompilátor vynucuje ten checked druh — *"The Java programming language requires that a program contains handlers for checked exceptions which can result from execution of a method or constructor"* [R100].
+
+**Rozdíl je v tom, kde se hranice musí překročit.** Streamy v Javě berou rozhraní z `java.util.function` a `Function.apply` nedeklaruje žádné `throws` [R101] — checked výjimka tedy streamem neprojde a sám JDK ji tam převádí na unchecked: v `BufferedReader.lines()` *"is wrapped in an UncheckedIOException"* [R102]. (Vlastní funkční rozhraní `throws` deklarovat smí; nesmějí to ta standardní.) Iterátor v Rustu místo toho `Result` pronese — jeho sesbírání *"Takes each element in the Iterator: if it is an Err, no further elements are taken, and the Err is returned"* [R103]. Hranici umí překročit i Rust, `unwrap()` udělá z chyby paniku, ale musí to být napsané v místě volání, kdežto standardní streamy v Javě jinou možnost nedávají. A jazyky, které přišly po Javě, checked výjimky nepřevzaly: C# (*"C# doesn't have the concept of checked exceptions"* [R104]; jeho hlavní architekt uvedl jako důvody *"scalability and versionability"* [R105]) a Kotlin *"treats all exceptions as unchecked by default"* [R106]. *Že tím očekávané chyby z javovských podpisů mizí, je můj odhad podle toho, kam tlačí JDK i jeho nástupci; data o tom, kolika kódu se to týká, nemám.*
+
+### 14.2 Osm jazyků na této ose (ověřeno 2026-10-03)
+
+**Základ hodnocení.** Týká se jen **očekávaných** chyb; bugy a neopravitelná selhání (`panic!` a jeho příbuzní) sem nepatří. Chybu jako hodnotu umí vracet každý jazyk, když se pro to kód rozhodne, proto se hodnotí **konvence vlastní standardní knihovny jazyka** spolu s jeho vlastním kompilátorem — linty třetích stran jsou zmíněné, ale nehodnocené, stejně jako u P6 (§12.2).
+
+- **V podpisu:** ✅ funkce standardní knihovny uvádějí v typu, že mohou selhat · 🟡 některé z nich · ❌ žádné.
+- **Kompilátor ohlásí neošetřenou:** ✅ vlastní kompilátor ohlásí (varováním nebo chybou) volajícího, který chybu neošetří ani nepředá dál · 🟡 jen v některých případech · ❌ nikdy.
+- **Šíření je vidět tam, kde se děje:** ✅ každé místo, kudy chyba opouští funkci, je v kódu zapsané · ❌ chyba může odejít kterýmkoli voláním bez označení.
+
+*Základ byl sepsán 2026-10-03 po rozhovoru o Javě, Kotlinu a Rustu a před rešerší ostatních pěti — pro ty tři tedy není předem registrovaný. Adversariální průchod téhož dne, ještě před zveřejněním, doplnil slova „vlastní standardní knihovny jazyka“: první verze hodnotila Kotlin jen podle jeho výjimek a stavěla ho za Javu.*
+
+| Jazyk | Očekávané chyby putují jako | V podpisu | Kompilátor ohlásí neošetřenou | Šíření je vidět tam, kde se děje |
+|---|---|---|---|---|
+| **C#** | výjimky, žádné checked [R104]; u některých členů vzor Try-Parse [R107] | 🟡 jen členy Try-Parse [R107] | ❌ | ❌ |
+| **Go** | hodnoty `error` [R108] | ✅ že může selhat, ne jakými chybami | 🟡 nikdy nepřečtené `err` se nepřeloží, holé volání ho zahodí [R108] [R109] | ✅ `if err != nil { return err }` |
+| **Java** | checked a unchecked výjimky | 🟡 jen checked [R100] | 🟡 jen checked [R100] | ❌ |
+| **Kotlin** | unchecked výjimky [R106]; hodnoty (`T?`, sealed třídy, `Result`) pro opravitelná selhání [R110] | 🟡 hodnotové varianty, např. `toIntOrNull(): Int?` [R111] | 🟡 `T?` nejde použít bez kontroly; výjimky nikdy | ❌ |
+| **PHP** | výjimky; vestavěné funkce většinou `false` a varování [R112] | 🟡 `string\|false` u vestavěných funkcí [R113]; gramatika nezná `throws` [R114] | ❌ jen PHPStan, třetí strana [R115] | ❌ |
+| **Python** | výjimky [R116] | ❌ | ❌ anotace se nevynucují [R117] | ❌ |
+| **Rust** | `Result<T, E>` [R96] | ✅ konvencí; několik funkcí místo toho panikaří [R118] [R119] | ✅ `#[must_use]` [R98] | ✅ `?` [R97] |
+| **TypeScript** | výjimky | ❌ `throws` odmítnuto [R120] | ❌ | ❌ |
+
+**Poznámky k tabulce.**
+
+- **C#** checked výjimky nemá, ale jeho návrhová vodítka nabízejí pro výkonově citlivé členy vzor Try-Parse — `DateTime` má vedle vyhazujícího `Parse` i `TryParse` [R107]. Volajícího, který vrácený `bool` ignoruje, nikdo neohlásí.
+- **Go** uvádí, *že* volání může selhat, ne *jakými* chybami — `error` je rozhraní. Zbytek kompilátor vynucuje zčásti pravidlem o nepoužitých proměnných, *"Go refuses to compile programs with unused variables or imports"* [R108], jenže volání smí stát samo jako příkaz [R109] a jeho chyba pak beze slova zmizí. Ověřeno na Go 1.27.1 dne 2026-10-03: samotné `strconv.Atoi("x")` se přeloží a projde `go vet`; `n, err := strconv.Atoi("x")` s nikdy nepřečteným `err` skončí chybou *"declared and not used: err"* — jenže `err` přepsané druhým voláním dřív, než ho kdo přečte, se přeloží, takže kompilátor chytí jen proměnnou, kterou nečte nikdo nikde. Zbytek pokrývají linty třetích stran, například `errcheck`.
+- **Kotlin** podle vlastních autorů nese opravitelná selhání jako hodnoty: *"For recoverable failures, developers rely on errors-as-values using nullable types, sealed hierarchies, or `Result`-like abstractions"* [R110]. Standardní knihovna takové varianty nabízí — `toIntOrNull` vrací `null`, *"if the string is not a valid representation of an Int"* [R111] — vedle vyhazujících a její výjimky zůstávají unchecked. *Rich Errors*, které by chybám daly vlastní místo v typovém systému, jsou návrh ve veřejné diskusi, ne součást stabilní verze 2.4.20 [R110]. Kontrola nepoužitých návratových hodnot přišla s 2.3.0 [R121], ale musí se zapnout, takže se nehodnotí.
+- **PHP** ve vestavěných funkcích většinou vůbec nehází: *"Internal PHP functions mainly use Error reporting, only modern Object-oriented extensions use exceptions"* [R112] — typicky `false` a varování, které sjednocený návratový typ ukazuje: `file_get_contents` *"returns the read data or false on failure"* [R113]. Deklarace funkce má v gramatice návratový typ a žádné `throws`, přičemž `T_THROW` tam jako pozitivní kontrola je [R114]. PHPStan umí vynucovat `@throws` z PHPDoc, ale jeho pravidla pro to jsou volitelná a jde o nástroj třetí strany [R115]. `#[\NoDiscard]` z PHP 8.5 (§10.1) varuje před ignorovaným výsledkem až za běhu, ne předem, takže se nehodnotí ani on.
+- **Python** označuje výjimky za chyby *"detected during execution"* [R116] a *"The Python runtime does not enforce function and variable type annotations"* [R117]. Konstrukci první strany pro deklaraci vyhazovaných výjimek jsem v dokumentaci `typing` ani mezi názvy PEP nenašel (pozitivní kontroly: `NoReturn` a PEP 484) — to je mlčení zdrojů, ne tvrzení, že neexistuje.
+- **Rust** má ✅ za konvenci standardní knihovny, ne za každou funkci v ní: `println!` *"Panics if writing to io::stdout fails"* [R118] a `thread::spawn` *"Panics if the OS fails to create a thread; use Builder::spawn to recover from such errors"* [R119]. Varování u zahozeného `Result` jde také úmyslně umlčet, `let _ = f();` nebo `f().ok()` — gestem viditelným v kódu, jako prázdný `catch` v Javě.
+- **TypeScript** klauzuli `throws` odmítl: návrh byl 2023-04-19 uzavřen jako neplánovaný a tým checked výjimky označil za *"largely an anti-feature in most cases"* [R120]. Proměnná v `catch` je `unknown`, kdykoli je zapnutý `strict` [R122], a `strict` je od TypeScriptu 6.0 výchozí [R123] — to nutí ověřit, co se chytilo, ne to ošetřit.
+
+### 14.3 Co by to udělalo s verdikty, a proč nemění žádný
+
+**Druhé zadání (§7.5)** končí shodou Kotlinu a Rustu. Na této ose má Rust jako jediný tři ✅, kdežto Kotlin sdílí 🟡 🟡 ❌ s Javou. Kdyby to P1 měřilo, shoda by se velmi pravděpodobně rozpadla ve prospěch Rustu, stejným směrem, jakým ji později rozsekl §12 souběžností — i když o méně, než naznačují symboly, protože opravitelné chyby Kotlinu stojí na téže null safety, která mu už v P1 vynesla ✅.
+
+**Třetí zadání (§12.5)** už Rust vyhrál a tahle osa by jen zvětšila náskok. **První zadání (§6.2)** zůstává nedotčené — jeho skóre je cena čtyř domén a jeho tie-breakery pevně stanoví §2.3.
+
+**A stejně jako v §11.3 to nedopisuji.** Kritérium se nepřidává ve chvíli, kdy je vidět, komu pomůže. Legitimní cesta je čtvrté zadání s pravidly sepsanými předem; dokud ho zadavatel nevyhlásí, platí všechny tři verdikty, jak jsou zapsané.
+
+Co tenhle dodatek přidává, je ostřejší obraz shody v §7.5: vzdálenost mezi Kotlinem a Rustem je větší, než ukazuje kterékoli skóre.
+
+### 14.4 Javovské, nebo rustové: odpověď na položenou otázku
+
+**Rustové — protože vynucuje to, co Java jen doporučuje.** Záměr je stejný (§14.1); rozdíl je v tom, že standardní knihovna Rustu drží očekávané chyby v `Result` i v closures a iterátorech, kdežto standardní streamy v Javě je z podpisu vytlačují.
+
+**Co Java umí lépe.** Každá výjimka nese stack trace — *"A throwable contains a snapshot of the execution stack of its thread at the time it was created"* [R124]; chybová hodnota v Rustu ho naopak bez vyžádání nenese: `anyhow` zachytí backtrace, jen když ho zapnou proměnné prostředí [R125]. A vyhodit výjimku stojí méně návrhové práce než definovat chybové typy a jejich převody.
+
+**Protiargumenty.** Aplikační kód v Rustu často používá `anyhow`, jehož README ho doporučuje, *"if you don't care what error type your functions return"*, a nazývá to *"common in application code"* [R125]. Tím se smaže, *jaké* chyby mohou nastat, podobně jako v Javě `throws Exception`; zůstane, že podpis pořád říká, že funkce může selhat, `?` pořád označuje, kudy chyba odchází, a zahozený `Result` pořád vyvolá varování. Silnější námitka, se kterou přišel adversariální průchod: ✅ Rustu plyne z konvencí jeho standardní knihovny, ne z mechanismu, který by ostatním chyběl — `T?` a sealed třídy v Kotlinu nebo sealed typy v Javě dávají tutéž záruku na úrovni typů všude, kde je kód přijme. To platí, a proto další odstavec přesně tohle Javě doporučuje. Rust navíc přidává jen to, že konvence je výchozí stav, ne kázeň.
+
+**Co si z toho může vzít kód v Javě.** Výsledky, se kterými má volající počítat (objednávka už odeslaná, nedostatek zásob), modelovat jako sealed typ s vyčerpávajícím `switch` (Java 21 [R126]). Ověřeno na JDK 21.0.12 dne 2026-10-03: po smazání jedné větve překlad skončí chybou *"the switch statement does not cover all possible input values"*. Kotlin dostane totéž ze sealed tříd a `when`, které P4 už hodnotilo ✅ (§7.4).
+
+**Názor bych změnil** u projektu, kde je skoro každá chyba technická a jediná rozumná reakce je zalogovat ji a vrátit chybu. Tam je hlavní hodnotou stack trace a ten dává Java zadarmo. Rozdíl by byl malý, protože `anyhow` backtrace zachytit umí taky.
 
 ## Reference
 
@@ -987,6 +1054,40 @@ Ověřeno 2026-08-22 až 2026-10-03; každá položka nese vlastní datum. Kolo 
 - [R75] Vlastnictví nástrojů podle organizace na GitHubu, ověřeno přes API 2026-08-23 (pozitivní kontrola: všechny dotazy vrátily metadata repozitáře): `rust-lang/rustfmt`, `rust-lang/rust-analyzer`, `golang/tools` (gopls), `Kotlin/ktfmt`, `Kotlin/kotlin-lsp`, `psf/black`, `dotnet/format`, `microsoft/pyright` — proti `prettier/prettier`, `PHP-CS-Fixer/PHP-CS-Fixer` a `google/google-java-format`, které pod organizací svého jazyka **nejsou**.
 - [R76] dotnet/csharplang — `proposals/standard-unions.md`; součtové typy jsou v C# stále **návrh**, ne jazykový rys. Ověřeno 2026-08-23: <https://github.com/dotnet/csharplang/blob/main/proposals/standard-unions.md>
 - [R77] Python — `typing.assert_never` (kontrola vyčerpání, ale jen ve statické kontrole). Ověřeno 2026-08-23: <https://docs.python.org/3/library/typing.html>
+
+**Zpracování chyb (§14)**
+
+- [R96] The Rust Programming Language — kap. 9, Error Handling (*"Rust doesn't have exceptions"*). Ověřeno 2026-10-03: <https://doc.rust-lang.org/book/ch09-00-error-handling.html>
+- [R97] The Rust Programming Language — kap. 9.2 (operátor `?` převádí chyby přes `From`). Ověřeno 2026-10-03: <https://doc.rust-lang.org/book/ch09-02-recoverable-errors-with-result.html>
+- [R98] Rust — `std::result`, oddíl „Results must be used“ (`#[must_use]`). Ověřeno 2026-10-03: <https://doc.rust-lang.org/std/result/index.html>
+- [R99] The Java Tutorials — Unchecked Exceptions: The Controversy (vodítko podle toho, zda se volající může zotavit). Ověřeno 2026-10-03: <https://docs.oracle.com/javase/tutorial/essential/exceptions/runtime.html>
+- [R100] Java Language Specification SE 21 — §11.2 Compile-Time Checking of Exceptions. Ověřeno 2026-10-03: <https://docs.oracle.com/javase/specs/jls/se21/html/jls-11.html#jls-11.2>
+- [R101] Java SE 21 — `java.util.function.Function` (`R apply(T t)` nedeklaruje `throws`). Ověřeno 2026-10-03: <https://docs.oracle.com/en/java/javase/21/docs/api/java.base/java/util/function/Function.html>
+- [R102] Java SE 21 — `BufferedReader.lines()` (balí `IOException` do `UncheckedIOException`). Ověřeno 2026-10-03: <https://docs.oracle.com/en/java/javase/21/docs/api/java.base/java/io/BufferedReader.html>
+- [R103] Rust — `Result`, `impl FromIterator<Result<A, E>> for Result<V, E>` (sesbírání skončí u prvního `Err`). Ověřeno 2026-10-03: <https://doc.rust-lang.org/std/result/enum.Result.html>
+- [R104] C# — Tips for Java developers (*"C# doesn't have the concept of checked exceptions"*). Ověřeno 2026-10-03: <https://learn.microsoft.com/en-us/dotnet/csharp/tour-of-csharp/tips-for-java-developers>
+- [R105] Artima — The Trouble with Checked Exceptions, rozhovor s Andersem Hejlsbergem (2003-08-18). Ověřeno 2026-10-03: <https://www.artima.com/articles/the-trouble-with-checked-exceptions>
+- [R106] Kotlin — Exceptions (*"treats all exceptions as unchecked by default"*). Ověřeno 2026-10-03: <https://kotlinlang.org/docs/exceptions.html>
+- [R107] .NET — návrhová vodítka, Exceptions and Performance (vzory Tester-Doer a Try-Parse). Ověřeno 2026-10-03: <https://learn.microsoft.com/en-us/dotnet/standard/design-guidelines/exceptions-and-performance>
+- [R108] Go FAQ — proč Go nemá výjimky; nepoužité proměnné se nepřeloží. Ověřeno 2026-10-03: <https://go.dev/doc/faq>
+- [R109] The Go Programming Language Specification — Expression statements (volání smí stát jako příkaz). Ověřeno 2026-10-03: <https://go.dev/ref/spec>
+- [R110] Kotlin KEEP-0462 — Rich Errors, stav *"Public discussion"*; v přehledech novinek 2.3 a 2.4 chybí; stabilní 2.4.20 (2026-09-07) podle GitHub API vydání. Ověřeno 2026-10-03: <https://github.com/Kotlin/KEEP/blob/main/proposals/KEEP-0462-rich-errors.md>
+- [R111] Kotlin stdlib — `String.toIntOrNull()` (při neplatném vstupu vrací `null`). Ověřeno 2026-10-03: <https://kotlinlang.org/api/core/kotlin-stdlib/kotlin.text/to-int-or-null.html>
+- [R112] PHP Manual — Exceptions (*"Internal PHP functions mainly use Error reporting"*). Ověřeno 2026-10-03: <https://www.php.net/manual/en/language.exceptions.php>
+- [R113] PHP Manual — `file_get_contents` (*"returns the read data or false on failure"*). Ověřeno 2026-10-03: <https://www.php.net/manual/en/function.file-get-contents.php>
+- [R114] php-src — `Zend/zend_language_parser.y` (deklarace funkce má návratový typ a žádné `throws`; pozitivní kontrola: `T_THROW` přítomno). Ověřeno 2026-10-03: <https://github.com/php/php-src/blob/master/Zend/zend_language_parser.y>
+- [R115] PHPStan — Bring your exceptions under control with @throws (pravidla pro checked výjimky jsou volitelná). Ověřeno 2026-10-03: <https://phpstan.org/blog/bring-your-exceptions-under-control>
+- [R116] Python Tutorial — Errors and Exceptions. Ověřeno 2026-10-03: <https://docs.python.org/3/tutorial/errors.html>
+- [R117] Python — `typing` (*"The Python runtime does not enforce function and variable type annotations"*). Ověřeno 2026-10-03: <https://docs.python.org/3/library/typing.html>
+- [R118] Rust — `println!` (*"Panics if writing to io::stdout fails"*). Ověřeno 2026-10-03: <https://doc.rust-lang.org/std/macro.println.html>
+- [R119] Rust — `std::thread::spawn` (panikaří, když OS nevytvoří vlákno; zotavení přes `Builder::spawn`). Ověřeno 2026-10-03: <https://doc.rust-lang.org/std/thread/fn.spawn.html>
+- [R120] microsoft/TypeScript #13219 — návrh klauzule `throws`, uzavřený jako neplánovaný 2023-04-19. Ověřeno 2026-10-03: <https://github.com/microsoft/TypeScript/issues/13219>
+- [R121] What's new in Kotlin 2.3.0 (kontrola nepoužitých návratových hodnot mezi novinkami jazyka). Ověřeno 2026-10-03: <https://kotlinlang.org/docs/whatsnew23.html>
+- [R122] TypeScript — `useUnknownInCatchVariables` (výchozí *"true if strict"*). Ověřeno 2026-10-03: <https://www.typescriptlang.org/tsconfig/#useUnknownInCatchVariables>
+- [R123] TypeScript 6.0 — poznámky k vydání (*"strict is now true by default"*). Ověřeno 2026-10-03: <https://www.typescriptlang.org/docs/handbook/release-notes/typescript-6-0.html>
+- [R124] Java SE 21 — `Throwable` (snímek zásobníku v okamžiku vytvoření). Ověřeno 2026-10-03: <https://docs.oracle.com/en/java/javase/21/docs/api/java.base/java/lang/Throwable.html>
+- [R125] dtolnay/anyhow — README (backtrace přes `RUST_BACKTRACE` / `RUST_LIB_BACKTRACE`; srovnání s `thiserror`). Ověřeno 2026-10-03: <https://github.com/dtolnay/anyhow>
+- [R126] JEP 441: Pattern Matching for switch (dodáno v JDK 21; vzorový `switch` musí být vyčerpávající). Ověřeno 2026-10-03: <https://openjdk.org/jeps/441>
 
 **Oprava (§13)**
 
