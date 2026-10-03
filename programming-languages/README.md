@@ -6,10 +6,10 @@
 - **Question 3 — and what if concurrency counts towards professionalism too? → §12.** Verdict (§12.5): **Rust** with a sum of 1, ahead of Kotlin at 3. This verdict **broke the tie from question 1**, on a single axis: compile-time prevention of data races, which only Rust claims of itself among the eight.
 - **Headline finding — the verdicts disagree (§7.5, §12.5):** the winner of question 2 places seventh in question 1 and sixth in question 3. **No language is simultaneously the best fit for those four domains and the most professional tool.** That trade is the document's actual content, not either verdict on its own.
 - **Decision it feeds:** what to build **new** projects on over a horizon of years — mine, a company's, or someone else's — and how to argue that choice to somebody who was not part of the reasoning.
-- **Facts verified:** 🟡 2026-08-22 to 2026-08-23, eight rounds, references [R1]–[R91]. No open `[VERIFY]` tags. Admittedly incomplete: §4.1 (PHPStan and Psalm levels), §4.2 (C# and Rust), §7.4 (criterion P2 measures only formatter ownership, not how much magic you must hold in your head).
+- **Facts verified:** 🟡 2026-08-22 to 2026-08-23, eight rounds; 2026-08-26 addenda §9–§12; 2026-10-03 correction §13; references [R1]–[R95]. No open `[VERIFY]` tags. Admittedly incomplete: §4.1 (PHPStan and Psalm levels), §4.2 (C# and Rust), §7.4 (criterion P2 measures only formatter ownership, not how much magic you must hold in your head).
 - **Predictions:** two, both written before their own research. §2.3 **failed** — Go was predicted to rise and finished last. §7.3 **held** on every point; the difference was that it reasoned about variance within criteria rather than about candidates' strengths.
 - **Addenda:** §9 (2026-08-26) — why PHP trails Python; the gap holds, but a quarter of it rests on the formalistic criterion P2. §10 (2026-08-26) — **which versions were actually analysed**: PHP 8.5 verified after the fact (nothing changes), TypeScript 7 is a native rewrite in Go the analysis did not account for, and M1 was applied unevenly. §11 (2026-08-26) — **the concurrency the criteria never measured**: P1 did not rate compile-time prevention of data races, which is a documented argument for Rust in the open tie of §7.5; the criterion is not being added after the fact. §12 (2026-08-26) — **third brief**: professionalism including concurrency, rules written before the research.
-- **Correction:** ⚠️ §8 (2026-08-23) — the claim that TypeScript has no support commitment was false; gate B2 fired on a wrong fact and should not have fired. The verdicts do not change; one line of the bill is cheaper.
+- **Corrections:** ⚠️ §8 (2026-08-23) — the claim that TypeScript has no support commitment was false; gate B2 fired on a wrong fact and should not have fired. The verdicts do not change; one line of the bill is cheaper. ⚠️ §13 (2026-10-03) — TypeScript does have `get`/`set` accessors, which the §4.8 table denied; no placing changes.
 - **Adversarial pass:** 🟡 2026-08-23 (§6.1) — of four cells examined, one did not survive and was corrected (PHP in the browser); the top two placings did not move. **Limitation: the pass ran in the same context that produced the conclusion, not a fresh one.**
 - **Language:** 🇬🇧 English (canonical) · 🇨🇿 [Čeština](README.cs.md) (original)
 - **Author:** Petr Kratochvíl — [krato.cz](https://krato.cz)
@@ -435,7 +435,7 @@ Languages are **in columns** here (in §3 they are in rows); the ordering stays 
 | Generics real at runtime | ✅ | ✅ since 1.18 | ❌ erased | ❌ erased | ❌ none at all | ❌ annotations only | ✅ | ❌ erased |
 | Main escape from strictness | `!` and `default` structs | `any`, assertions | erasure, raw types | platform types from Java | a file without the directive | `Any` | `unwrap`, `unsafe` | `any` |
 | **▸ Ergonomics** | | | | | | | | |
-| get/set properties as a language feature | ✅ [R62] | — | — | ✅ [R63] | ✅ since 8.4 [R1] | ✅ `@property` [R64] | — | — |
+| get/set properties as a language feature | ✅ [R62] | — [R93] | — [R94] | ✅ [R63] | ✅ since 8.4 [R1] | ✅ `@property` [R64] | — [R95] | ✅ `get` / `set` [R92], corrected §13 |
 | **▸ Operations and ecosystem** | | | | | | | | |
 | Concurrency model | `async`/`Task` *(not res.)* | goroutines | virtual threads (JDK 21) | coroutines + JVM | cooperative only (Fibers 8.1) | GIL; build without it since 3.13, not the default | `async` + threads *(not res.)* | event loop + workers |
 | Standalone binary without a runtime | 🟡 Native AOT | ✅ default | 🟡 GraalVM | 🟡 GraalVM | 🟡 third party | 🟡 PyInstaller | ✅ default | 🟡 SEA / `deno compile` |
@@ -876,9 +876,19 @@ P1 to P4 are carried over from §7.4 **unchanged**; the "P1–P4" column is thei
 
 **Relation to the other verdicts.** §6.2 (TypeScript, domain coverage) and §7.5 (a shared first place) **still stand** as the answers to their own questions. This verdict voids neither; it adds a third answer to a third question. **The disagreement between them remains the document's headline finding** — and is now sharper still: the winner of the first brief places sixth here.
 
+## 13. Correction (2026-10-03): TypeScript does have get/set accessors
+
+The row *get/set properties as a language feature* in §4.8 gave TypeScript "—", that is, no such feature. **That is false.** The TypeScript handbook documents them in its chapter on classes: *"Classes can also have accessors"*, written with `get` and `set` [R92]. The cell has been corrected in place to ✅.
+
+**How it surfaced: through a question, not a verification pass.** On 2026-10-03 an answer about which languages offer properties disagreed with the table. The cell had no source behind it — and neither did the "—" of Go, Java and Rust, which are claims of non-existence and under this repository's rules should have had one. They now cite what each language's own guidance offers instead. For Go the source says it outright: *"Go doesn't provide automatic support for getters and setters"* [R93]. For Java and Rust I have no source that states the absence in so many words; their "—" rests on the official guidance reaching for methods instead — a record gets *"a public accessor method"* for each component [R94], and the Rust API Guidelines name getters as methods without a `get_` prefix [R95].
+
+**What it changes: no placing and no verdict.** The row sits under *Ergonomics*, and the fixed tie-breakers of §2.3 draw on §4.1, §4.6 and §4.7, not on §4.8. The handbook even supports the paragraph under the table that files properties under ergonomics rather than correctness: *"It's fine to expose public fields if you don't need to add additional logic during the get/set operations"* [R92].
+
+**What the row cannot show.** A property is a getter and a setter written with field syntax — in C#, properties *"appear as public data members, but they're implemented as special methods called accessors"* [R62] — so having them says nothing about encapsulation. What bears on professionalism is immutability by default, which P4 was meant to measure and, per §10.1, measured for nobody.
+
 ## References
 
-Verified as of 2026-08-22 (round 1 — gate B2, §4.4 and §4.5).
+Verified 2026-08-22 to 2026-10-03; every entry carries its own date. Round 1 (gate B2, §4.4 and §4.5) is the first two groups.
 
 **Funding and governance**
 
@@ -977,6 +987,13 @@ Verified as of 2026-08-22 (round 1 — gate B2, §4.4 and §4.5).
 - [R75] Tool ownership by GitHub organisation, verified through the API on 2026-08-23 (positive control: every query returned repository metadata): `rust-lang/rustfmt`, `rust-lang/rust-analyzer`, `golang/tools` (gopls), `Kotlin/ktfmt`, `Kotlin/kotlin-lsp`, `psf/black`, `dotnet/format`, `microsoft/pyright` — against `prettier/prettier`, `PHP-CS-Fixer/PHP-CS-Fixer` and `google/google-java-format`, which are **not** under their language's organisation.
 - [R76] dotnet/csharplang — `proposals/standard-unions.md`; sum types in C# are still a **proposal**, not a language feature. Verified 2026-08-23: <https://github.com/dotnet/csharplang/blob/main/proposals/standard-unions.md>
 - [R77] Python — `typing.assert_never` (exhaustiveness checking, but only in static checking). Verified 2026-08-23: <https://docs.python.org/3/library/typing.html>
+
+**Correction (§13)**
+
+- [R92] TypeScript Handbook — Classes, the "Getters / Setters" section (*"Classes can also have accessors"*; public fields are fine without extra logic). Verified 2026-10-03: <https://www.typescriptlang.org/docs/handbook/2/classes.html>
+- [R93] Effective Go — Getters (*"Go doesn't provide automatic support for getters and setters"*). Verified 2026-10-03: <https://go.dev/doc/effective_go#Getters>
+- [R94] JEP 395: Records — every component gets a public accessor method and a private final field. Verified 2026-10-03: <https://openjdk.org/jeps/395>
+- [R95] Rust API Guidelines — C-GETTER (getters are methods without a `get_` prefix). Verified 2026-10-03: <https://rust-lang.github.io/api-guidelines/naming.html#c-getter>
 
 **Concurrency in the third brief (§12.4)**
 

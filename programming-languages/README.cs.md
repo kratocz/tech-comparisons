@@ -6,10 +6,10 @@
 - **Otázka 3 — a co když se do profesionality započítá i souběžnost? → §12.** Verdikt (§12.5): **Rust** se součtem 1 před Kotlinem se 3. Tenhle verdikt **rozsekl shodu z otázky 1**, a to jedinou osou: prevencí datových závodů při překladu, kterou z osmi kandidátů tvrdí o sobě jen Rust.
 - **Hlavní nález — rozpor mezi verdikty (§7.5, §12.5):** vítěz otázky 2 je v otázce 1 sedmý a v otázce 3 šestý. **Žádný jazyk není zároveň nejlepším pokrytím těch čtyř domén a nejprofesionálnějším nástrojem.** Ten obchod je vlastní obsah dokumentu, ne kterýkoli z verdiktů zvlášť.
 - **Sycené rozhodnutí:** na čem stavět **nové** projekty (vlastní, firemní i cizí) v horizontu let — a čím tu volbu argumentovat u někoho, kdo u úvahy nebyl.
-- **Fakta ověřena:** 🟡 2026-08-22 až 2026-08-23, osm kol, reference [R1]–[R91]. Bez otevřených `[OVĚŘIT]`. Přiznaně neúplné: §4.1 (úrovně PHPStan a Psalm), §4.2 (C# a Rust), §7.4 (kritérium P2 měří jen vlastnictví formátovače, ne množství magie).
+- **Fakta ověřena:** 🟡 2026-08-22 až 2026-08-23, osm kol; 2026-08-26 dodatky §9–§12; 2026-10-03 oprava §13; reference [R1]–[R95]. Bez otevřených `[OVĚŘIT]`. Přiznaně neúplné: §4.1 (úrovně PHPStan a Psalm), §4.2 (C# a Rust), §7.4 (kritérium P2 měří jen vlastnictví formátovače, ne množství magie).
 - **Předpovědi:** dvě, obě zapsané před svou rešerší. §2.3 **nevyšla** — Go mělo stoupnout a skončilo poslední. §7.3 **vyšla** ve všech bodech; rozdíl byl v tom, že uvažovala o rozptylu uvnitř kritérií, ne o silných stránkách kandidátů.
 - **Dodatky:** §9 (2026-08-26) — proč PHP zaostává za Pythonem; rozdíl drží, ale čtvrtina z něj stojí na formalistickém kritériu P2. §10 (2026-08-26) — **jaké verze byly doopravdy analyzovány**: PHP 8.5 dodatečně ověřeno (nic nemění), TypeScript 7 je nativní přepis do Go, který analýza nezohlednila, a M1 byla uplatňována nerovnoměrně. §11 (2026-08-26) — **souběžnost, kterou kritéria neměřila**: P1 nehodnotilo prevenci datových závodů při překladu, což je doložený argument pro Rust v otevřené shodě §7.5; kritérium se ale zpětně nedopisuje. §12 (2026-08-26) — **třetí zadání**: profesionalita včetně souběžnosti, pravidla sepsána před rešerší.
-- **Oprava:** ⚠️ §8 (2026-08-23) — tvrzení, že TypeScript nemá závazek podpory, bylo nepravdivé; brána B2 vypálila na chybném faktu a vypálit neměla. Verdikty se nemění, jedna položka účtu je levnější.
+- **Opravy:** ⚠️ §8 (2026-08-23) — tvrzení, že TypeScript nemá závazek podpory, bylo nepravdivé; brána B2 vypálila na chybném faktu a vypálit neměla. Verdikty se nemění, jedna položka účtu je levnější. ⚠️ §13 (2026-10-03) — TypeScript accessory `get`/`set` má, tabulka v §4.8 to popírala; žádné pořadí se nemění.
 - **Adversariální průchod:** 🟡 2026-08-23 (§6.1) — ze čtyř prověřovaných buněk jedna neobstála a byla opravena (PHP v prohlížeči); pořadí na prvních dvou místech se nezměnilo. **Omezení: průchod běžel ve stejném kontextu, který závěr vytvořil, ne v odděleném.**
 - **Jazyk:** 🇨🇿 čeština (originál) · 🇬🇧 [English version](README.md) (kanonická)
 - **Autor:** Petr Kratochvíl — [krato.cz](https://krato.cz)
@@ -435,7 +435,7 @@ Jazyky jsou tu **ve sloupcích** (v §3 v řádcích), pořadí abecední jako v
 | Generika skutečná za běhu | ✅ | ✅ od 1.18 | ❌ mazaná | ❌ mazaná | ❌ nemá vůbec | ❌ jen anotace | ✅ | ❌ mazaná |
 | Hlavní únik z přísnosti | `!` a `default` struktury | `any`, aserce | mazání, raw typy | platform types z Javy | soubor bez direktivy | `Any` | `unwrap`, `unsafe` | `any` |
 | **▸ Ergonomie** | | | | | | | | |
-| Vlastnosti get/set jako jazykový rys | ✅ [R62] | — | — | ✅ [R63] | ✅ od 8.4 [R1] | ✅ `@property` [R64] | — | — |
+| Vlastnosti get/set jako jazykový rys | ✅ [R62] | — [R93] | — [R94] | ✅ [R63] | ✅ od 8.4 [R1] | ✅ `@property` [R64] | — [R95] | ✅ `get` / `set` [R92], opraveno §13 |
 | **▸ Provoz a ekosystém** | | | | | | | | |
 | Model souběžnosti | `async`/`Task` *(nezj.)* | goroutiny | virtuální vlákna (JDK 21) | korutiny + JVM | jen kooperativní (Fibers 8.1) | GIL; build bez něj od 3.13, není výchozí | `async` + vlákna *(nezj.)* | smyčka událostí + workeři |
 | Samostatná binárka bez runtime | 🟡 Native AOT | ✅ výchozí | 🟡 GraalVM | 🟡 GraalVM | 🟡 třetí strana | 🟡 PyInstaller | ✅ výchozí | 🟡 SEA / `deno compile` |
@@ -876,9 +876,19 @@ P1 až P4 jsou převzaty ze §7.4 **beze změny**; sloupec „P1–P4“ je jeji
 
 **Vztah k ostatním verdiktům.** §6.2 (TypeScript, pokrytí domén) a §7.5 (dělené první místo) **platí dál** jako odpovědi na své otázky. Tenhle verdikt neruší ani jeden; přidává třetí odpověď na třetí otázku. **Rozpor mezi nimi zůstává hlavním nálezem dokumentu** — a nově je vidět ještě ostřeji: vítěz prvního zadání je tady šestý.
 
+## 13. Oprava (2026-10-03): TypeScript accessory get/set má
+
+Řádek *Vlastnosti get/set jako jazykový rys* v §4.8 dával TypeScriptu „—“, tedy že takový rys nemá. **To je nepravda.** Příručka TypeScriptu je popisuje v kapitole o třídách: *"Classes can also have accessors"*, zapsané přes `get` a `set` [R92]. Buňka je opravená na místě na ✅.
+
+**Jak se na to přišlo: otázkou, ne ověřovacím průchodem.** Dne 2026-10-03 se odpověď na to, které jazyky mají properties, rozešla s tabulkou. Za buňkou nestál žádný zdroj — a nestál ani za „—“ u Go, Javy a Rustu, což jsou tvrzení o neexistenci, která podle pravidel tohoto repozitáře zdroj mít měla. Teď citují, co místo properties nabízí vlastní vodítka každého jazyka. U Go to zdroj říká přímo: *"Go doesn't provide automatic support for getters and setters"* [R93]. U Javy a Rustu nemám zdroj, který by absenci uváděl výslovně; jejich „—“ stojí na tom, že oficiální vodítka sahají po metodách — záznam (`record`) dostane ke každé složce *"a public accessor method"* [R94] a Rust API Guidelines pojmenovávají gettery jako metody bez předpony `get_` [R95].
+
+**Co to mění: žádné pořadí ani verdikt.** Řádek patří do skupiny *Ergonomie* a pevně dané tie-breakery z §2.3 čerpají z §4.1, §4.6 a §4.7, ne z §4.8. Příručka navíc podpírá odstavec pod tabulkou, který properties řadí mezi ergonomii, ne korektnost: *"It's fine to expose public fields if you don't need to add additional logic during the get/set operations"* [R92].
+
+**Co řádek ukázat nemůže.** Property je getter a setter zapsaný syntaxí pole — v C# properties *"appear as public data members, but they're implemented as special methods called accessors"* [R62] — takže to, že je jazyk má, o zapouzdření nic neříká. S profesionalitou souvisí spíš neměnnost jako výchozí stav, kterou mělo měřit P4 a podle §10.1 ji neměřilo u nikoho.
+
 ## Reference
 
-Ověřeno k 2026-08-22 (kolo 1 — brána B2, §4.4 a §4.5).
+Ověřeno 2026-08-22 až 2026-10-03; každá položka nese vlastní datum. Kolo 1 (brána B2, §4.4 a §4.5) tvoří první dvě skupiny.
 
 **Financování a governance**
 
@@ -977,6 +987,13 @@ Ověřeno k 2026-08-22 (kolo 1 — brána B2, §4.4 a §4.5).
 - [R75] Vlastnictví nástrojů podle organizace na GitHubu, ověřeno přes API 2026-08-23 (pozitivní kontrola: všechny dotazy vrátily metadata repozitáře): `rust-lang/rustfmt`, `rust-lang/rust-analyzer`, `golang/tools` (gopls), `Kotlin/ktfmt`, `Kotlin/kotlin-lsp`, `psf/black`, `dotnet/format`, `microsoft/pyright` — proti `prettier/prettier`, `PHP-CS-Fixer/PHP-CS-Fixer` a `google/google-java-format`, které pod organizací svého jazyka **nejsou**.
 - [R76] dotnet/csharplang — `proposals/standard-unions.md`; součtové typy jsou v C# stále **návrh**, ne jazykový rys. Ověřeno 2026-08-23: <https://github.com/dotnet/csharplang/blob/main/proposals/standard-unions.md>
 - [R77] Python — `typing.assert_never` (kontrola vyčerpání, ale jen ve statické kontrole). Ověřeno 2026-08-23: <https://docs.python.org/3/library/typing.html>
+
+**Oprava (§13)**
+
+- [R92] TypeScript Handbook — Classes, oddíl „Getters / Setters“ (*"Classes can also have accessors"*; veřejná pole stačí, když není potřeba logika navíc). Ověřeno 2026-10-03: <https://www.typescriptlang.org/docs/handbook/2/classes.html>
+- [R93] Effective Go — Getters (*"Go doesn't provide automatic support for getters and setters"*). Ověřeno 2026-10-03: <https://go.dev/doc/effective_go#Getters>
+- [R94] JEP 395: Records — každá složka dostane veřejnou přístupovou metodu a privátní finální pole. Ověřeno 2026-10-03: <https://openjdk.org/jeps/395>
+- [R95] Rust API Guidelines — C-GETTER (gettery jsou metody bez předpony `get_`). Ověřeno 2026-10-03: <https://rust-lang.github.io/api-guidelines/naming.html#c-getter>
 
 **Souběžnost v třetím zadání (§12.4)**
 
