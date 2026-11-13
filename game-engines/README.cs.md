@@ -1,8 +1,8 @@
 # Herní enginy: Unreal Engine vs Unity vs Godot
 
-- **Typ:** neutrální přehled — bez verdiktu, končí průvodcem čtením (zatím nesepsán)
-- **Fakta ověřena:** 🟡 zatím jen verze v §1.1 (2026-11-12 až 2026-11-13, reference v §2). Srovnávací tabulka zatím do dokumentu nevstoupila. Otevřená [OVĚŘIT] místa: přesné opravné buildy všech tří stabilních verzí a číslo bety Unity (§1.1)
-- **Pořadí práce:** rozsah (§1) je sepsaný 2026-11-13, tedy **až po** průzkumné AI konverzaci z listopadu 2026, ne před ní. Zjištění z té konverzace se proto vedou jako hypotézy, ne jako fakta, a do dokumentu vstoupí až po ověření proti primárním zdrojům
+- **Typ:** neutrální přehled — bez verdiktu, končí průvodcem čtením (§3)
+- **Fakta ověřena:** 🟡 2026-11-13: hodnocené verze (§1.1), všechny kategorie z §1.2 (§4–§12) a dodatečně přidaná cross-kompilace (§1.6, §11), reference v §13. Otevřená [OVĚŘIT] místa (12): odkaz na Visual Scripting v Unity, chování skriptů `@tool`/GDExtension a chyb v exportované hře u Godotu (§5); plošná světla v Unrealu a HDR výstup v Unrealu i v Unity (§7); 2D fyzika v Unrealu a streamování otevřeného světa v Unity (§9); primární zdroje k termínům UE6 a Unity 7 (§4); build pro Android a iOS z různých OS u Unity a export pro Windows, Linux a Android z libovolného OS u Godotu (§11). Řádky označené „odhad“ jsou odvození, ne měření (§6)
+- **Pořadí práce:** rozsah (§1) je sepsaný 2026-11-13, tedy **až po** průzkumné AI konverzaci z listopadu 2026, ne před ní. Zjištění z té konverzace se proto vedla jako hypotézy a do dokumentu vstoupila až po ověření proti zdrojům v §13
 - **Jazyk:** 🇨🇿 publikovaný pracovní draft (originál); 🇬🇧 kanonická anglická verze zatím nevznikla
 - **Autor:** Petr Kratochvíl — [krato.cz](https://krato.cz)
 
@@ -10,14 +10,15 @@
 
 - [x] rozsah (§1) — 2026-11-13
 - [x] řádek v kořenovém README (2026-11-13)
-- [ ] ověřovací kola po kategoriích z §1.2 proti primárním zdrojům, s připnutým buildem u každé hodnocené verze
-- [ ] souhrnná tabulka „Srovnání v kostce“
-- [ ] průvodce čtením: kde je který engine nejsilnější a jaký kontext volbu překlopí
+- [x] ověření všech kategorií z §1.2 proti zdrojům (§4–§12) — 2026-11-13
+- [x] souhrnná tabulka „Srovnání v kostce“ (§2) a průvodce čtením (§3) — 2026-11-13
+- [x] cross-kompilace (§11), přidaná změnou rozsahu v §1.6 — 2026-11-13
+- [ ] uzavřít dvanáct otevřených míst k ověření (výčet v hlavičce)
 - [ ] EN překlad (`README.md`) jako kanonická verze
 
 ## 1. Rozsah (sepsán 2026-11-13, před ověřováním)
 
-Rozsah je zafixovaný teď, aby se pokrytí potichu nezúžilo na to, co se bude dobře hledat. Případné změny se zapíšou jako datované poznámky pod tuto sekci, ne jako přepis.
+Rozsah je zafixovaný teď, aby se pokrytí potichu nezúžilo na to, co se bude dobře hledat. Případné změny se zapíšou jako datované poznámky (§1.6), ne jako přepis.
 
 ### 1.1 Možnosti a hodnocené verze
 
@@ -25,11 +26,13 @@ Pořadí sloupců jde **od nejrozsáhlejšího enginu po nejlehčí** a nic víc
 
 | Engine | Stabilní verze (základ hodnocení) | Předběžná verze (hodnocená zvlášť, značka 🧪) |
 |---|---|---|
-| **Unreal Engine** | 5.8 [OVĚŘIT: poslední opravný build] | 5.9 Preview („MegaJam“), vydaná 2026-11-09 |
-| **Unity** | 6.6 [OVĚŘIT: poslední opravný build] | 6.7 beta [OVĚŘIT: číslo bety]; Unity 7 je ve veřejné alfě, ale hodnotí se jen jako plán |
-| **Godot** | 4.7.x [OVĚŘIT: poslední opravný build] | 4.8 beta 3 |
+| **Unreal Engine** | 5.8.4 — nejnovější hotfix řady 5.8 nalezený ve fóru Epicu k 2026-11-13 | 5.9 Preview („MegaJam“), vydaná 2026-11-09 |
+| **Unity** | 6.6.8f1 (`6000.6.8f1`), vydaná 2026-11-03 | 6.7 beta 9 (`6000.7.0b9`); Unity 7 je ve veřejné alfě, ale hodnotí se jen jako plán |
+| **Godot** | 4.7.2, vydaná 2026-08-18 | 4.8 beta 3 |
 
-Základ tvoří stabilní verze. Co přinášejí jen předběžné verze, je v tabulkách označené 🧪, aby šlo poznat, co ve stabilní verzi ještě není. U 🧪 řádků platí zvláštní opatrnost: Unreal 5.9 Preview vznikl podle 80.lv zhruba za týden se zkráceným testováním (§2), takže se do finální verze může hodně změnit.
+*Buildy připnuty 2026-11-13; doplněno do původní tabulky na místo značek k ověření, rozsah se tím nemění.*
+
+Základ tvoří stabilní verze. Co přinášejí jen předběžné verze, je v tabulkách označené 🧪, aby šlo poznat, co ve stabilní verzi ještě není. U 🧪 řádků platí zvláštní opatrnost: Unreal 5.9 Preview vznikl podle 80.lv zhruba za týden se zkráceným testováním (§13), takže se do finální verze může hodně změnit.
 
 ### 1.2 Otázky
 
@@ -61,17 +64,247 @@ Tabulky budou používat **krátké popisné buňky**, ne symboly ✅/🟡/❌. 
 
 ### 1.5 Odkud pocházejí hypotézy
 
-Výchozí hypotézy pocházejí z AI konverzace z listopadu 2026 a z tabulky, která v ní vznikla. Řádek do dokumentu vstoupí až po ověření proti primárnímu zdroji: poznámkám k vydání, dokumentaci výrobce nebo zdrojovému kódu. Sekundární zdroje (blogy, agregátory zpráv a weby firem, které samy prodávají MCP servery) slouží jen jako stopa, kde hledat.
+Výchozí hypotézy pocházejí z AI konverzace z listopadu 2026 a z tabulky, která v ní vznikla. Řádek do dokumentu vstoupí až po ověření proti primárnímu zdroji: poznámkám k vydání, dokumentaci výrobce nebo zdrojovému kódu. Sekundární zdroje (blogy, agregátory zpráv a weby firem, které samy prodávají MCP servery) slouží jen jako stopa, kde hledat; kde na nich buňka přesto stojí, říká to §13.
 
-## 2. Reference
+### 1.6 Změny rozsahu (2026-11-13)
 
-Ověřeno 2026-11-12 až 2026-11-13; pokrývají zatím jen verze v §1.1.
+- Otázka „komunita a výukové materiály“ z kategorie Ekosystém se **vypouští**. Velikost komunity ani kvalitu výukových materiálů nejde doložit primárním zdrojem bez vlastního měření, takže by buňky byly jen dojmy.
+- Do kategorie Platformy se **přidává** otázka, na kterém operačním systému jde sestavit build pro který cílový systém (cross-kompilace), pro Windows, macOS, Linux, Android a iOS/iPadOS. Výchozí hypotézy k ní pocházejí z jiné AI konverzace z 2026-11-11 a do §11 vstoupily až po ověření.
 
-- Unreal Engine 5.9 Preview — [poznámky k vydání](https://dev.epicgames.com/documentation/unreal-engine/unreal-engine-5-9-release-notes) (aktualizováno 2026-11-09) · [oznámení na fóru Epicu](https://forums.unrealengine.com/t/unreal-engine-5-9-megajam-preview/2852840) · [80.lv: preview sestavený zhruba za týden](https://80.lv/articles/unreal-engine-5-9-preview-is-out-it-was-built-with-ai/)
-- Unity 6.7 beta — [uživatelská příručka 6.7 Beta](https://docs.unity.com/en-us/engine/6000.7/manual) · [poznámky k 6000.7.0b2](https://unity.com/releases/editor/beta/6000.7.0b2)
-- Unity 7 alfa — [poznámky k 7000.0.0a7](https://unity.com/releases/editor/alpha/7000.0.0a7)
-- Godot 4.8 — [beta 1: přehled novinek](https://godotengine.org/article/dev-snapshot-godot-4-8-beta-1/) · [beta 3](https://godotengine.org/article/dev-snapshot-godot-4-8-beta-3/)
+Zbytek rozsahu zůstává beze změny.
+
+## 2. Srovnání v kostce
+
+Popisné buňky podle §1.3, řazení sloupců podle §1.1. Buňky jsou zkrácené; zdroj a přesné znění každého řádku je v sekci uvedené v posledním sloupci. „Neověřeno“ odkazuje na otevřené místo k ověření v té sekci, „odhad“ na odvození vysvětlené tamtéž.
+
+| Vlastnost | Unreal Engine 5.8.4 | Unity 6.6.8f1 | Godot 4.7.2 | Detail |
+|---|---|---|---|---|
+| **▸ Základ** | | | | |
+| Licence | Zdarma; 5 % z hrubých tržeb produktu nad 1 mil. USD (3,5 % při současném vydání na Epic Games Store) | Personal zdarma do 200 tis. USD příjmů a financování firmy; Pro 2 310 USD/rok za místo | MIT, zcela zdarma | §4 |
+| Zdrojový kód | Dostupný i v bezplatné licenci, ale není open source | Jen Enterprise jako placený doplněk | Open source (MIT) | §4 |
+| Nároky editoru | Doporučeno 32 GB RAM a 8 GB VRAM | Doporučeno minimálně 8 GB RAM | Minimum 4 GB RAM, editor kolem 200 MB | §4 |
+| Ohlášený plán | 🧪 5.9 Preview; UE6 Early Access koncem 2027 (termín neověřen) | 🧪 6.7 jako LTS; Unity 7 ve veřejné alfě (termín neověřen) | 🧪 4.8 v betě, blíží se RC | §4 |
+| **▸ Programování** | | | | |
+| Jazyky | C++ a Blueprints; v UE6 přibude Verse | C# | GDScript, C#, C++ přes GDExtension; 🧪 4.8: C# vyžaduje .NET 10 | §5 |
+| Vizuální skriptování | Blueprints; 🧪 5.9: Blueprinty jde vytvářet a upravovat i z Pythonu | Visual Scripting (odkaz neověřen) | Ne — VisualScript zrušen ve 4.0; komunitní doplněk Orchestrator | §5 |
+| Rychlost iterace | C++ vyžaduje kompilaci | Od 6.6 nové projekty vstupují do Play mode bez reloadu domény | GDScript bez kroku sestavení (odhad) | §5 |
+| Null pointer: editor | C++: pád editoru (odvozeno). Blueprints: chyba „Accessed None“ v logu | Výjimka v konzoli, engine pokračuje dalším snímkem | Hra běží v samostatném procesu, editor nespadne | §5 |
+| Null pointer: hotová hra | C++: pád hry (odvozeno). Blueprints: uzel selže | Výjimka do logu, hra pokračuje | Chyba do logu, hra pokračuje (neověřeno) | §5 |
+| Nekonečná smyčka: editor | C++: zamrzne editor (odvozeno). Blueprints: přerušeno po limitu iterací | Zamrzne celý editor | Zamrzne jen hra, editor ji ukončí | §5 |
+| Nekonečná smyčka: hotová hra | Hra zamrzne (odvozeno) | Hra zamrzne (odvozeno) | Hra zamrzne (odvozeno) | §5 |
+| **▸ Vývoj s AI** | | | | |
+| Soubory projektu | Binární `.uasset`; 🧪 5.9: GraphDsl, textový zápis grafových assetů | Scény a prefaby jako YAML (výchozí „Force Text“) | Scény `.tscn` jako čitelný text | §6 |
+| MCP server | Oficiální (od 5.8 experimentální); 🧪 5.9: víc sad nástrojů včetně Blueprintů a výkonu | Oficiální, součást Unity AI | Jen komunitní | §6 |
+| Cena MCP | Zdarma | Předplatné Unity AI (14 dní zdarma); počet souběžných připojení podle plánu | Komunitní servery zdarma nebo za jednorázový poplatek | §6 |
+| AI asistent v editoru | 🧪 5.9: Unreal Assistant, Unreal Canvas, napojení na Claude Code | Unity AI: asistent, generátory assetů | Přehledy novinek 4.7 ani 4.8 žádný nezmiňují | §6 |
+| Práce bez editoru | Python skripty editoru | `-batchmode` s `-executeMethod` | `--headless` | §6 |
+| Smyčka agenta (odhad) | Nejpomalejší — kompilace C++ | Střední — rekompilace C# | Nejrychlejší — skripty bez sestavení | §6 |
+| Jazyk z pohledu AI (odhad) | C++ s makry reflexe enginu | C# | GDScript; syntaxe se mezi Godotem 3 a 4 změnila | §6 |
+| **▸ Grafika a osvětlení** | | | | |
+| Dynamické GI | Lumen; 🧪 5.9: Lumen World Cache (vyžaduje HW ray tracing) | Ve stabilní verzi jen Enlighten s předvýpočtem a končící podporou; 🧪 6.7: Surface Cache GI | SDFGI (jen Forward+); 🧪 4.8: vícenásobné odrazy v ambient occlusion | §7 |
+| GI s předvýpočtem | Lightmapy | Lightmapy, Adaptive Probe Volumes | LightmapGI, VoxelGI; 🧪 4.8: směrové lightmapy se spekulárem | §7 |
+| Ray tracing | Hardwarový ray tracing v enginu (mj. Lumen) | V HDRP, které je v režimu údržby | Jen nízkoúrovňové API RenderingDevice | §7 |
+| Hodně světel se stíny | MegaLights (od 5.8 připravené pro produkci) | Obdobu MegaLights dokumentace nezmiňuje | Obdobu MegaLights dokumentace nezmiňuje | §7 |
+| Plošná světla | Ano (neověřeno) | URP jen zapečená, v reálném čase jen HDRP | AreaLight3D od 4.7 | §7 |
+| Virtualizovaná geometrie | Nanite; 🧪 5.9: rychlejší culling | Ne; automatické LODy (Mesh LOD od 6.2) | Ne; automatické LODy | §7 |
+| HDR výstup na monitor | Neověřeno | Neověřeno | Ano, od 4.7 | §7 |
+| **▸ 2D** | | | | |
+| 2D nástroje | Paper2D, jen údržba | Samostatná, aktivně vyvíjená 2D sada | Samostatný 2D engine s 2D světly, tilemapami a 2D fyzikou | §8 |
+| **▸ Animace a postavy** | | | | |
+| Animace | Control Rig, Motion Matching a další; 🧪 5.9: generování animací pomocí AI | Mecanim, 2D kosterní animace | AnimationPlayer, AnimationTree; IK framework od 4.6 | §8 |
+| Realistické postavy | MetaHuman | Dokumentace vestavěnou obdobu nezmiňuje | Dokumentace vestavěnou obdobu nezmiňuje | §8 |
+| Filmové sekvence | Sequencer, Movie Render Graph | Timeline, Cinemachine | AnimationPlayer | §8 |
+| **▸ Fyzika a svět** | | | | |
+| 3D fyzika | Chaos | NVIDIA PhysX | Jolt (výchozí od 4.6); 🧪 4.8: Jolt 5.6 | §9 |
+| 2D fyzika | Bez vlastní 2D fyziky (neověřeno) | Box2D | Vlastní 2D fyzika | §9 |
+| Terén | Landscape, Mesh Terrain | Terrain a balíček Terrain Tools | Vestavěný terén dokumentace nezmiňuje; řeší se pluginy | §9 |
+| Otevřené světy | World Partition, PCG | Bez automatického dělení světa (neověřeno) | Bez vestavěného streamování scén; 🧪 4.8: streamování textur po mip úrovních | §9 |
+| **▸ Multiplayer a UI** | | | | |
+| Multiplayer | Replikace v jádru enginu | Netcode for GameObjects / for Entities | High-level multiplayer API | §10 |
+| UI | UMG a Common UI | UI Toolkit a uGUI | Control uzly; editor je sám postavený v Godotu | §10 |
+| **▸ Platformy** | | | | |
+| Mobil | Android, iOS | Android, iOS | Android, iOS; 🧪 4.8: editor sám nastaví Android SDK | §11 |
+| Web | Ve 5.8 ne; 🧪 5.9: experimentální cíl WebAssembly s WebGPU | Ano (WebGL 2.0) | Ano, jen WebGL 2.0 přes Compatibility; projekty v C# ne | §11 |
+| Konzole | Po schválení výrobcem konzole, Epic si za přístup neúčtuje | Vyžaduje Unity Pro | Jen přes třetí strany (W4 Games a další) | §11 |
+| XR | VR i AR | Včetně Apple Vision Pro (s Pro) | OpenXR; 🧪 4.8: visionOS jako modul | §11 |
+| Build pro jiný OS | Windows → Linux oficiálním toolchainem; iOS z Windows jen vzdáleně přes Mac; jinak build na cílovém OS | S Mono z kteréhokoli desktopu; s IL2CPP z jiného OS jen Linux; iOS přes Xcode na Macu | Desktop i Android z libovolného OS díky předkompilovaným šablonám; iOS jen z macOS | §11 |
+| **▸ Ekosystém** | | | | |
+| Obchod s assety | Fab | Asset Store | Asset Store, nový ve 4.7 | §12 |
+
+## 3. Jak tabulku číst
+
+Tabulka nevybírá vítěze; říká, kde je který engine nejsilnější, a které vlastnosti kontextu volbu mezi nimi překlápějí.
+
+- **Unreal Engine je nejsilnější tam, kde rozhoduje vestavěná 3D technologie:** dynamické GI, virtualizovaná geometrie, mnoho světel se stíny, realistické postavy a nástroje pro otevřené světy (§7–§9). Licence nic nestojí, dokud jednotlivý produkt neutrží milion dolarů (§4). Platí se za to nejtěžším editorem, nativním C++ v procesu editoru (§5) a binárními assety, které AI bez editoru nečte (§6).
+- **Unity je nejsilnější v šíři cílových platforem a v nástrojích kolem nich:** mobil, web ve stabilní verzi, XR včetně Vision Pro a samostatná 2D sada (§8, §11). Scény jsou text a MCP je oficiální (§6). Licence se ale odvíjí od příjmů a financování celé firmy a konzole i Vision Pro vyžadují Pro (§4, §11); dynamické GI je zatím jen v betě (§7).
+- **Godot je nejsilnější v nákladech, lehkosti a průhlednosti:** MIT bez poplatků, malý editor, hra izolovaná v samostatném procesu a scény jako čitelný text (§4–§6). Ve 2D je rovnocenný Unity (§8). Ve 3D osvětlení zaostává hlavně tam, kde Unreal a Unity mají vestavěné high-end technologie (§7), a konzole jsou jen přes třetí strany (§11).
+
+Vlastnosti kontextu, které volbu překlápějí nejvíc:
+
+- **Cílová platforma a build stroj.** Web ve stabilní verzi mají jen Unity a Godot; konzole nejsnáz Unreal a Unity. Kdo chce buildit pro víc systémů z jednoho počítače, má nejvíc volnosti v Godotu a nejmíň v Unrealu; pro iOS potřebují Mac všechny tři (§11).
+- **Výtvarný styl.** Realistické 3D s dynamickým světlem táhne k Unrealu; stylizované 3D a 2D tenhle rozdíl nepotřebují (§7–§8).
+- **Peníze a financování.** U Unrealu rozhodují tržby produktu, u Unity příjmy a investice celé firmy, u Godotu nic (§4).
+- **Vývoj převážně s AI.** Textové scény a izolovaný proces hry mluví pro Godot a Unity, binární assety proti Unrealu; 🧪 Unreal 5.9 ten rozdíl zmenšuje (§6).
+- **Jazyk.** C++, C# a GDScript jsou tři různé světy a znalost jednoho z nich je sama o sobě důvod (§5).
+
+## 4. Základ
+
+| | Unreal Engine 5.8.4 | Unity 6.6.8f1 | Godot 4.7.2 |
+|---|---|---|---|
+| **▸ Licence a cena** | | | |
+| Licence | Zdarma. Hry a jiné produkty s kódem enginu platí 5 % z celoživotních hrubých tržeb produktu nad 1 mil. USD, bez ohledu na to, kdo tržby inkasuje; tržby z Epic Games Store jsou bez poplatku ([licence](https://www.unrealengine.com/en-US/license)) | Unity Personal zdarma do 200 tis. USD příjmů a financování za posledních 12 měsíců, nad tím Pro za 2 310 USD/rok nebo 210 USD/měsíc za místo, nad 25 mil. USD Enterprise ([ceník 2026](https://unity.com/en/products/pricing-updates)). Licence je čistě za místa, z tržeb her se neplatí ([oznámení 2024](https://www.tipranks.com/news/the-fly/unity-ceo-says-canceling-runtime-fee-announces-pricing-changes)) | MIT, zcela zdarma, bez poplatků z tržeb ([Godot](https://godotengine.itch.io/)) |
+| Výjimky a slevy | Čtvrtletí, kdy produkt utrží méně než 10 000 USD, je bez poplatku ([EULA change log](https://www.unrealengine.com/eula-change-log/unreal)). Sazba 3,5 % místo 5 % na všech platformách, když hra vyjde na Epic Games Store nejpozději současně s ostatními obchody (program Launch Everywhere with Epic, hry vydané od 2025-01-01) ([Epic](https://www.unrealengine.com/news/unreal-engines-improved-royalty-reporting-system)) | Pro a Enterprise zdražily od 2026-01-12 o 5 %; Unity ohlašuje každoroční úpravy cen ([ceník 2026](https://unity.com/en/products/pricing-updates)) | — |
+| Neherní komerční použití | Firmy s tržbami nad 1 mil. USD za 12 měsíců, které nedistribuují aplikaci s kódem enginu koncovým uživatelům: 1 850 USD/rok za místo ([vlastní licence](https://www.unrealengine.com/en-US/custom-license)) | Zákazníci z kategorie Industry nemohou použít Personal ([srovnání plánů](https://unity.com/compare-plans)) | — |
+| **▸ Zdrojový kód** | | | |
+| Přístup | Přístup ke zdrojovému kódu je součástí bezplatné licence ([licencování](https://www.unrealengine.com/en-us/custom-licensing)); engine se distribuuje i přes GitHub ([oznámení 5.8](https://forums.unrealengine.com/t/unreal-engine-5-8-released/2729274)) | Jen Enterprise, jako placený doplněk „Source Code Access (read only)“ nebo „Source Code Adapt“ ([srovnání plánů](https://unity.com/compare-plans)) | Otevřený pod licencí MIT ([Godot](https://godotengine.itch.io/)) |
+| **▸ Nároky editoru** | | | |
+| Hardware | Doporučeno 32 GB RAM, grafika s 8 GB VRAM, čtyřjádrový procesor od 2,5 GHz, Windows 11 ([specifikace](https://dev.epicgames.com/documentation/unreal-engine/hardware-and-software-specifications-for-unreal-engine?lang=en-US)) | Pro běh editoru na Windows, macOS i Linuxu doporučeno minimálně 8 GB RAM (dokumentace 6.3, [systémové požadavky](https://docs.unity.com/en-us/engine/6000.3/manual/get-started/install-and-upgrade/getting-started-installing-unity/system-requirements)) | Minimum pro nativní editor 4 GB RAM (dokumentace 4.6, [systémové požadavky](https://docs.godotengine.org/en/4.6/about/system_requirements.html)); editor kolem 200 MB, exportní šablony dalších 1,3 GB (dokumentace 4.5, [systémové požadavky](https://docs.godotengine.org/en/4.5/about/system_requirements.html)) |
+| **▸ Verze a plán** | | | |
+| Hodnocený build | 5.8.4 ([hotfix](https://forums.unrealengine.com/t/5-8-4-hotfix-released/2842775)) | 6000.6.8f1, vydaná 2026-11-03 ([poznámky](https://unity.com/vn/releases/editor/whats-new/6000.6.8f1)) | 4.7.2, vydaná 2026-08-18, na GitHubu vedená jako nejnovější vydání ([vydání](https://github.com/godotengine/godot-builds/releases/tag/4.7.2-stable)) |
+| 🧪 Předběžná verze | 5.9 Preview „MegaJam“ ([poznámky](https://dev.epicgames.com/documentation/unreal-engine/unreal-engine-5-9-release-notes)) | 6000.7.0b9 ([beta program](https://unity.com/vn/releases/editor/beta)) | 4.8 beta 3 ([oznámení](https://godotengine.org/article/dev-snapshot-godot-4-8-beta-3/)) |
+| Ohlášený plán | 5.8 byla ohlášena jako poslední plánovaná velká verze UE5, s výhradou případných dalších oficiálních vydání ([Epic](https://www.unrealengine.com/ja/news/unreal-engine-5-8-is-now-available)) — tou se stala 5.9. UE6 Early Access koncem 2027 [OVĚŘIT: primární zdroj] | 6.7 má být LTS a poslední verzí na Mono ([Unity, červen 2026](https://discussions.unity.com/t/coreclr-scripting-and-serialization-update-june-2026/1723299)); Unity 7 je ve veřejné alfě ([7000.0.0a7](https://unity.com/releases/editor/alpha/7000.0.0a7)), finální vydání v 1. čtvrtletí 2027 [OVĚŘIT: primární zdroj] | 4.8 je ve fázi bety s blížícím se RC ([beta 3](https://godotengine.org/article/dev-snapshot-godot-4-8-beta-3/)) |
+
+Dvě věci k tabulce, které se v buňkách nevejdou:
+
+- **Co se počítá do limitu.** U Unrealu je limit 1 mil. USD na **produkt** a počítají se jeho hrubé tržby, tedy i podíl, který si strhne obchod (fakt podle licence). U Unity je limit 200 tis. USD na **organizaci** a počítají se příjmy i získané financování celé firmy (fakt podle ceníku). Oba limity se proto nedají srovnávat jedním číslem: malé studio s investicí přes 200 tis. USD platí Unity Pro dřív, než prodá jedinou kopii, kdežto u Unrealu by s takovou investicí neplatilo nic, dokud hra neutrží milion (inference z obou podmínek).
+- **Zdrojový kód u Unrealu není open source.** Přístup ke kódu je volný, ale řídí se licencí Epicu, ne svobodnou licencí jako u Godotu (inference z toho, že přístup je popsaný jako součást licence Epicu).
+
+## 5. Programování
+
+| | Unreal Engine 5.8.4 | Unity 6.6.8f1 | Godot 4.7.2 |
+|---|---|---|---|
+| **▸ Jazyky a skriptování** | | | |
+| Jazyky | C++ a Blueprints; 🧪 5.9: nové knihovny pro Python a Blueprinty umožňují vytvářet a upravovat Blueprinty, grafy a uzly ze skriptů ([poznámky 5.9](https://dev.epicgames.com/documentation/unreal-engine/unreal-engine-5-9-release-notes)) | C# | GDScript, C# a C++ přes GDExtension ([dokumentace 4.7](https://docs.godotengine.org/en/4.7/about/list_of_features.html)); 🧪 4.8: build s C# vyžaduje .NET 10 ([beta 1](https://godotengine.org/article/dev-snapshot-godot-4-8-beta-1/)) |
+| Vizuální skriptování | Blueprints | Visual Scripting [OVĚŘIT: odkaz na aktuální dokumentaci balíčku] | Vestavěné ne: VisualScript byl ve 4.0 odstraněn, protože ho podle ankety jako hlavní jazyk používalo jen 0,5 % uživatelů ([Godot](https://godotengine.org/article/godot-4-will-discontinue-visual-scripting)). Existuje komunitní doplněk Orchestrator ([fórum Godotu](https://forum.godotengine.org/t/heard-about-visual-scripting-but-cant-find-it/66967)) |
+| Rychlost iterace | C++ vyžaduje kompilaci; Blueprinty se kompilují v editoru | Od 6.6 nové projekty ve výchozím stavu vstupují do Play mode jen s reloadem scény, bez reloadu domény ([Unity 6.6](https://discussions.unity.com/t/unity-6-6-is-now-available/1735357)) | GDScript se interpretuje bez samostatného kroku sestavení projektu (odhad z povahy jazyka) |
+| **▸ Chybný kód** | | | |
+| Null pointer: editor | C++: herní modul běží v procesu editoru, takže neošetřená dereference nulového ukazatele shodí editor (odvozeno z nativního kódu ve stejném procesu). Blueprints: chyba „Blueprint Runtime Error: Accessed None“ v logu, běh pokračuje | Unity výjimku zachytí, zaloguje a pokračuje dalším snímkem ([Jackson Dunstan](https://www.jacksondunstan.com/articles/5344)) | Hra vždy běží v samostatném procesu, takže její pád nepoloží editor ([dokumentace](https://docs.godotengine.org/en/stable/tutorials/editor/game_embedding.html)). Výjimkou jsou skripty `@tool` a GDExtension, které běží v editoru [OVĚŘIT: primární zdroj] |
+| Null pointer: hotová hra | C++: pád hry (odvozeno). Blueprints: uzel selže, hra pokračuje | Výjimka do logu, hra pokračuje dalším snímkem (tentýž zdroj) | Chyba do logu, hra pokračuje [OVĚŘIT: primární zdroj] |
+| Nekonečná smyčka: editor | C++: zamrzne editor (odvozeno). Blueprints: smyčku přeruší limit iterací, nastavitelný v Project Settings jako „Maximum Loop Iteration Count“ ([Epic](https://answers.unrealengine.com/questions/237724/view.html)) | Zamrzne celý editor; Unity takové hlášení uzavírá jako „By Design“ s vysvětlením, že šlo o nekonečnou smyčku ve skriptu projektu ([issue tracker](https://issuetracker.unity3d.com/issues/editor-freezes-occasionally-when-entering-play-mode-while-using-procedural-generation)) | Zamrzne jen hra v samostatném procesu (odvozeno z [dokumentace](https://docs.godotengine.org/en/stable/tutorials/editor/game_embedding.html)) |
+| Nekonečná smyčka: hotová hra | Hra zamrzne | Hra zamrzne | Hra zamrzne |
+
+Poslední řádek je odvození, ne zdroj: smyčka bez konce na hlavním vlákně zastaví hru v každém z enginů a žádný z nalezených zdrojů netvrdí opak. Rozdíly mezi enginy jsou proto skoro výhradně v editoru.
+
+## 6. Vývoj s AI
+
+| | Unreal Engine 5.8.4 | Unity 6.6.8f1 | Godot 4.7.2 |
+|---|---|---|---|
+| **▸ Čitelnost projektu** | | | |
+| Soubory projektu | Assety (`.uasset`) jsou binární a nejdou sloučit (sekundární zdroj: [glosář](https://usourcecontrol.com/glossary/uasset)). 🧪 5.9 přidává GraphDsl, textový jazyk pro tvorbu a úpravy grafových assetů ([poznámky 5.9](https://dev.epicgames.com/documentation/unreal-engine/unreal-engine-5-9-release-notes)) | Při režimu „Force Text“, výchozím pro nové projekty, se scény a prefaby ukládají jako YAML ([JetBrains Rider](https://www.jetbrains.com/help/rider/Asset-serialization-mode.html)) | Scény `.tscn` jsou podle dokumentace převážně čitelné pro lidi a snadno spravovatelné ve verzovacích systémech ([dokumentace](https://docs.godotengine.org/en/stable/engine_details/file_formats/tscn.html)); 🧪 4.8 čistší serializace s menšími diffy ([beta 1](https://godotengine.org/article/dev-snapshot-godot-4-8-beta-1/)) |
+| **▸ Napojení AI** | | | |
+| MCP server | Oficiální plugin od 5.8 ([oznámení 5.8](https://forums.unrealengine.com/t/unreal-engine-5-8-released/2729274)). 🧪 5.9: sady nástrojů pro Blueprinty, akce editoru, výkon, soubory, snímání scény, konzoli a další, registr nástrojů a MCP klient ([poznámky 5.9](https://dev.epicgames.com/documentation/unreal-engine/unreal-engine-5-9-release-notes)) | Oficiální Unity MCP v rámci Unity AI ([dokumentace](https://docs.unity3d.com/Packages/com.unity.ai.assistant@2.5/manual/integration/unity-mcp-get-started.html)) | Jen komunitní, například `godot-mcp` od Coding-Solo pod MIT nebo novější `shin2344234/godot-mcp` s režimem `--headless` ([přehled](https://ziva.sh/blogs/godot-mcp-server-claude-code-cursor) od prodejce MCP serveru, [vydání](https://github.com/shin2344234/godot-mcp/releases)) |
+| Cena MCP | Zdarma, součást enginu | Unity AI vyžaduje předplatné, zkušební doba 14 dní; plány se liší počtem souběžných MCP připojení ([ceník](https://unity.com/simulation)) | Komunitní servery zdarma nebo za jednorázový poplatek (tentýž [přehled](https://ziva.sh/blogs/godot-mcp-server-claude-code-cursor)) |
+| AI asistent v editoru | 🧪 5.9: Unreal Assistant, Unreal Canvas s generátory textu, obrázků, videa a meshí a napojení mj. na Claude Code ([poznámky 5.9](https://dev.epicgames.com/documentation/unreal-engine/unreal-engine-5-9-release-notes)) | Unity AI s nástroji pro generování kódu, tvorbu assetů a inferenci za běhu ([příručka 6.7](https://docs.unity.com/en-us/engine/6000.7/manual)) | Přehledy novinek 4.7 ani 4.8 vestavěného asistenta nezmiňují ([beta 1](https://godotengine.org/article/dev-snapshot-godot-4-8-beta-1/)) |
+| Práce bez editoru | Python skripty editoru, 🧪 v 5.9 rozšířené ([poznámky 5.9](https://dev.epicgames.com/documentation/unreal-engine/unreal-engine-5-9-release-notes)) | `-batchmode` s `-executeMethod` ([dokumentace](https://docs.unity3d.com/es//Manual/CommandLineArguments.html)) | `--headless` ([příkazová řádka](https://docs.godotengine.org/en/4.7/tutorials/editor/command_line_tutorial.html)) |
+| **▸ Odhady** | | | |
+| Smyčka agenta (odhad) | Nejpomalejší: každá změna C++ znamená kompilaci | Střední: změna C# znamená rekompilaci skriptů | Nejrychlejší: GDScript bez kroku sestavení, malý engine |
+| Jazyk z pohledu AI (odhad) | C++ s makry reflexe enginu | C# | GDScript; syntaxe se mezi Godotem 3 a 4 změnila ([migrace na Godot 4](https://docs.godotengine.org/en/4.7/tutorials/migrating/upgrading_to_godot_4.html)) |
+
+Dva poslední řádky jsou **odhady, ne měření**: odvozují se z toho, jak dlouhý krok sestavení engine vyžaduje a jak specifický je jeho jazyk. Přehled nemá benchmark, který by rychlost práce AI agenta v jednotlivých enginech měřil (§1.4).
+
+## 7. Grafika a osvětlení
+
+| | Unreal Engine 5.8.4 | Unity 6.6.8f1 | Godot 4.7.2 |
+|---|---|---|---|
+| **▸ Globální osvětlení** | | | |
+| Dynamické GI | Lumen; 🧪 5.9: Lumen World Cache, který si cache osvětlení staví za běhu path tracingem a vyžaduje hardwarový ray tracing ([poznámky 5.9](https://dev.epicgames.com/documentation/unreal-engine/unreal-engine-5-9-release-notes)) | Ve stabilní verzi jen Enlighten Realtime GI, který potřebuje předvýpočet a jehož podpora podle srovnání pipeline končí po Unity 2024 LTS ([srovnání pipeline](https://docs.unity.cn/Documentation/Manual/render-pipelines-feature-comparison.html)). 🧪 6.7: Surface Cache GI ([dokumentace 6.7](https://docs.unity3d.com/6000.7/Documentation/Manual/urp/surface-cache-gi-volume-override-reference.html)) | SDFGI, jen v rendereru Forward+ ([dokumentace](https://docs.godotengine.org/en/4.7/tutorials/3d/global_illumination/using_sdfgi.html)); 🧪 4.8: levná aproximace vícenásobných odrazů v ambient occlusion ([beta 1](https://godotengine.org/article/dev-snapshot-godot-4-8-beta-1/)) |
+| GI s předvýpočtem | Lightmapy | Lightmapy a Adaptive Probe Volumes ([srovnání pipeline](https://docs.unity.cn/Documentation/Manual/render-pipelines-feature-comparison.html)) | LightmapGI a VoxelGI ([úvod do GI](https://docs.godotengine.org/en/4.7/tutorials/3d/global_illumination/introduction_to_global_illumination.html)); 🧪 4.8: směrové lightmapy i se spekulárním světlem ([beta 1](https://godotengine.org/article/dev-snapshot-godot-4-8-beta-1/)) |
+| Ray tracing | Hardwarový ray tracing v enginu, mj. pro Lumen ([poznámky 5.9](https://dev.epicgames.com/documentation/unreal-engine/unreal-engine-5-9-release-notes)) | V HDRP, které od strategie z února 2026 přechází do režimu údržby ([80.lv](https://80.lv/articles/unity-unveils-2026-render-pipelines-strategy/)) | Jen nízkoúrovňové API v RenderingDevice ([Phoronix](https://phoronix.com/news/godot-4.7-dev-1-vulkan-rt)) |
+| **▸ Světla a geometrie** | | | |
+| Hodně světel se stíny | MegaLights, od 5.8 ve stavu připraveném pro produkci ([poznámky 5.8](https://dev.epicgames.com/documentation/en-us/unreal-engine/unreal-engine-5-8-release-notes?lang=en-US)) | Obdobu MegaLights dokumentace nezmiňuje (zdroj mlčí) | Obdobu MegaLights dokumentace nezmiňuje (zdroj mlčí) |
+| Plošná světla | Ano [OVĚŘIT: odkaz na dokumentaci Rect Light] | V URP se plošné světlo automaticky přepne na zapečené ([dokumentace URP](https://docs.unity3d.com/Manual/urp/light-component.html)); dynamická plošná světla má jen HDRP ([převod HDRP na URP](https://docs.unity3d.com/6000.5/Documentation/Manual/urp/convert-hdrp-lighting-to-urp.html)) | AreaLight3D od 4.7 ([Phoronix](https://www.phoronix.com/news/Godot-4.7-Released)) |
+| Virtualizovaná geometrie | Nanite; 🧪 5.9: rychlejší culling ([poznámky 5.9](https://dev.epicgames.com/documentation/unreal-engine/unreal-engine-5-9-release-notes)) | Ne; automatické generování LOD při importu od 6.2 ([Mesh LOD](https://docs.unity3d.com/6000.2/Documentation/Manual/lod/mesh-lod-generate-lods.html)) | Ne; automatické generování LOD ([dokumentace](https://docs.godotengine.org/en/4.7/tutorials/3d/mesh_lod.html)) |
+| HDR výstup na monitor | [OVĚŘIT] | [OVĚŘIT] | Ano, od 4.7 ([Phoronix](https://www.phoronix.com/news/Godot-4.7-Released)) |
+
+## 8. 2D, animace a postavy
+
+| | Unreal Engine 5.8.4 | Unity 6.6.8f1 | Godot 4.7.2 |
+|---|---|---|---|
+| **▸ 2D** | | | |
+| 2D nástroje | Paper2D: Epic na něm aktivně nepracuje a jen ho udržuje ([fórum Epicu](https://forums.unrealengine.com/t/paper2d/95809)) | Samostatná 2D sada; 6.6 přidala rendering layers pro 2D světla a profilovací moduly pro 2D ([Unity 6.6](https://discussions.unity.com/t/unity-6-6-is-now-available/1735357)) | Samostatný 2D engine s 2D světly a stíny, tilemapami a 2D fyzikou ([dokumentace 4.7](https://docs.godotengine.org/en/4.7/about/list_of_features.html)) |
+| **▸ Animace a postavy** | | | |
+| Animace | Control Rig, Pose Search (motion matching), IK Retargeter; 🧪 5.9: generování animací pomocí AI (UAF AnimGen) ([poznámky 5.9](https://dev.epicgames.com/documentation/unreal-engine/unreal-engine-5-9-release-notes)) | Mecanim, 2D kosterní animace; Cinemachine ([příručka 6.7](https://docs.unity.com/en-us/engine/6000.7/manual)) | AnimationPlayer, AnimationTree ([dokumentace 4.7](https://docs.godotengine.org/en/4.7/about/list_of_features.html)); nový IK framework od 4.6 ([Godot 4.6](https://godotengine.org/releases/4.6/)) |
+| Realistické postavy | MetaHuman ([oznámení 5.8](https://forums.unrealengine.com/t/unreal-engine-5-8-released/2729274)) | Vestavěnou obdobu dokumentace nezmiňuje (zdroj mlčí) | Vestavěnou obdobu dokumentace nezmiňuje (zdroj mlčí) |
+| Filmové sekvence | Sequencer a Movie Render Graph ([poznámky 5.9](https://dev.epicgames.com/documentation/unreal-engine/unreal-engine-5-9-release-notes)) | Timeline a Cinemachine ([příručka 6.7](https://docs.unity.com/en-us/engine/6000.7/manual)) | AnimationPlayer ([dokumentace 4.7](https://docs.godotengine.org/en/4.7/about/list_of_features.html)) |
+
+## 9. Fyzika a svět
+
+| | Unreal Engine 5.8.4 | Unity 6.6.8f1 | Godot 4.7.2 |
+|---|---|---|---|
+| 3D fyzika | Chaos, včetně fyzikálních assetů přes Dataflow ([poznámky 5.9](https://dev.epicgames.com/documentation/unreal-engine/unreal-engine-5-9-release-notes)) | Integrace NVIDIA PhysX ([dokumentace](https://docs.unity3d.com/6000.6/Documentation/Manual/physics-integrations.html)) | Jolt jako výchozí pro nové 3D projekty od 4.6 ([Godot 4.6](https://godotengine.org/releases/4.6/)); 🧪 4.8: Jolt 5.6 ([beta 1](https://godotengine.org/article/dev-snapshot-godot-4-8-beta-1/)) |
+| 2D fyzika | Bez vlastní 2D fyziky, 2D se řeší 3D fyzikou v rovině [OVĚŘIT: primární zdroj] | Integrace Box2D ([dokumentace](https://docs.unity3d.com/6000.6/Documentation/Manual/physics-integrations.html)) | Vlastní 2D fyzika ([dokumentace 4.7](https://docs.godotengine.org/en/4.7/about/list_of_features.html)) |
+| Terén | Landscape a Mesh Terrain; 🧪 5.9 vylepšuje Mesh Partition ([poznámky 5.9](https://dev.epicgames.com/documentation/unreal-engine/unreal-engine-5-9-release-notes)) | Terrain a balíček Terrain Tools ([dokumentace](https://docs.unity3d.com/6000.6/Documentation/Manual/PhysicsSection.html)) | Vestavěný terén dokumentace 4.7 mezi 3D nástroji nezmiňuje, uvádí CSG a GridMap (zdroj mlčí, [dokumentace 4.7](https://docs.godotengine.org/en/4.7/about/list_of_features.html)); řeší se pluginy |
+| Otevřené světy | World Partition a PCG ([poznámky 5.9](https://dev.epicgames.com/documentation/unreal-engine/unreal-engine-5-9-release-notes)) | Bez automatického dělení světa [OVĚŘIT: primární zdroj] | Bez vestavěného streamování scén (zdroj mlčí); 🧪 4.8: streamování textur po mip úrovních ([beta 1](https://godotengine.org/article/dev-snapshot-godot-4-8-beta-1/)) |
+
+## 10. Multiplayer a UI
+
+| | Unreal Engine 5.8.4 | Unity 6.6.8f1 | Godot 4.7.2 |
+|---|---|---|---|
+| Multiplayer | Replikace je součástí jádra enginu; 🧪 5.9 přidává selektivní replikaci pawnů pro Mass ([poznámky 5.9](https://dev.epicgames.com/documentation/unreal-engine/unreal-engine-5-9-release-notes)) | Netcode for GameObjects a Netcode for Entities ([příručka 6.7](https://docs.unity.com/en-us/engine/6000.7/manual)) | High-level multiplayer API se spawnováním a synchronizací uzlů ([dokumentace 4.7](https://docs.godotengine.org/en/4.7/about/list_of_features.html)) |
+| UI | UMG a Common UI ([poznámky 5.9](https://dev.epicgames.com/documentation/unreal-engine/unreal-engine-5-9-release-notes)) | UI Toolkit a uGUI ([příručka 6.7](https://docs.unity.com/en-us/engine/6000.7/manual)) | Systém Control uzlů; sám editor je postavený v Godotu ([dokumentace 4.7](https://docs.godotengine.org/en/4.7/about/list_of_features.html)) |
+
+## 11. Platformy
+
+| | Unreal Engine 5.8.4 | Unity 6.6.8f1 | Godot 4.7.2 |
+|---|---|---|---|
+| Mobil | Android a iOS ([oznámení 5.8](https://forums.unrealengine.com/t/unreal-engine-5-8-released/2729274)) | Android a iOS ([příručka 6.7](https://docs.unity.com/en-us/engine/6000.7/manual)) | Android a iOS ([dokumentace 4.7](https://docs.godotengine.org/en/4.7/about/list_of_features.html)); 🧪 4.8: editor sám stáhne a nastaví Android a Java SDK ([beta 1](https://godotengine.org/article/dev-snapshot-godot-4-8-beta-1/)) |
+| Web | Ve 5.8 ne; 🧪 5.9: nový experimentální cíl WebAssembly s vykreslováním přes WebGPU ([poznámky 5.9](https://dev.epicgames.com/documentation/unreal-engine/unreal-engine-5-9-release-notes)) | Ano, prohlížeče s podporou WebGL 2.0 ([systémové požadavky](https://docs.unity3d.com/6000.0/Documentation/Manual/system-requirements.html)) | Ano, ale jen WebGL 2.0 přes renderer Compatibility; WebGPU Godot nepodporuje a projekty v C# na web exportovat nejde ([dokumentace 4.7](https://docs.godotengine.org/en/4.7/tutorials/export/exporting_for_web.html)) |
+| Konzole | Dokumentace a přístup ke konzolím bez dalších poplatků, ale jen pro vývojáře schválené výrobcem konzole a po NDA s Epicem ([PlayStation 5](https://dev.epicgames.com/documentation/en-us/unreal-engine/development-for-playstation-5-in-unreal-engine)) | Vydávání na konzole vyžaduje plán Pro ([ceník 2026](https://unity.com/en/products/pricing-updates)) | Oficiálně jen Steam Deck; na konzole přes middleware a služby třetích stran, například W4 Games ([Godot](https://godotengine.org/consoles/index.html)) |
+| XR | VR i AR mají vlastní sekce platformní dokumentace ([platformy](https://dev.epicgames.com/documentation/unreal-engine/sharing-and-releasing-projects?application_version=4.27)) | Včetně Apple Vision Pro, které vyžaduje plán Pro ([ceník 2026](https://unity.com/en/products/pricing-updates)) | Podpora XR včetně XR editoru ([dokumentace 4.7](https://docs.godotengine.org/en/4.7/about/list_of_features.html)); 🧪 4.8: visionOS jako modul s hand trackingem ([beta 1](https://godotengine.org/article/dev-snapshot-godot-4-8-beta-1/)) |
+
+**Build pro jiný operační systém.** Matice říká, na kterém systému jde sestavit build pro který cíl, oficiálně podporovanou cestou v hodnocené verzi. Buňky jsou popisné jako ve zbytku dokumentu (§1.3); „sám“ znamená build na stejném systému, pro který je určený.
+
+| Engine | Build na | Windows | macOS | Linux | Android | iOS/iPadOS |
+|---|---|---|---|---|---|---|
+| **Unreal** | Windows | sám | ne (odvozeno) | ano, oficiální cross-compile toolchain | ano | jen vzdáleně přes Mac (Remote Build) |
+| | macOS | ne (odvozeno) | sám | ne | ano | ano |
+| | Linux | ne | ne (odvozeno) | sám | ano | ne (odvozeno) |
+| **Unity** | Windows | sám | jen se scripting backendem Mono | ano, i s IL2CPP | ano (viz pozn.) | jen Xcode projekt, sestavení na Macu (viz pozn.) |
+| | macOS | jen s Mono | sám | ano, i s IL2CPP | ano (viz pozn.) | ano, přes Xcode |
+| | Linux | jen s Mono | jen s Mono | sám | ano (viz pozn.) | jen Xcode projekt, sestavení na Macu (viz pozn.) |
+| **Godot** | Windows | sám | ano, jako `.app` v ZIPu, bez DMG | ano (viz pozn.) | ano (viz pozn.) | ne |
+| | macOS | ano (viz pozn.) | sám | ano (viz pozn.) | ano (viz pozn.) | ano, přes Xcode |
+| | Linux | ano (viz pozn.) | ano, jako `.app` v ZIPu, bez DMG | sám | ano (viz pozn.) | ne |
+
+Poznámky k matici:
+
+- **Unreal:** Cross-kompilace je podporovaná jen z Windows na Linux; uživatelé Macu musí kompilovat nativně ([požadavky pro Linux](https://dev.epicgames.com/documentation/unreal-engine/linux-development-requirements-for-unreal-engine)). Opačný směr z Linuxu na Windows podle komunitní wiki možný není ([Unreal Community Wiki](https://unrealcommunity.wiki/linux-support-2afdzysd), sekundární). Pro iOS z Windows se Unreal přes SSH připojí až ke dvěma Macům; Mac potřebuje jen Xcode, ne kopii projektu ani Unreal ([vzdálené buildy pro iOS](https://dev.epicgames.com/documentation/unreal-engine/creating-remote-builds-of-unreal-engine-projects-for-ios)). Android toolchain jde nastavit na Windows, macOS i Linuxu ([Android SDK](https://dev.epicgames.com/documentation/unreal-engine/manual-android-sdk-setup-with-android-studio-for-unreal-engine)). Buňky „odvozeno“ plynou z toho, že jedinou zdokumentovanou cross-kompilací desktopu je Windows → Linux.
+- **Unity:** Build s IL2CPP pro konkrétní platformu se obecně musí dělat v editoru běžícím na té platformě; výjimkou je Linux ([IL2CPP](https://docs.unity3d.com/6000.7/Documentation/Manual/il2cpp-introduction.html)), pro který Unity dodává sysroot a toolchain balíčky pro Windows, macOS i Linux ([Linux IL2CPP](https://docs.unity.cn/Packages/com.unity.sysroot@2.0/manual/index.html)). Desktopové buildy pro jiný OS jdou se scripting backendem Mono ([Unity Discussions, odpověď Unity](https://discussions.unity.com/t/why-is-there-no-windows-il2cpp-build-module-for-macos-installations-of-unity/919172)). 🧪 Unity 7 alfa ale podporu Mono desktopových přehrávačů odstraňuje ([7000.0.0a7](https://unity.com/releases/editor/alpha/7000.0.0a7)), takže s ní tahle cesta nejspíš skončí (inference). Build pro Android z libovolného OS a iOS jako Xcode projekt sestavovaný na Macu [OVĚŘIT: primární zdroj].
+- **Godot:** Export pro macOS z Windows nebo Linuxu vyrobí `.app`, DMG jde vytvořit jen na macOS; s certifikátem Apple Developer ID jde podpis i notarizace přes rcodesign i z Linuxu a Windows, `.app` exportovaná z Windows ale nemá příznak spustitelnosti ([export pro macOS](https://docs.godotengine.org/en/4.7/tutorials/export/exporting_for_macos.html)). Pro iOS se musí exportovat z macOS s nainstalovaným Xcode; C# na iOS je od 4.2 experimentální ([export pro iOS](https://docs.godotengine.org/en/stable/tutorials/export/exporting_for_ios.html)). Export pro Windows, Linux a Android z libovolného OS [OVĚŘIT: primární zdroj]. Platí to pro projekt v GDScriptu: nativní knihovny přes GDExtension se musí zkompilovat pro každou cílovou platformu zvlášť (odvozeno z toho, že jde o nativní kód).
+- **Společné úzké hrdlo je Apple:** pro iOS/iPadOS je potřeba Mac s Xcode ve všech třech enginech, lokálně, vzdáleně nebo jako macOS runner v CI.
+
+Oficiálně podporovanou konzolí Godotu je jen Steam Deck přes linuxové exportní šablony; to plyne z [dokumentace ke konzolím](https://docs.godotengine.org/fr/4.5/_sources/tutorials/platform/consoles.rst.txt) (verze 4.5). Důvodem je, že SDK konzolí jsou pod NDA a jejich kód nejde zveřejnit pod open source licencí ([Godot](https://godotengine.org/consoles/index.html)).
+
+## 12. Ekosystém
+
+| | Unreal Engine 5.8.4 | Unity 6.6.8f1 | Godot 4.7.2 |
+|---|---|---|---|
+| Obchod s assety | Fab; 🧪 5.9 do něj přidává generování obrázků a meshí ([poznámky 5.9](https://dev.epicgames.com/documentation/unreal-engine/unreal-engine-5-9-release-notes)) | Asset Store ([ceník](https://unity.com/products)) | Asset Store, který ve 4.7 nahradil dřívější Asset Library ([Phoronix](https://www.phoronix.com/news/Godot-4.7-Released)) |
+
+Otázka „komunita a výukové materiály“ byla z rozsahu vypuštěna (§1.6).
+
+## 13. Reference
+
+Ověřeno 2026-11-12 až 2026-11-13. Sekundární zdroje jsou označené.
+
+**Unreal Engine:**
+- Verze — [5.8.4 hotfix](https://forums.unrealengine.com/t/5-8-4-hotfix-released/2842775) · [oznámení 5.8](https://forums.unrealengine.com/t/unreal-engine-5-8-released/2729274) · [oznámení 5.8 (JP)](https://www.unrealengine.com/ja/news/unreal-engine-5-8-is-now-available) · [poznámky k vydání 5.8](https://dev.epicgames.com/documentation/en-us/unreal-engine/unreal-engine-5-8-release-notes?lang=en-US) · [poznámky k vydání 5.9 Preview](https://dev.epicgames.com/documentation/unreal-engine/unreal-engine-5-9-release-notes) (aktualizováno 2026-11-09) · [5.9 MegaJam Preview, fórum](https://forums.unrealengine.com/t/unreal-engine-5-9-megajam-preview/2852840) · [80.lv: preview sestavený zhruba za týden](https://80.lv/articles/unreal-engine-5-9-preview-is-out-it-was-built-with-ai/) (sekundární)
+- Licence — [licence](https://www.unrealengine.com/en-US/license) · [EULA change log](https://www.unrealengine.com/eula-change-log/unreal) · [Launch Everywhere with Epic](https://www.unrealengine.com/news/unreal-engines-improved-royalty-reporting-system) · [vlastní licence](https://www.unrealengine.com/en-US/custom-license) · [licencování a přístup ke kódu](https://www.unrealengine.com/en-us/custom-licensing)
+- Editor a platformy — [hardwarové a softwarové specifikace](https://dev.epicgames.com/documentation/unreal-engine/hardware-and-software-specifications-for-unreal-engine?lang=en-US) · [požadavky pro Linux a cross-compile toolchain](https://dev.epicgames.com/documentation/unreal-engine/linux-development-requirements-for-unreal-engine) · [vzdálené buildy pro iOS](https://dev.epicgames.com/documentation/unreal-engine/creating-remote-builds-of-unreal-engine-projects-for-ios) · [Android SDK](https://dev.epicgames.com/documentation/unreal-engine/manual-android-sdk-setup-with-android-studio-for-unreal-engine) · [Linux Support (komunitní wiki)](https://unrealcommunity.wiki/linux-support-2afdzysd) (sekundární) · [PlayStation 5](https://dev.epicgames.com/documentation/en-us/unreal-engine/development-for-playstation-5-in-unreal-engine) · [sdílení a vydávání projektů](https://dev.epicgames.com/documentation/unreal-engine/sharing-and-releasing-projects?application_version=4.27)
+- Programování — [limit iterací smyček v Blueprintech (odpověď Epicu)](https://answers.unrealengine.com/questions/237724/view.html) · [stav Paper2D (fórum Epicu)](https://forums.unrealengine.com/t/paper2d/95809) · [binární `.uasset`](https://usourcecontrol.com/glossary/uasset) (sekundární, prodejce verzovacího systému)
+
+**Unity:**
+- Verze — [6000.6.8f1](https://unity.com/vn/releases/editor/whats-new/6000.6.8f1) · [beta program (6000.7.0b9)](https://unity.com/vn/releases/editor/beta) · [příručka 6.7 Beta](https://docs.unity.com/en-us/engine/6000.7/manual) · [Unity 7 alfa, 7000.0.0a7](https://unity.com/releases/editor/alpha/7000.0.0a7) · [Unity 6.6 je k dispozici](https://discussions.unity.com/t/unity-6-6-is-now-available/1735357) · [CoreCLR, červen 2026](https://discussions.unity.com/t/coreclr-scripting-and-serialization-update-june-2026/1723299)
+- Licence — [ceník 2026](https://unity.com/en/products/pricing-updates) · [srovnání plánů](https://unity.com/compare-plans) · [plány a ceny](https://unity.com/products) · [plány a ceny Unity AI](https://unity.com/simulation) · [zrušení runtime fee, 2024](https://www.tipranks.com/news/the-fly/unity-ceo-says-canceling-runtime-fee-announces-pricing-changes) (sekundární)
+- Editor a programování — [systémové požadavky 6.3](https://docs.unity.com/en-us/engine/6000.3/manual/get-started/install-and-upgrade/getting-started-installing-unity/system-requirements) · [systémové požadavky 6.0](https://docs.unity3d.com/6000.0/Documentation/Manual/system-requirements.html) · [argumenty příkazové řádky](https://docs.unity3d.com/es//Manual/CommandLineArguments.html) · [zamrznutí editoru „By Design“](https://issuetracker.unity3d.com/issues/editor-freezes-occasionally-when-entering-play-mode-while-using-procedural-generation) · [výjimky a další snímek (Jackson Dunstan)](https://www.jacksondunstan.com/articles/5344) (sekundární) · [režim serializace assetů (JetBrains)](https://www.jetbrains.com/help/rider/Asset-serialization-mode.html) (sekundární) · [Unity MCP](https://docs.unity3d.com/Packages/com.unity.ai.assistant@2.5/manual/integration/unity-mcp-get-started.html) · [IL2CPP](https://docs.unity3d.com/6000.7/Documentation/Manual/il2cpp-introduction.html) · [Linux IL2CPP: sysroot a toolchainy](https://docs.unity.cn/Packages/com.unity.sysroot@2.0/manual/index.html) · [Windows IL2CPP na macOS (odpověď Unity)](https://discussions.unity.com/t/why-is-there-no-windows-il2cpp-build-module-for-macos-installations-of-unity/919172)
+- Grafika a fyzika — [srovnání render pipeline](https://docs.unity.cn/Documentation/Manual/render-pipelines-feature-comparison.html) · [Surface Cache GI (6.7)](https://docs.unity3d.com/6000.7/Documentation/Manual/urp/surface-cache-gi-volume-override-reference.html) · [světla v URP](https://docs.unity3d.com/Manual/urp/light-component.html) · [převod osvětlení z HDRP na URP](https://docs.unity3d.com/6000.5/Documentation/Manual/urp/convert-hdrp-lighting-to-urp.html) · [strategie render pipeline 2026 (80.lv)](https://80.lv/articles/unity-unveils-2026-render-pipelines-strategy/) (sekundární) · [Mesh LOD](https://docs.unity3d.com/6000.2/Documentation/Manual/lod/mesh-lod-generate-lods.html) · [fyzikální integrace](https://docs.unity3d.com/6000.6/Documentation/Manual/physics-integrations.html) · [fyzika a terén](https://docs.unity3d.com/6000.6/Documentation/Manual/PhysicsSection.html)
+
+**Godot:**
+- Verze — [4.7.2 na GitHubu](https://github.com/godotengine/godot-builds/releases/tag/4.7.2-stable) · [poznámky k 4.7.2](https://godotengine.org/article/maintenance-release-godot-4-7-2/) · [Godot 4.6](https://godotengine.org/releases/4.6/) · [Godot 4.7 (Phoronix)](https://www.phoronix.com/news/Godot-4.7-Released) (sekundární) · [4.8 beta 1](https://godotengine.org/article/dev-snapshot-godot-4-8-beta-1/) · [4.8 beta 3](https://godotengine.org/article/dev-snapshot-godot-4-8-beta-3/)
+- Licence a editor — [licence MIT](https://godotengine.itch.io/) · [systémové požadavky 4.6](https://docs.godotengine.org/en/4.6/about/system_requirements.html) · [systémové požadavky 4.5](https://docs.godotengine.org/en/4.5/about/system_requirements.html) · [seznam funkcí 4.7](https://docs.godotengine.org/en/4.7/about/list_of_features.html) · [vkládání hry do editoru](https://docs.godotengine.org/en/stable/tutorials/editor/game_embedding.html) · [příkazová řádka](https://docs.godotengine.org/en/4.7/tutorials/editor/command_line_tutorial.html) · [formát TSCN](https://docs.godotengine.org/en/stable/engine_details/file_formats/tscn.html) · [migrace na Godot 4](https://docs.godotengine.org/en/4.7/tutorials/migrating/upgrading_to_godot_4.html)
+- Programování a AI — [konec VisualScriptu](https://godotengine.org/article/godot-4-will-discontinue-visual-scripting) · [Orchestrator (fórum Godotu)](https://forum.godotengine.org/t/heard-about-visual-scripting-but-cant-find-it/66967) · [přehled MCP serverů](https://ziva.sh/blogs/godot-mcp-server-claude-code-cursor) (sekundární, prodejce MCP serveru) · [shin2344234/godot-mcp](https://github.com/shin2344234/godot-mcp/releases)
+- Grafika a platformy — [SDFGI](https://docs.godotengine.org/en/4.7/tutorials/3d/global_illumination/using_sdfgi.html) · [úvod do GI](https://docs.godotengine.org/en/4.7/tutorials/3d/global_illumination/introduction_to_global_illumination.html) · [mesh LOD](https://docs.godotengine.org/en/4.7/tutorials/3d/mesh_lod.html) · [ray tracing přes RenderingDevice (Phoronix)](https://phoronix.com/news/godot-4.7-dev-1-vulkan-rt) (sekundární) · [export na web](https://docs.godotengine.org/en/4.7/tutorials/export/exporting_for_web.html) · [export pro macOS](https://docs.godotengine.org/en/4.7/tutorials/export/exporting_for_macos.html) · [export pro iOS](https://docs.godotengine.org/en/stable/tutorials/export/exporting_for_ios.html) · [podpora konzolí](https://godotengine.org/consoles/index.html) · [konzole v dokumentaci 4.5](https://docs.godotengine.org/fr/4.5/_sources/tutorials/platform/consoles.rst.txt)
 
 ---
 
-*Pracovní kostra založená 2026-11-13; rozsah sepsán před ověřováním, ale až po průzkumné AI konverzaci. Vzniká ve spolupráci s Claude (Anthropic).*
+*Pracovní kostra založená 2026-11-13; rozsah sepsán před ověřováním, ale až po průzkumné AI konverzaci. Všechny kategorie, souhrnná tabulka a průvodce čtením ověřeny a doplněny 2026-11-13; cross-kompilace přidána změnou rozsahu tentýž den (§1.6, §11). Dokument je datovaný snapshot a zpětně se neaktualizuje. Vzniká ve spolupráci s Claude (Anthropic).*
