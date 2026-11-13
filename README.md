@@ -29,6 +29,7 @@ Both kinds **are dated snapshots** — facts carry a verification date and the d
 | **Smartwatch platforms** — Garmin vs Apple vs Samsung, as input to an iPhone 15 Pro vs 16 Pro purchase decision | ⏳ in progress | 2026-08-09 (partial) | 🇨🇿 [Čeština](smartwatch-platforms/README.cs.md) |
 | **Voice dictation** — Wispr Flow vs Superwhisper vs Spokenly vs macOS Dictation vs VoiceInk vs FluidVoice, for Czech dictation on an Apple Silicon Mac | VoiceInk (built from source) | 2026-08-18 | 🇬🇧 [English](voice-dictation/README.md) · 🇨🇿 [Čeština](voice-dictation/README.cs.md) |
 | **Programming languages** — one language to build new projects on for years, across web backend, browser frontend, CLI and data/ML | Three briefs, three verdicts that disagree: **TypeScript** on domain fit; **Kotlin and Rust** tied on language professionalism; **Rust** once concurrency counts — no language wins all three | 2026-08-22 to 2026-10-03 · add. ×5, last 2026-10-03 | 🇬🇧 [English](programming-languages/README.md) · 🇨🇿 [Čeština](programming-languages/README.cs.md) |
+| **Game engines** — Unreal Engine vs Unity vs Godot: licensing, programming, AI-assisted development, graphics, platforms | 📊 neutral overview · ⏳ in progress | scope only, 2026-11-13 | 🇨🇿 [Čeština](game-engines/README.cs.md) |
 
 ## Languages
 
