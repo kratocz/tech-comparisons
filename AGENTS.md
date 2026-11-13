@@ -4,11 +4,28 @@ Working notes for anyone — human or agent — adding to this repository.
 
 ## What this repo is
 
-Dated decision analyses, each anchored to a concrete context and ending in a
-verdict. Not neutral feature matrices: the point of every document is a real
-decision someone actually made, with the accepted trade-offs spelled out. The
-root `README.md` states the four editorial principles; this file covers how to
-apply them in practice.
+Dated comparisons, in two kinds:
+
+- A **decision analysis** is anchored to a concrete context and ends in a
+  verdict. Its point is a real decision someone actually made, with the
+  accepted trade-offs spelled out.
+- A **neutral overview** maps a field for a stated scope and ends in a reading
+  guide instead of a verdict. Its point is an honest, sourced picture a reader
+  can apply to their own context — neither a feature list copied from vendor
+  pages nor a verdict in disguise.
+
+Everything below applies to both kinds unless a paragraph says otherwise. The
+root `README.md` states the editorial principles; this file covers how to apply
+them in practice.
+
+Pick the kind before the research and state it in the header. The failure to
+guard against is an overview drifting into a verdict by stealth: a reading guide
+that ends "X is the better choice for most people" has picked a winner without
+saying whose context it was picked for. When a real decision does come up, write
+it as one — either a separate decision analysis that cites the overview, or a
+dated section appended to the overview with its own Context and its own rules
+(see the workflow section) — and leave the overview standing as the neutral
+answer.
 
 ## Repository layout
 
@@ -16,10 +33,10 @@ One directory per comparison, named after the **topic** rather than the vendors
 (`storage-replication`, `smartwatch-platforms`) — vendor names date faster than
 the question does. The name is a **plain noun phrase for the subject, not the
 activity**: `smartwatch-platforms`, not `smartwatch-platform-choice`. Every
-document here is a decision, so a `-choice` or `-comparison` suffix restates the
-repository instead of the topic — `programming-language-choice` was renamed to
-`programming-languages` for exactly that reason. `zfs-vs-ceph` predates the rule
-and breaks it: leave it be, but do not copy it. Inside:
+document here is a comparison, so a `-choice` or `-comparison` suffix restates
+the repository instead of the topic — `programming-language-choice` was renamed
+to `programming-languages` for exactly that reason. `zfs-vs-ceph` predates the
+rule and breaks it: leave it be, but do not copy it. Inside:
 
 - `README.md` — English, canonical.
 - `README.cs.md` — the Czech original, kept alongside when the analysis
@@ -27,27 +44,40 @@ and breaks it: leave it be, but do not copy it. Inside:
 
 Every comparison directory on `main` has a row in the root `README.md` index
 table — including one still being researched, which carries `⏳ in progress` in
-the verdict column until it is done. The ⏳ is what lets unfinished work sit in
-the open instead of hiding on a branch nobody reads; what clears it is the
-second bar in the workflow section below.
+the verdict column until it is done. A neutral overview has no verdict to put
+there, so the column says `📊 neutral overview` instead — with `⏳ in progress`
+beside it until it is done. The ⏳ is what lets unfinished work sit in the open
+instead of hiding on a branch nobody reads; what clears it is the second bar in
+the workflow section below.
 
 ## Anatomy of a comparison
 
 - **Header metadata** as a bullet list (`- **Verdict:** …`, `- **Facts
   verified:** …`, `- **Language:** …`, `- **Author:** …`). The bullets are
   required, not cosmetic: CommonMark merges adjacent plain lines into a single
-  paragraph. **Read every date from the clock, never infer it** — not from the
-  time of day, not from a greeting, not from the section above. Dates here are
-  the document's whole claim to being checkable, and eight sections once
-  shipped dated a day into the future because "good morning" arrived shortly
-  before midnight.
+  paragraph. A neutral overview replaces the Verdict bullet with `- **Type:**
+  neutral overview`; a document without a Type bullet is a decision analysis,
+  so the existing documents need no change. **Read every date from the clock,
+  never infer it** — not from the time of day, not from a greeting, not from the
+  section above. Dates here are the document's whole claim to being checkable,
+  and eight sections once shipped dated a day into the future because "good
+  morning" arrived shortly before midnight.
 - **Context** section first — the concrete profile the verdict claims validity
-  for, and nothing beyond it.
+  for, and nothing beyond it. A neutral overview opens with a **Scope** section
+  instead: the options and the versions assessed, the questions covered, and
+  what is deliberately left out. A scope is not a context — it limits what the
+  document describes, not whom a conclusion fits, which is why an overview has
+  no conclusion of that kind.
 - **Comparison at a glance** — a symbol table (✅ strength · 🟡 works with
-  caveats · ❌ weakness · — not applicable) rated **for that context**, with the
-  rating basis stated explicitly in the table's intro. Group rows under
-  `**▸ …**` sub-headers, and follow the table with a short "how to read it"
-  section naming who wins where.
+  caveats · ❌ weakness · — not applicable), with the rating basis stated
+  explicitly in the table's intro. In a decision analysis the basis is **that
+  context**. In a neutral overview it is a stated, general basis — "maturity of
+  the built-in feature in the version assessed", say — and never an implied
+  reader; short descriptive cells are an acceptable alternative to symbols, as
+  long as the intro says which the table uses. Group rows under `**▸ …**`
+  sub-headers, and follow the table with a short "how to read it" section naming
+  who wins where — in an overview, where each option is strongest and which
+  kinds of context would tip the choice, without an overall winner.
 - Numbered `##` sections for the argument, cross-referenced inline as §N.
 - **References** section with URLs and a verification date for the block, with
   per-entry dates where they differ.
@@ -60,6 +90,10 @@ The same holds **across sibling documents**: where two comparisons rate the same
 options, they list them in the same order, so a reader moving between them keeps
 one axis. `storage-replication` puts Btrfs after the Ceph columns because
 `zfs-vs-ceph` does.
+
+In a neutral overview an order is easily read as a ranking, so say in the table
+intro what it follows — "from the broadest feature set to the lightest", say —
+and do not let it claim more than that.
 
 Two formatting details that are easy to get wrong and tedious to fix later.
 Czech text uses Czech quotation marks (`„…“`) — not a Czech opening quote closed
@@ -99,6 +133,11 @@ section** that is not load-bearing for the verdict.
 The point is graceful ageing: when the snapshot is stale a year later, the
 analysis still holds and the reader can see exactly which part expired.
 
+A neutral overview has no verdict to protect, but the split matters as much:
+put the reading guide on the durable layer and keep the perishable detail in
+the dated snapshot. Without a verdict the facts are the whole product, so the
+version pinning below applies to every row the overview rates.
+
 For that to work the snapshot has to say **which version of each option the
 ratings were anchored to** — the release actually assessed, not merely the one
 current at the time. Without it a reader a year on cannot tell what expired
@@ -111,7 +150,9 @@ another language.
 Use the same ratio to judge whether a topic is worth writing up at all. A
 subject that is mostly perishable detail (a shopping shortlist, a current price
 comparison) gives a reader far less than one whose durable layer carries the
-conclusion.
+conclusion. For a neutral overview, ask whether anything in its reading guide
+would still hold in a year; if nothing would, it is a shopping list rather than
+an overview.
 
 ## Sourcing and verification
 
@@ -208,7 +249,9 @@ conclusion.
   production storage on; here the question was what must exist on the far side
   to receive a replica, and a single-node cluster turns out to be supported.
   The cost was not one wrong cell — an entire disqualifying criterion rested
-  on it.
+  on it. A neutral overview's ratings are bound to their stated basis rather
+  than to a context, and importing one into a decision analysis is the same
+  re-derivation, not a copy.
 
 ## Workflow for a new comparison
 
@@ -223,12 +266,18 @@ need it: branch, then `git merge --no-ff` so the rounds stay legible in the log,
 then push (`storage-replication`). Corrections after landing go straight to
 `main` as their own commits.
 
-Write the **decision rules before the research**, dated, inside the document, so
-that once results arrive the rules are read rather than invented. When that
-ordering was not achieved — the research ran first — say so in the header
-instead of letting the rules read as pre-registered. A rule presented as
-pre-written when it was not is a false claim in a document whose whole value is
-that its claims can be trusted.
+In a decision analysis, write the **decision rules before the research**,
+dated, inside the document, so that once results arrive the rules are read
+rather than invented. When that ordering was not achieved — the research ran
+first — say so in the header instead of letting the rules read as
+pre-registered. A rule presented as pre-written when it was not is a false
+claim in a document whose whole value is that its claims can be trusted.
+
+A neutral overview has no decision rules to pre-register. What it fixes before
+the research is its **scope** — options, versions and questions, dated — so the
+coverage cannot quietly shrink to whatever turned out easy to find. If the
+scope changes later, record the change as a dated note rather than rewriting
+the original list.
 
 **When the brief itself changes mid-analysis, record it as a new dated brief —
 never as a rewrite of the old one.** Give it its own section, its own rules
@@ -239,14 +288,21 @@ the disagreement between two honest verdicts is usually more informative than
 either alone: in `programming-languages` the winner of the first brief placed
 seventh in the second, which is the document's most useful single finding.
 
+The same mechanism turns an overview into a decision when one comes up: append
+a dated section with its own Context and its own rules, written before they
+are applied to the overview's findings. The overview above it stays standing as
+the neutral answer, and its ratings are hypotheses for the new section like any
+other import.
+
 There are **two bars**, and collapsing them into one is what makes an index
 full of ⏳ rows look like a mess rather than a work log.
 
 **To land on `main` at all**, carrying `⏳ in progress`:
 
-1. The **Context** section is written, so a reader knows what question the
-   document answers and for whom. A draft without it is not an early analysis,
-   it is notes.
+1. The **Context** section — or, in a neutral overview, the **Scope** section —
+   is written, so a reader knows what question the document answers and for
+   whom, or what it covers. A draft without it is not an early analysis, it is
+   notes.
 2. The header states what is verified and what is not, and names any open
    `[OVĚŘIT]` / `[VERIFY]` tags — so nobody mistakes a draft for a finding.
 3. The root README index has its row, with `⏳ in progress` in the verdict
@@ -254,11 +310,15 @@ full of ⏳ rows look like a mess rather than a work log.
 
 **To drop the ⏳** and count as finished:
 
-1. It ends with a **verdict** — the option actually chosen, with the accepted
-   trade-offs spelled out. A menu of options is research, not a decision.
+1. A decision analysis ends with a **verdict** — the option actually chosen,
+   with the accepted trade-offs spelled out. A menu of options is research, not
+   a decision. A neutral overview ends with a **reading guide** instead — where
+   each option is strongest and which kinds of context tip the choice — and
+   that is a finished overview, not an unfinished decision.
 2. Load-bearing claims carry sources and a verification date.
 3. The English `README.md` exists (English is canonical).
-4. The index row states that verdict and its verification date.
+4. The index row states that verdict — or `📊 neutral overview` — and its
+   verification date.
 
 Work that does not clear the first bar stays on its branch. Work that clears the
 first but not the second lives on `main` under a ⏳ — `smartwatch-platforms` is

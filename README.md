@@ -1,15 +1,24 @@
 # Tech Comparisons
 
-> Dated tech comparisons that end with a verdict for a concrete context — because the honest answer is always *"it depends"*, so each analysis spells out what it depends **on**.
+> Dated tech comparisons that spell out what the answer depends **on** — because the honest answer is always *"it depends"*. Some settle a decision for one concrete context; others map a field neutrally and leave the decision to the reader.
 
 ## What this is
 
-Real decision analyses from real projects — not neutral feature matrices. Each document:
+Real analyses from real projects, in two kinds.
+
+**Decision analyses** settle a decision someone actually faced. Each one:
 
 - **anchors to a concrete context** — a "Context" section up front; the verdict claims validity only for that profile,
 - **compares honestly** — including the rows where the losing side wins,
-- **ends with a verdict once complete** — the option actually chosen, with the accepted trade-offs spelled out; analyses still under way are marked ⏳ in the table below,
-- **is a dated snapshot** — facts carry a verification date and the document is not retro-updated.
+- **ends with a verdict once complete** — the option actually chosen, with the accepted trade-offs spelled out.
+
+**Neutral overviews** map a field without choosing for anyone. Each one:
+
+- **states its scope** — a "Scope" section up front naming the options, the versions assessed and the questions covered, and what is deliberately left out,
+- **compares honestly** — every option's strengths and weaknesses, without weighting them for one particular reader,
+- **ends with a reading guide once complete** — where each option is strongest and which kinds of context tip the choice, with no overall winner.
+
+Both kinds **are dated snapshots** — facts carry a verification date and the document is not retro-updated. In the table below, ⏳ marks work still under way and 📊 marks a neutral overview, which has no verdict by design.
 
 ## Comparisons
 
