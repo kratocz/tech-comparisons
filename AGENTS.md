@@ -41,6 +41,7 @@ rule and breaks it: leave it be, but do not copy it. Inside:
 - `README.md` — English, canonical.
 - `README.cs.md` — the Czech original, kept alongside when the analysis
   originated in Czech.
+- `tests/<name>/` — optional: an experiment of your own that a cell rests on, when no source answers the question. Its `run.sh` reproduces the whole thing, and its header comment records the date, the version and platform tested and the results; a `.gitignore` keeps build output out. The document links the script and calls the result an own test, not a source (`game-engines/tests/godot-null-release/`).
 
 Every comparison directory on `main` has a row in the root `README.md` index
 table — including one still being researched, which carries `⏳ in progress` in
@@ -172,6 +173,8 @@ an overview.
 - Prefer primary sources: the vendor's own spec or support page over a review
   quoting it. Where sources contradict each other, record the contradiction in
   the document and say which one is treated as authoritative and why.
+- **A search snippet tells you where to look, not who said it.** Before quoting a sentence that appeared in search results, fetch the page you are about to cite and find the sentence on it: results pages mix snippets from several pages. In `game-engines` a line about refactoring the UE 5.9 web renderer surfaced next to Epic's release notes, but it came from the forum announcement, and the release notes did not contain it.
+- **When a primary source refuses automated fetching, do not work around the refusal.** Cite the best secondary source and label it as secondary, say in the document that the primary was not read, and open a §0 task to replace it; the user can paste the sentence in. Epic's `unrealengine.com/news` pages return 403, and the auto-mode classifier blocks retrying with `curl`. `dev.epicgames.com` and `forums.unrealengine.com` can be fetched.
 - **An impossibility claim needs a primary source before it is written**, not
   after someone questions it. "There is no tool", "it cannot be changed", "never",
   "only via migration" — these are the claims a reader cannot check and the ones
@@ -390,6 +393,8 @@ under "Three places index an addendum" below — the header's **Facts verified**
 bullet, the closing footer, and the References block. They are the document's index
 of what was added when, and a section missing from either is invisible to a
 reader who starts at the top.
+
+**Until the ⏳ drops, the append-only rule does not apply.** A document still marked `⏳ in progress` in the index is a draft, and later research rounds may edit its sections in place on any day. Each round still records its date in the header's **Facts verified** bullet, in the References intro and in the footer, so a reader can tell what was checked when. The append-only rule starts once the ⏳ is gone (`game-engines`, 2026-11-14).
 
 A correction may also ride **inside a new addendum as its own sub-section**
 (`### 26.4 Correction to §21.1`) when the addendum is being written anyway and
